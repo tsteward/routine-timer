@@ -32,8 +32,10 @@ void main() {
 
     // AppBar title should be visible
     expect(find.text('Task Management'), findsOneWidget);
-    // Left/right column placeholders should be present
-    expect(find.text('Left Column: Task List Placeholder'), findsOneWidget);
+    // Left column should show a reorderable task list with sample data
+    expect(find.byType(ReorderableListView), findsOneWidget);
+    expect(find.text('Morning Workout'), findsOneWidget);
+    // Right column placeholder should still be present
     expect(find.text('Right Column: Settings & Details Placeholder'), findsOneWidget);
   });
 

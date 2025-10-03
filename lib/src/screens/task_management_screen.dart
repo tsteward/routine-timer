@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../router/app_router.dart';
+import '../bloc/routine_bloc.dart';
+import '../models/routine_state.dart';
+import '../models/break.dart';
 
 class TaskManagementScreen extends StatelessWidget {
   const TaskManagementScreen({super.key});
@@ -16,7 +20,7 @@ class TaskManagementScreen extends StatelessWidget {
             flex: 3,
             child: Container(
               color: color,
-              child: const Center(child: Text('Left Column: Task List Placeholder')),
+              child: const _TaskListColumn(),
             ),
           ),
           // Right column placeholder (settings & details)
@@ -46,6 +50,168 @@ class TaskManagementScreen extends StatelessWidget {
           }
         },
         child: const Icon(Icons.navigation),
+      ),
+    );
+  }
+}
+
+class _TaskListColumn extends StatelessWidget {
+  const _TaskListColumn();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return BlocBuilder<RoutineBloc, RoutineBlocState>(
+      builder: (context, state) {
+        if (state.loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final model = state.model;
+        if (model == null) {
+          return const Center(child: Text('No routine loaded'));
+        }
+
+        final startTimes = _computeTaskStartTimes(model);
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: ReorderableListView.builder(
+            padding: const EdgeInsets.only(bottom: 24),
+            itemCount: model.tasks.length,
+            onReorder: (oldIndex, newIndex) {
+              // Flutter's ReorderableListView reports newIndex after removal; adjust when moving down.
+              if (newIndex > oldIndex) newIndex -= 1;
+              context.read<RoutineBloc>().add(
+                    ReorderTasks(oldIndex: oldIndex, newIndex: newIndex),
+                  );
+            },
+            buildDefaultDragHandles: false,
+            itemBuilder: (context, index) {
+              final task = model.tasks[index];
+              final isSelected = index == model.currentTaskIndex;
+              final startTime = startTimes[index];
+
+              return Padding(
+                key: ValueKey('task-${task.id}'),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => context.read<RoutineBloc>().add(SelectTask(index)),
+                  child: Card(
+                    elevation: isSelected ? 2 : 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.surfaceVariant,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    color: isSelected
+                        ? theme.colorScheme.primaryContainer
+                        : theme.colorScheme.surface,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          _StartTimePill(text: _formatTimeHHmm(startTime)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  task.name,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _formatDurationMinutes(task.estimatedDuration),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: Icon(
+                              Icons.drag_handle,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  // Computes the absolute start DateTime for each task index, based on
+  // routine start time, prior task durations, and enabled breaks.
+  List<DateTime> _computeTaskStartTimes(RoutineStateModel model) {
+    final start = DateTime.fromMillisecondsSinceEpoch(model.settings.startTime);
+    final results = <DateTime>[];
+    int accumulatedSeconds = 0;
+
+    for (var i = 0; i < model.tasks.length; i++) {
+      results.add(start.add(Duration(seconds: accumulatedSeconds)));
+      // Add this task's duration to accumulate for the next index
+      accumulatedSeconds += model.tasks[i].estimatedDuration;
+      // If there is a break after this task (i < breaks.length), and it is enabled, include it
+      if (model.breaks != null && i < (model.breaks!.length)) {
+        final BreakModel gap = model.breaks![i];
+        if (gap.isEnabled) {
+          accumulatedSeconds += gap.duration;
+        }
+      }
+    }
+    return results;
+  }
+
+  String _formatTimeHHmm(DateTime time) {
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  String _formatDurationMinutes(int seconds) {
+    final minutes = (seconds / 60).round();
+    return '$minutes min';
+  }
+}
+
+class _StartTimePill extends StatelessWidget {
+  const _StartTimePill({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          letterSpacing: 0.2,
+        ),
       ),
     );
   }
