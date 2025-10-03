@@ -24,6 +24,7 @@ This project includes MCP integrations and conventions so you can run, test, and
   - Installs Flutter stable if missing
   - Runs `flutter precache --linux --web`
   - Warms pub cache with `flutter pub get` when run in repo root
+  - Persists PATH across sessions via `/etc/profile.d/flutter.sh` (if permitted) and user rc files (`~/.profile`, `~/.bashrc`, `~/.zshrc`)
 
 - After sourcing, agents can run:
   ```bash
