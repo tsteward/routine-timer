@@ -20,6 +20,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<UpdateSettings>(_onUpdateSettings);
     on<MarkTaskDone>(_onMarkTaskDone);
     on<GoToPreviousTask>(_onGoToPreviousTask);
+    on<UpdateTaskAtIndex>(_onUpdateTaskAtIndex);
+    on<DuplicateTaskAtIndex>(_onDuplicateTaskAtIndex);
+    on<DeleteTaskAtIndex>(_onDeleteTaskAtIndex);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -156,5 +159,123 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       model.tasks.length - 1,
     );
     emit(state.copyWith(model: model.copyWith(currentTaskIndex: prevIndex)));
+  }
+
+  void _onUpdateTaskAtIndex(
+    UpdateTaskAtIndex event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    final current = updatedTasks[event.index];
+    updatedTasks[event.index] = current.copyWith(
+      name: event.name,
+      estimatedDuration: event.estimatedDurationSeconds,
+    );
+
+    emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+  }
+
+  void _onDuplicateTaskAtIndex(
+    DuplicateTaskAtIndex event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    final source = updatedTasks[event.index];
+    final newId = DateTime.now().microsecondsSinceEpoch.toString();
+    final duplicate = source.copyWith(id: newId);
+    updatedTasks.insert(event.index + 1, duplicate);
+
+    // Reindex order
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // Maintain breaks length if present
+    List<BreakModel>? updatedBreaks = model.breaks;
+    if (model.breaks != null) {
+      final insertedGapIndex = event.index; // gap between source and duplicate
+      final newBreak = BreakModel(
+        duration: model.settings.defaultBreakDuration,
+        isEnabled: model.settings.breaksEnabledByDefault,
+      );
+      final newBreaks = List<BreakModel>.from(model.breaks!);
+      final safeIndex = insertedGapIndex.clamp(0, newBreaks.length);
+      newBreaks.insert(safeIndex, newBreak);
+      updatedBreaks = newBreaks;
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: reindexed,
+          breaks: updatedBreaks,
+          currentTaskIndex: (event.index + 1),
+        ),
+      ),
+    );
+  }
+
+  void _onDeleteTaskAtIndex(
+    DeleteTaskAtIndex event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks.removeAt(event.index);
+
+    // Reindex order
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // Adjust breaks length if present
+    List<BreakModel>? updatedBreaks = model.breaks;
+    if (model.breaks != null) {
+      final newLengthShouldBe = (reindexed.length - 1).clamp(0, 1 << 31);
+      var newBreaks = List<BreakModel>.from(model.breaks!);
+      if (newBreaks.length > newLengthShouldBe) {
+        // Remove a break near the deletion point
+        final removeIndex = event.index.clamp(0, newBreaks.length - 1);
+        newBreaks.removeAt(removeIndex);
+      } else if (newBreaks.length < newLengthShouldBe) {
+        // Insert default break to match length
+        final insertIndex = event.index.clamp(0, newBreaks.length);
+        newBreaks.insert(
+          insertIndex,
+          BreakModel(
+            duration: model.settings.defaultBreakDuration,
+            isEnabled: model.settings.breaksEnabledByDefault,
+          ),
+        );
+      }
+      updatedBreaks = newBreaks;
+    }
+
+    final newIndex = model.currentTaskIndex >= reindexed.length
+        ? (reindexed.isEmpty ? 0 : reindexed.length - 1)
+        : model.currentTaskIndex.clamp(0, reindexed.length - 1);
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: reindexed,
+          breaks: updatedBreaks,
+          currentTaskIndex: newIndex,
+        ),
+      ),
+    );
   }
 }
