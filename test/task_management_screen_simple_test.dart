@@ -24,7 +24,7 @@ void main() {
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('Task Management'), findsOneWidget);
-      expect(find.byType(Row), findsOneWidget); // Two-column layout
+      expect(find.byKey(const Key('two-column-layout')), findsOneWidget); // Two-column layout
       expect(find.byType(Expanded), findsNWidgets(2)); // Left and right columns
       expect(find.byType(FloatingActionButton), findsOneWidget);
 
@@ -68,7 +68,8 @@ void main() {
 
       // Should show task list
       expect(find.byType(ReorderableListView), findsOneWidget);
-      expect(find.text('Morning Workout'), findsOneWidget);
+      // Name may appear in both list and detail field
+      expect(find.text('Morning Workout'), findsAtLeastNWidgets(1));
       expect(find.text('Shower'), findsOneWidget);
       expect(find.text('Breakfast'), findsOneWidget);
       expect(find.text('Review Plan'), findsOneWidget);
@@ -149,7 +150,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('displays right column settings', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -162,10 +163,8 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      expect(find.text('Routine Settings'), findsOneWidget);
+      expect(find.text('Task Details'), findsOneWidget);
 
       bloc.close();
     });

@@ -14,22 +14,15 @@ class TaskManagementScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Task Management')),
       body: Row(
+        key: const Key('two-column-layout'),
         children: [
           // Left column placeholder (task list with breaks)
           Expanded(
             flex: 3,
             child: Container(color: color, child: const _TaskListColumn()),
           ),
-          // Right column placeholder (settings & details)
-          Expanded(
-            flex: 2,
-            child: Container(
-              color: color.withValues(alpha: 0.6),
-              child: const Center(
-                child: Text('Right Column: Settings & Details Placeholder'),
-              ),
-            ),
-          ),
+          // Right column (settings & details)
+          const Expanded(flex: 2, child: _RightSettingsColumn()),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -228,5 +221,311 @@ class _StartTimePill extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _RightSettingsColumn extends StatefulWidget {
+  const _RightSettingsColumn();
+
+  @override
+  State<_RightSettingsColumn> createState() => _RightSettingsColumnState();
+}
+
+class _RightSettingsColumnState extends State<_RightSettingsColumn> {
+  final _routineStartController = TextEditingController();
+  final _breakDurationController = TextEditingController();
+  final _taskNameController = TextEditingController();
+  final _taskDurationController = TextEditingController();
+
+  bool _breaksEnabledByDefault = true;
+
+  RoutineStateModel? _lastModel;
+
+  @override
+  void dispose() {
+    _routineStartController.dispose();
+    _breakDurationController.dispose();
+    _taskNameController.dispose();
+    _taskDurationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final surface = theme.colorScheme.surfaceContainerHighest.withValues(
+      alpha: 0.6,
+    );
+    return Container(
+      color: surface,
+      child: BlocConsumer<RoutineBloc, RoutineBlocState>(
+        listenWhen: (prev, curr) => prev.model != curr.model,
+        listener: (context, state) {
+          final model = state.model;
+          if (model == null) return;
+
+          // Populate routine settings controls
+          final start = DateTime.fromMillisecondsSinceEpoch(
+            model.settings.startTime,
+          );
+          _routineStartController.text = _formatTimeForField(start);
+          _breaksEnabledByDefault = model.settings.breaksEnabledByDefault;
+          _breakDurationController.text =
+              (model.settings.defaultBreakDuration / 60).round().toString();
+
+          // Populate task details for selected index (if valid)
+          final idx = model.currentTaskIndex;
+          if (idx >= 0 && idx < model.tasks.length) {
+            final task = model.tasks[idx];
+            _taskNameController.text = task.name;
+            _taskDurationController.text = (task.estimatedDuration / 60)
+                .round()
+                .toString();
+          } else {
+            _taskNameController.text = '';
+            _taskDurationController.text = '';
+          }
+
+          _lastModel = model;
+          setState(() {});
+        },
+        builder: (context, state) {
+          final model = state.model;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Routine Settings', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 12),
+                _buildRoutineSettings(context, model),
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 24),
+                Text('Task Details', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 12),
+                _buildTaskDetails(context, model),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRoutineSettings(BuildContext context, RoutineStateModel? model) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Time picker field
+        TextField(
+          key: const Key('routine-start-time-field'),
+          controller: _routineStartController,
+          readOnly: true,
+          decoration: const InputDecoration(
+            labelText: 'Routine Start Time',
+            hintText: 'HH:mm',
+            prefixIcon: Icon(Icons.schedule),
+          ),
+          onTap: () async {
+            final current =
+                model?.settings.startTime ??
+                DateTime.now().millisecondsSinceEpoch;
+            final initial = DateTime.fromMillisecondsSinceEpoch(current);
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: TimeOfDay(
+                hour: initial.hour,
+                minute: initial.minute,
+              ),
+            );
+            if (picked != null) {
+              final now = DateTime.now();
+              final newStart = DateTime(
+                now.year,
+                now.month,
+                now.day,
+                picked.hour,
+                picked.minute,
+              );
+              _routineStartController.text = _formatTimeForField(newStart);
+            }
+          },
+        ),
+        const SizedBox(height: 12),
+        // Breaks enabled toggle
+        SwitchListTile(
+          key: const Key('breaks-enabled-toggle'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Enable Breaks by Default'),
+          value: _breaksEnabledByDefault,
+          onChanged: (v) => setState(() => _breaksEnabledByDefault = v),
+        ),
+        const SizedBox(height: 12),
+        // Break duration in minutes
+        TextField(
+          key: const Key('default-break-duration-field'),
+          controller: _breakDurationController,
+          decoration: const InputDecoration(
+            labelText: 'Break Duration (minutes)',
+            prefixIcon: Icon(Icons.timer_outlined),
+          ),
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            OutlinedButton(
+              key: const Key('cancel-settings'),
+              onPressed: () {
+                // Revert text fields to last known model
+                if (_lastModel == null) return;
+                final s = _lastModel!.settings;
+                _breaksEnabledByDefault = s.breaksEnabledByDefault;
+                _breakDurationController.text = (s.defaultBreakDuration / 60)
+                    .round()
+                    .toString();
+                _routineStartController.text = _formatTimeForField(
+                  DateTime.fromMillisecondsSinceEpoch(s.startTime),
+                );
+                setState(() {});
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              key: const Key('save-settings'),
+              onPressed: () {
+                if (_lastModel == null) return;
+                final current = _lastModel!;
+
+                // Parse inputs
+                final durationMinutes =
+                    int.tryParse(_breakDurationController.text.trim()) ??
+                    (current.settings.defaultBreakDuration / 60).round();
+                final start = _parseTimeFromField(
+                  _routineStartController.text.trim(),
+                );
+                final startMs =
+                    start?.millisecondsSinceEpoch ?? current.settings.startTime;
+
+                final newSettings = current.settings.copyWith(
+                  startTime: startMs,
+                  breaksEnabledByDefault: _breaksEnabledByDefault,
+                  defaultBreakDuration: durationMinutes * 60,
+                );
+
+                context.read<RoutineBloc>().add(UpdateSettings(newSettings));
+              },
+              child: const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTaskDetails(BuildContext context, RoutineStateModel? model) {
+    final theme = Theme.of(context);
+    final selectedIndex = model?.currentTaskIndex ?? -1;
+    final hasSelection =
+        selectedIndex >= 0 && selectedIndex < (model?.tasks.length ?? 0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          key: const Key('task-name-field'),
+          controller: _taskNameController,
+          decoration: const InputDecoration(
+            labelText: 'Task Name',
+            prefixIcon: Icon(Icons.edit),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const Key('task-duration-field'),
+          controller: _taskDurationController,
+          decoration: const InputDecoration(
+            labelText: 'Estimated Duration (minutes)',
+            prefixIcon: Icon(Icons.hourglass_bottom),
+          ),
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              key: const Key('duplicate-task'),
+              onPressed: hasSelection
+                  ? () {
+                      context
+                          .read<RoutineBloc>()
+                          .add(DuplicateTaskAtIndex(selectedIndex));
+                    }
+                  : null,
+              icon: const Icon(Icons.copy),
+              label: const Text('Duplicate'),
+            ),
+            OutlinedButton.icon(
+              key: const Key('delete-task'),
+              onPressed: hasSelection
+                  ? () {
+                      context
+                          .read<RoutineBloc>()
+                          .add(DeleteTaskAtIndex(selectedIndex));
+                    }
+                  : null,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Delete Task'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+            ),
+            FilledButton(
+              key: const Key('save-task'),
+              onPressed: hasSelection
+                  ? () {
+                      final name = _taskNameController.text.trim();
+                      final minutes = int.tryParse(
+                        _taskDurationController.text.trim(),
+                      );
+                      context.read<RoutineBloc>().add(
+                            UpdateTaskAtIndex(
+                              index: selectedIndex,
+                              name: name.isNotEmpty ? name : null,
+                              estimatedDuration: minutes != null
+                                  ? minutes * 60
+                                  : null,
+                            ),
+                          );
+                    }
+                  : null,
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _formatTimeForField(DateTime time) {
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  DateTime? _parseTimeFromField(String input) {
+    final parts = input.split(':');
+    if (parts.length != 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, h, m);
   }
 }
