@@ -264,9 +264,11 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       updatedBreaks = newBreaks;
     }
 
-    final newIndex = model.currentTaskIndex >= reindexed.length
-        ? (reindexed.isEmpty ? 0 : reindexed.length - 1)
-        : model.currentTaskIndex.clamp(0, reindexed.length - 1);
+    final int newIndex = reindexed.isEmpty
+        ? -1
+        : (model.currentTaskIndex >= reindexed.length
+            ? reindexed.length - 1
+            : model.currentTaskIndex.clamp(0, reindexed.length - 1));
 
     emit(
       state.copyWith(

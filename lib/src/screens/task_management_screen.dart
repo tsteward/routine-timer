@@ -381,17 +381,21 @@ class _SettingsDetailsColumnState extends State<_SettingsDetailsColumn> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Keep controllers in sync with bloc
-    return BlocBuilder<RoutineBloc, RoutineBlocState>(
-      buildWhen: (prev, curr) => prev.model != curr.model,
-      builder: (context, state) {
+    return BlocListener<RoutineBloc, RoutineBlocState>(
+      listenWhen: (previous, current) => previous.model != current.model,
+      listener: (context, state) {
+        // Hydrate inputs only when the underlying model changes
         _hydrateFromState(state);
-        final model = state.model;
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        setState(() {});
+      },
+      child: Builder(
+        builder: (context) {
+          final model = context.watch<RoutineBloc>().state.model;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Text(
                 'Routine Settings',
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -506,10 +510,11 @@ class _SettingsDetailsColumnState extends State<_SettingsDetailsColumn> {
                   ),
                 ],
               ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

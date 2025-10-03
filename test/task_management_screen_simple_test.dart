@@ -175,5 +175,51 @@ void main() {
 
       bloc.close();
     });
+
+    testWidgets('allows editing task details and saving updates bloc',
+        (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Select a task to populate details
+      await tester.tap(find.text('Shower'));
+      await tester.pumpAndSettle();
+
+      // Edit name and duration
+      final nameField = find.widgetWithText(TextField, 'Task Name');
+      final durationField =
+          find.widgetWithText(TextField, 'Estimated Duration');
+
+      await tester.enterText(nameField, 'Shower Edited');
+      await tester.pump();
+
+      // Ensure user input is visible before saving (not overwritten)
+      expect(find.text('Shower Edited'), findsOneWidget);
+
+      await tester.enterText(durationField, '13');
+      await tester.pump();
+
+      // Save changes
+      await tester.tap(find.text('Save Changes'));
+      await tester.pumpAndSettle();
+
+      // Verify bloc updated
+      expect(bloc.state.model?.tasks[1].name, 'Shower Edited');
+      expect(bloc.state.model?.tasks[1].estimatedDuration, 13 * 60);
+
+      bloc.close();
+    });
   });
 }
