@@ -16,17 +16,20 @@ This project includes MCP integrations and conventions so you can run, test, and
 - Flutter installed on stable; Dart ≥ 3.9.
 
 ### Background agent environment (Linux/headless)
-- Use the provided bootstrap script to ensure Flutter tools are on PATH and artifacts are precached:
+- Background agents automatically install Flutter and Dart using `.cursor/environment.json`. No manual setup required.
+- The install step runs:
   ```bash
-  ./scripts/agent_env.sh
+  bash ./scripts/agent_env.sh
   ```
-  - Exports `FLUTTER_HOME` (default `/usr/local/flutter`) and updates `PATH`
+  This script:
+  - Sets `FLUTTER_HOME` (default `/usr/local/flutter`) and updates `PATH`
   - Installs Flutter stable if missing
-  - Runs `flutter precache --linux --web`
-  - Warms pub cache with `flutter pub get` when run in repo root
-  - Persists PATH across sessions via `/etc/profile.d/flutter.sh` (if permitted) and user rc files (`~/.profile`, `~/.bashrc`, `~/.zshrc`)
+  - Pre-caches artifacts for Linux/Web (`flutter precache --linux --web`)
+  - Warms pub cache with `flutter pub get` when run in the repo root
+  - Persists PATH via `/etc/profile.d/flutter.sh` and user rc files when possible
 
-- After sourcing, agents can run:
+- For local shells, you can run the same script to replicate the environment.
+- Once ready, you can run:
   ```bash
   flutter --version
   dart --version

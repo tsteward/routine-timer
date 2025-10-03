@@ -1,0 +1,5 @@
+{
+  "snapshot": "POPULATED_FROM_SETTINGS",
+  "install": "bash ./scripts/agent_env.sh",
+  "terminals": []
+}
