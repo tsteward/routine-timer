@@ -37,6 +37,7 @@ dependencies:
   
   # State management (BLoC)
   flutter_bloc: any
+  equatable: any
 
   # Firebase (will be configured in a later step)
   firebase_core: any
@@ -53,6 +54,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  bloc_dev_tools: ^1.0.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
