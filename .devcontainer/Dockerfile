@@ -15,7 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Flutter SDK (stable channel)
 RUN git clone --depth 1 -b stable https://github.com/flutter/flutter.git ${FLUTTER_HOME} \
-    && mkdir -p /home/${USERNAME}/.pub-cache
+    && mkdir -p /home/${USERNAME}/.pub-cache \
+    && chown -R ${USERNAME}:${USERNAME} ${FLUTTER_HOME} /home/${USERNAME}/.pub-cache
 
 # Avoid analytics noise from CI/containers
 ENV FLUTTER_DISABLE_ANALYTICS=true
