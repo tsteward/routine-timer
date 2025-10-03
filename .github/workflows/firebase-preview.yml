@@ -14,8 +14,8 @@ jobs:
   build-and-deploy:
     name: Build web and deploy preview
     runs-on: ubuntu-latest
-    # Do not attempt deploys for forked PRs (secrets are not available)
-    if: ${{ github.event.pull_request.head.repo.fork == false && secrets.FIREBASE_PROJECT_ID != '' && secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    # Do not attempt deploys for forked PRs (secrets are not available to forks)
+    if: ${{ github.event.pull_request.head.repo.fork == false }}
     concurrency:
       group: firebase-preview-${{ github.event.pull_request.number }}
       cancel-in-progress: true
@@ -40,6 +40,7 @@ jobs:
         run: flutter build web --release
 
       - name: Deploy to Firebase Hosting preview channel
+        if: ${{ secrets.FIREBASE_PROJECT_ID != '' && secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
@@ -49,3 +50,7 @@ jobs:
           # Quote to avoid YAML parsing ambiguity
           expires: '7d'
           entryPoint: '.'
+
+      - name: Skip deploy (missing secrets)
+        if: ${{ !(secrets.FIREBASE_PROJECT_ID != '' && secrets.FIREBASE_SERVICE_ACCOUNT != '') }}
+        run: echo "Skipping Firebase deploy because FIREBASE_PROJECT_ID or FIREBASE_SERVICE_ACCOUNT is missing."
