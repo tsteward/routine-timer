@@ -18,6 +18,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<ReorderTasks>(_onReorderTasks);
     on<ToggleBreakAtIndex>(_onToggleBreakAtIndex);
     on<UpdateSettings>(_onUpdateSettings);
+    on<UpdateTaskAtIndex>(_onUpdateTaskAtIndex);
+    on<DuplicateSelectedTask>(_onDuplicateSelectedTask);
+    on<DeleteSelectedTask>(_onDeleteSelectedTask);
     on<MarkTaskDone>(_onMarkTaskDone);
     on<GoToPreviousTask>(_onGoToPreviousTask);
   }
@@ -121,6 +124,118 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     final model = state.model;
     if (model == null) return;
     emit(state.copyWith(model: model.copyWith(settings: event.settings)));
+  }
+
+  void _onUpdateTaskAtIndex(
+    UpdateTaskAtIndex event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    // Ensure order remains consistent with list index
+    updatedTasks[event.index] = event.task.copyWith(order: event.index);
+
+    emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+  }
+
+  void _onDuplicateSelectedTask(
+    DuplicateSelectedTask event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+    if (model.tasks.isEmpty) return;
+
+    final selectedIndex = model.currentTaskIndex.clamp(
+      0,
+      model.tasks.length - 1,
+    );
+    final original = model.tasks[selectedIndex];
+    final newId =
+        '${original.id}-copy-${DateTime.now().millisecondsSinceEpoch}';
+    final duplicate = original.copyWith(id: newId);
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks.insert(selectedIndex + 1, duplicate);
+
+    // Reindex orders
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // Optionally insert a default break between original and duplicate if breaks exist
+    List<BreakModel>? updatedBreaks = model.breaks;
+    if (updatedBreaks != null) {
+      updatedBreaks = List<BreakModel>.from(updatedBreaks);
+      final defaultBreak = BreakModel(
+        duration: model.settings.defaultBreakDuration,
+        isEnabled: model.settings.breaksEnabledByDefault,
+      );
+      updatedBreaks.insert(selectedIndex, defaultBreak);
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: reindexed,
+          breaks: updatedBreaks,
+          currentTaskIndex: (selectedIndex + 1).clamp(0, reindexed.length - 1),
+        ),
+      ),
+    );
+  }
+
+  void _onDeleteSelectedTask(
+    DeleteSelectedTask event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+    if (model.tasks.isEmpty) return;
+
+    final selectedIndex = model.currentTaskIndex.clamp(
+      0,
+      model.tasks.length - 1,
+    );
+
+    // Do not allow deleting the last remaining task
+    if (model.tasks.length == 1) {
+      return;
+    }
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks.removeAt(selectedIndex);
+
+    // Reindex orders
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // Remove associated break to keep counts aligned if present
+    List<BreakModel>? updatedBreaks = model.breaks;
+    if (updatedBreaks != null && updatedBreaks.isNotEmpty) {
+      updatedBreaks = List<BreakModel>.from(updatedBreaks);
+      final removeAt = selectedIndex.clamp(0, updatedBreaks.length - 1);
+      updatedBreaks.removeAt(removeAt);
+    }
+
+    // Compute new selection: stay at same index, or move to previous if at end
+    final newIndex = selectedIndex.clamp(0, reindexed.length - 1);
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: reindexed,
+          breaks: updatedBreaks,
+          currentTaskIndex: newIndex,
+        ),
+      ),
+    );
   }
 
   void _onMarkTaskDone(MarkTaskDone event, Emitter<RoutineBlocState> emit) {

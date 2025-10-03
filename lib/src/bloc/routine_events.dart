@@ -44,6 +44,26 @@ class UpdateSettings extends RoutineEvent {
   List<Object?> get props => [settings];
 }
 
+/// Update the task at a specific index with a new model.
+class UpdateTaskAtIndex extends RoutineEvent {
+  const UpdateTaskAtIndex({required this.index, required this.task});
+  final int index;
+  final TaskModel task;
+
+  @override
+  List<Object?> get props => [index, task];
+}
+
+/// Duplicate the currently selected task and select the duplicated copy.
+class DuplicateSelectedTask extends RoutineEvent {
+  const DuplicateSelectedTask();
+}
+
+/// Delete the currently selected task and update selection accordingly.
+class DeleteSelectedTask extends RoutineEvent {
+  const DeleteSelectedTask();
+}
+
 class MarkTaskDone extends RoutineEvent {
   const MarkTaskDone({required this.actualDuration});
   final int actualDuration;
