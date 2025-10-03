@@ -44,7 +44,8 @@ void main() {
         ),
       );
 
-      expect(find.text('No routine loaded'), findsOneWidget);
+      // Both columns show this message before data loads
+      expect(find.text('No routine loaded'), findsWidgets);
 
       bloc.close();
     });
@@ -68,7 +69,7 @@ void main() {
 
       // Should show task list
       expect(find.byType(ReorderableListView), findsOneWidget);
-      expect(find.text('Morning Workout'), findsOneWidget);
+      expect(find.text('Morning Workout'), findsWidgets);
       expect(find.text('Shower'), findsOneWidget);
       expect(find.text('Breakfast'), findsOneWidget);
       expect(find.text('Review Plan'), findsOneWidget);
@@ -149,7 +150,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('displays right column settings after loading', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -162,10 +163,10 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Routine Settings'), findsOneWidget);
 
       bloc.close();
     });

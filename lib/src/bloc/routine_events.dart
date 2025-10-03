@@ -55,3 +55,39 @@ class MarkTaskDone extends RoutineEvent {
 class GoToPreviousTask extends RoutineEvent {
   const GoToPreviousTask();
 }
+
+/// Update fields for a task at the given index. Any null field is ignored.
+class UpdateTaskAtIndex extends RoutineEvent {
+  const UpdateTaskAtIndex({
+    required this.index,
+    this.name,
+    this.estimatedDuration,
+  });
+
+  final int index;
+  final String? name;
+
+  /// Duration in seconds
+  final int? estimatedDuration;
+
+  @override
+  List<Object?> get props => [index, name, estimatedDuration];
+}
+
+/// Duplicate the task at index, inserting the copy immediately after it.
+class DuplicateTaskAtIndex extends RoutineEvent {
+  const DuplicateTaskAtIndex(this.index);
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}
+
+/// Delete the task at the given index.
+class DeleteTaskAtIndex extends RoutineEvent {
+  const DeleteTaskAtIndex(this.index);
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}

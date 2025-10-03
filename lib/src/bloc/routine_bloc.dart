@@ -20,6 +20,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<UpdateSettings>(_onUpdateSettings);
     on<MarkTaskDone>(_onMarkTaskDone);
     on<GoToPreviousTask>(_onGoToPreviousTask);
+    on<UpdateTaskAtIndex>(_onUpdateTaskAtIndex);
+    on<DuplicateTaskAtIndex>(_onDuplicateTaskAtIndex);
+    on<DeleteTaskAtIndex>(_onDeleteTaskAtIndex);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -156,5 +159,86 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       model.tasks.length - 1,
     );
     emit(state.copyWith(model: model.copyWith(currentTaskIndex: prevIndex)));
+  }
+
+  void _onUpdateTaskAtIndex(
+    UpdateTaskAtIndex event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    final current = updatedTasks[event.index];
+    updatedTasks[event.index] = current.copyWith(
+      name: event.name ?? current.name,
+      estimatedDuration: event.estimatedDuration ?? current.estimatedDuration,
+    );
+
+    emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+  }
+
+  void _onDuplicateTaskAtIndex(
+    DuplicateTaskAtIndex event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    final original = updatedTasks[event.index];
+    final copy = original.copyWith(
+      id: '${original.id}_copy_${DateTime.now().microsecondsSinceEpoch}',
+      order: original.order + 1,
+      isCompleted: false,
+      actualDuration: null,
+    );
+    updatedTasks.insert(event.index + 1, copy);
+
+    // Reindex order values
+    for (var i = 0; i < updatedTasks.length; i++) {
+      updatedTasks[i] = updatedTasks[i].copyWith(order: i);
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: updatedTasks,
+          currentTaskIndex: event.index + 1,
+        ),
+      ),
+    );
+  }
+
+  void _onDeleteTaskAtIndex(
+    DeleteTaskAtIndex event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks.removeAt(event.index);
+
+    // Reindex order values
+    for (var i = 0; i < updatedTasks.length; i++) {
+      updatedTasks[i] = updatedTasks[i].copyWith(order: i);
+    }
+
+    int newIndex = model.currentTaskIndex;
+    if (updatedTasks.isEmpty) {
+      newIndex = 0;
+    } else if (event.index <= model.currentTaskIndex) {
+      newIndex = (model.currentTaskIndex - 1).clamp(0, updatedTasks.length - 1);
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(tasks: updatedTasks, currentTaskIndex: newIndex),
+      ),
+    );
   }
 }
