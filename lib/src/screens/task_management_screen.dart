@@ -298,6 +298,12 @@ class _SettingsDetailsColumnState extends State<_SettingsDetailsColumn> {
     }
   }
 
+  String _formatTimeHHmm(DateTime time) {
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
   Future<void> _pickStartTime(BuildContext context) async {
     final initial = _selectedStartTime ?? const TimeOfDay(hour: 6, minute: 0);
     final picked = await showTimePicker(
