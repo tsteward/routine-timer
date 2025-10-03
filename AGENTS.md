@@ -59,8 +59,23 @@ Expected: all tests pass.
 ## 7) Editing & Verifying Changes
 - Make edits with apply_patch/edit_file tools only
 - If `pubspec.yaml` changed → run `flutter pub get`
-- Format code before finishing: `dart format .`
-- Re-run tests with MCP
+- Run static analysis and fix all errors and warnings (treat warnings as errors). Do not proceed until 0 issues:
+```powershell
+dart analyze
+```
+- Optionally run analyzer in Flutter context as well:
+```powershell
+flutter analyze
+```
+- Format code before finishing (no unformatted files allowed):
+```powershell
+dart format .
+```
+- Re-run tests with MCP and ensure they all pass
+- Run local tests and ensure they all pass (include edge cases):
+```powershell
+flutter test
+```
 - If app is running, trigger `hot_reload`
 
 ## 8) DTD Troubleshooting (Optional)
@@ -77,7 +92,48 @@ flutter run -d <deviceId> --target=lib/main.dart
 ```
 
 ## 11) Code Formatting
-Run the formatter before finishing any change:
+Always run the formatter before finishing any change. Never commit unformatted code.
 ```powershell
 dart format .
 ```
+
+## 12) Static Analysis & Linting
+All changes must pass static analysis and lints with 0 errors and 0 warnings.
+
+- **Analyze the codebase**:
+```powershell
+dart analyze
+```
+- **Optional Flutter-context analysis** (may catch additional issues):
+```powershell
+flutter analyze
+```
+- **Resolve all findings**: Treat warnings as errors; do not defer fixes. If a rule is inappropriate, prefer improving the code over disabling the lint. Only adjust rules in `analysis_options.yaml` with strong justification.
+
+## 13) Testing Requirements
+Every change must be covered by tests. Add or update tests for new functionality, bug fixes, and edge cases.
+
+- **Write tests** that cover success paths, error handling, and edge cases
+- **Run tests locally** and ensure 100% of executed tests pass:
+```powershell
+flutter test
+```
+- **Run tests via MCP** when applicable and confirm green status
+- **Avoid flakiness**: use proper async/waits, pumps, and deterministic inputs
+
+## 14) Pre-Commit Quality Gate
+Before considering a change complete, verify all of the following are green:
+
+1. Code formatted:
+   ```powershell
+   dart format .
+   ```
+2. Static analysis clean (0 issues):
+   ```powershell
+   dart analyze
+   ```
+3. Tests pass locally (including edge cases):
+   ```powershell
+   flutter test
+   ```
+4. Tests pass via MCP (if using MCP workflow)
