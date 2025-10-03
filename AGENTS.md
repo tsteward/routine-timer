@@ -15,6 +15,27 @@ This project includes MCP integrations and conventions so you can run, test, and
 - Project root: `C:\Users\tstew\projects\routine_timer`
 - Flutter installed on stable; Dart ≥ 3.9.
 
+### Background agent environment (Linux/headless)
+- Use the provided bootstrap script to ensure Flutter tools are on PATH and artifacts are precached:
+  ```bash
+  ./scripts/agent_env.sh
+  ```
+  - Exports `FLUTTER_HOME` (default `/usr/local/flutter`) and updates `PATH`
+  - Installs Flutter stable if missing
+  - Runs `flutter precache --linux --web`
+  - Warms pub cache with `flutter pub get` when run in repo root
+
+- After sourcing, agents can run:
+  ```bash
+  flutter --version
+  dart --version
+  flutter pub get
+  flutter analyze
+  flutter test
+  ```
+
+- For MCP workflows, start the app with `--print-dtd` to obtain a Dart Tooling Daemon URI.
+
 ## 1) Install Dependencies
 From project root:
 ```powershell
