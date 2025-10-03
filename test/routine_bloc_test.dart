@@ -190,5 +190,33 @@ void main() {
       final uniqueOrders = orders.toSet();
       expect(uniqueOrders.length, orders.length);
     });
+
+    test('SetBreaksEnabledByDefault toggles all gaps off and on', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Sanity check initial sample: 3 gaps for 4 tasks
+      expect(loaded.model!.tasks.length, 4);
+      expect(loaded.model!.breaks!.length, 3);
+
+      // Turn all breaks off
+      bloc.add(const SetBreaksEnabledByDefault(false));
+      final allOff = await bloc.stream.firstWhere(
+        (s) => s.model!.settings.breaksEnabledByDefault == false,
+      );
+      expect(allOff.model!.breaks!.every((b) => b.isEnabled == false), isTrue);
+
+      // Turn all breaks on; durations should match defaultBreakDuration
+      bloc.add(const SetBreaksEnabledByDefault(true));
+      final allOn = await bloc.stream.firstWhere(
+        (s) => s.model!.settings.breaksEnabledByDefault == true,
+      );
+      expect(allOn.model!.breaks!.every((b) => b.isEnabled == true), isTrue);
+      expect(
+        allOn.model!.breaks!
+            .every((b) => b.duration == allOn.model!.settings.defaultBreakDuration),
+        isTrue,
+      );
+    });
   });
 }

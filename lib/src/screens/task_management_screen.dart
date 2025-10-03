@@ -398,8 +398,7 @@ class _DashedRectPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
 
-    final PathMetrics metrics = path.computeMetrics(forceClosed: false);
-    for (final metric in metrics) {
+    for (final metric in path.computeMetrics(forceClosed: false)) {
       double distance = 0.0;
       while (distance < metric.length) {
         final double next = distance + dashLength;
