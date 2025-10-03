@@ -2,10 +2,7 @@ import 'dart:convert';
 
 /// Represents a break (gap) between tasks.
 class BreakModel {
-  const BreakModel({
-    required this.duration,
-    this.isEnabled = true,
-  });
+  const BreakModel({required this.duration, this.isEnabled = true});
 
   /// Break duration in seconds.
   final int duration;
@@ -21,10 +18,7 @@ class BreakModel {
   }
 
   Map<String, dynamic> toMap() {
-    return <String, dynamic>{
-      'duration': duration,
-      'isEnabled': isEnabled,
-    };
+    return <String, dynamic>{'duration': duration, 'isEnabled': isEnabled};
   }
 
   factory BreakModel.fromMap(Map<String, dynamic> map) {
@@ -36,9 +30,6 @@ class BreakModel {
 
   String toJson() => json.encode(toMap());
 
-  factory BreakModel.fromJson(String source) => BreakModel.fromMap(
-        json.decode(source) as Map<String, dynamic>,
-      );
+  factory BreakModel.fromJson(String source) =>
+      BreakModel.fromMap(json.decode(source) as Map<String, dynamic>);
 }
-
-

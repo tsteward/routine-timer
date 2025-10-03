@@ -15,7 +15,11 @@ class PreStartScreen extends StatelessWidget {
             children: [
               const Text(
                 'Pre-Start',
-                style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -50,5 +54,3 @@ class _NavFab extends StatelessWidget {
     );
   }
 }
-
-

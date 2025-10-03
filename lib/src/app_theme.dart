@@ -14,11 +14,7 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: green,
         brightness: Brightness.light,
-      ).copyWith(
-        primary: green,
-        secondary: greenDark,
-        error: red,
-      ),
+      ).copyWith(primary: green, secondary: greenDark, error: red),
       useMaterial3: true,
       fontFamily: 'Roboto',
     );
@@ -51,5 +47,3 @@ class AppTheme {
     return base;
   }
 }
-
-

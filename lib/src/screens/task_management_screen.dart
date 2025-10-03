@@ -18,17 +18,16 @@ class TaskManagementScreen extends StatelessWidget {
           // Left column placeholder (task list with breaks)
           Expanded(
             flex: 3,
-            child: Container(
-              color: color,
-              child: const _TaskListColumn(),
-            ),
+            child: Container(color: color, child: const _TaskListColumn()),
           ),
           // Right column placeholder (settings & details)
           Expanded(
             flex: 2,
             child: Container(
               color: color.withOpacity(0.6),
-              child: const Center(child: Text('Right Column: Settings & Details Placeholder')),
+              child: const Center(
+                child: Text('Right Column: Settings & Details Placeholder'),
+              ),
             ),
           ),
         ],
@@ -39,9 +38,15 @@ class TaskManagementScreen extends StatelessWidget {
             context: context,
             position: const RelativeRect.fromLTRB(1000, 0, 16, 0),
             items: const [
-              PopupMenuItem(value: AppRoutes.preStart, child: Text('Pre-Start')),
+              PopupMenuItem(
+                value: AppRoutes.preStart,
+                child: Text('Pre-Start'),
+              ),
               PopupMenuItem(value: AppRoutes.main, child: Text('Main Routine')),
-              PopupMenuItem(value: AppRoutes.tasks, child: Text('Task Management')),
+              PopupMenuItem(
+                value: AppRoutes.tasks,
+                child: Text('Task Management'),
+              ),
             ],
           );
           if (selected != null) {
@@ -82,8 +87,8 @@ class _TaskListColumn extends StatelessWidget {
               // Flutter's ReorderableListView reports newIndex after removal; adjust when moving down.
               if (newIndex > oldIndex) newIndex -= 1;
               context.read<RoutineBloc>().add(
-                    ReorderTasks(oldIndex: oldIndex, newIndex: newIndex),
-                  );
+                ReorderTasks(oldIndex: oldIndex, newIndex: newIndex),
+              );
             },
             buildDefaultDragHandles: false,
             itemBuilder: (context, index) {
@@ -93,10 +98,14 @@ class _TaskListColumn extends StatelessWidget {
 
               return Padding(
                 key: ValueKey('task-${task.id}'),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
-                  onTap: () => context.read<RoutineBloc>().add(SelectTask(index)),
+                  onTap: () =>
+                      context.read<RoutineBloc>().add(SelectTask(index)),
                   child: Card(
                     elevation: isSelected ? 2 : 0,
                     shape: RoundedRectangleBorder(
@@ -112,7 +121,10 @@ class _TaskListColumn extends StatelessWidget {
                         ? theme.colorScheme.primaryContainer
                         : theme.colorScheme.surface,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       child: Row(
                         children: [
                           _StartTimePill(text: _formatTimeHHmm(startTime)),
@@ -131,7 +143,9 @@ class _TaskListColumn extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _formatDurationMinutes(task.estimatedDuration),
+                                  _formatDurationMinutes(
+                                    task.estimatedDuration,
+                                  ),
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
                                   ),
@@ -216,5 +230,3 @@ class _StartTimePill extends StatelessWidget {
     );
   }
 }
-
-

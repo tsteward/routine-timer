@@ -21,11 +21,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const TaskManagementScreen());
     }
     return MaterialPageRoute(
-      builder: (_) => const Scaffold(
-        body: Center(child: Text('Route not found')),
-      ),
+      builder: (_) =>
+          const Scaffold(body: Center(child: Text('Route not found'))),
     );
   }
 }
-
-

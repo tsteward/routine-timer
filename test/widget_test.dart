@@ -5,7 +5,9 @@ import 'package:routine_timer/main.dart';
 import 'package:routine_timer/src/app_theme.dart';
 
 void main() {
-  testWidgets('App boots to Pre-Start and applies theme colors', (tester) async {
+  testWidgets('App boots to Pre-Start and applies theme colors', (
+    tester,
+  ) async {
     await tester.pumpWidget(const RoutineTimerApp());
     await tester.pumpAndSettle();
 
@@ -18,7 +20,9 @@ void main() {
     expect(materialApp.theme!.colorScheme.primary, AppTheme.green);
   });
 
-  testWidgets('Can navigate to Task Management via the test menu', (tester) async {
+  testWidgets('Can navigate to Task Management via the test menu', (
+    tester,
+  ) async {
     await tester.pumpWidget(const RoutineTimerApp());
     await tester.pumpAndSettle();
 
@@ -36,7 +40,10 @@ void main() {
     expect(find.byType(ReorderableListView), findsOneWidget);
     expect(find.text('Morning Workout'), findsOneWidget);
     // Right column placeholder should still be present
-    expect(find.text('Right Column: Settings & Details Placeholder'), findsOneWidget);
+    expect(
+      find.text('Right Column: Settings & Details Placeholder'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Can navigate to Main Routine via the test menu', (tester) async {

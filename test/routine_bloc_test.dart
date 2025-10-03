@@ -19,7 +19,9 @@ void main() {
 
       final before = initial.model!.breaks![1].isEnabled;
       bloc.add(const ToggleBreakAtIndex(1));
-      final after = await bloc.stream.firstWhere((s) => s.model!.breaks![1].isEnabled != before);
+      final after = await bloc.stream.firstWhere(
+        (s) => s.model!.breaks![1].isEnabled != before,
+      );
       expect(after.model!.breaks![1].isEnabled, !before);
     });
 
@@ -29,7 +31,9 @@ void main() {
       expect(initial.model!.currentTaskIndex, 0);
 
       bloc.add(const MarkTaskDone(actualDuration: 30));
-      final updated = await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 1);
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.currentTaskIndex == 1,
+      );
       expect(updated.model!.tasks.first.isCompleted, true);
       expect(updated.model!.tasks.first.actualDuration, 30);
     });
@@ -38,7 +42,9 @@ void main() {
       final bloc = RoutineBloc()..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
       bloc.add(const SelectTask(2));
-      final updated = await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 2);
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.currentTaskIndex == 2,
+      );
       expect(updated.model!.currentTaskIndex, 2);
     });
 
@@ -48,7 +54,9 @@ void main() {
       final beforeFirst = loaded.model!.tasks.first.id;
 
       bloc.add(const ReorderTasks(oldIndex: 0, newIndex: 2));
-      final updated = await bloc.stream.firstWhere((s) => s.model!.tasks[2].id == beforeFirst);
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks[2].id == beforeFirst,
+      );
 
       expect(updated.model!.tasks[2].id, beforeFirst);
       // Ensure orders are 0..n-1
@@ -63,7 +71,9 @@ void main() {
       await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 1);
 
       bloc.add(const GoToPreviousTask());
-      final updated = await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 0);
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.currentTaskIndex == 0,
+      );
       expect(updated.model!.currentTaskIndex, 0);
     });
 
@@ -76,11 +86,11 @@ void main() {
         defaultBreakDuration: 99,
       );
       bloc.add(UpdateSettings(newSettings));
-      final updated = await bloc.stream.firstWhere((s) => s.model!.settings.startTime == 42);
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.settings.startTime == 42,
+      );
       expect(updated.model!.settings.defaultBreakDuration, 99);
       expect(updated.model!.settings.breaksEnabledByDefault, false);
     });
   });
 }
-
-

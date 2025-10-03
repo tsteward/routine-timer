@@ -16,10 +16,9 @@ class MainRoutineScreen extends StatelessWidget {
             children: [
               Text(
                 'Main Routine',
-                style: Theme.of(context)
-                    .textTheme
-                    .displayMedium
-                    ?.copyWith(color: Colors.white),
+                style: Theme.of(
+                  context,
+                ).textTheme.displayMedium?.copyWith(color: Colors.white),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -48,7 +47,10 @@ class _NavFab extends StatelessWidget {
           items: const [
             PopupMenuItem(value: AppRoutes.preStart, child: Text('Pre-Start')),
             PopupMenuItem(value: AppRoutes.main, child: Text('Main Routine')),
-            PopupMenuItem(value: AppRoutes.tasks, child: Text('Task Management')),
+            PopupMenuItem(
+              value: AppRoutes.tasks,
+              child: Text('Task Management'),
+            ),
           ],
         );
         if (selected != null) {
@@ -61,5 +63,3 @@ class _NavFab extends StatelessWidget {
     );
   }
 }
-
-
