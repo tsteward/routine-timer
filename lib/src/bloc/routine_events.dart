@@ -44,6 +44,46 @@ class UpdateSettings extends RoutineEvent {
   List<Object?> get props => [settings];
 }
 
+/// Update a specific task's fields by index in the ordered list.
+class UpdateTaskAtIndex extends RoutineEvent {
+  const UpdateTaskAtIndex({
+    required this.index,
+    this.name,
+    this.estimatedDuration,
+  });
+
+  /// Index into the tasks list to update.
+  final int index;
+
+  /// New task name; if null, keep existing.
+  final String? name;
+
+  /// New estimated duration in seconds; if null, keep existing.
+  final int? estimatedDuration;
+
+  @override
+  List<Object?> get props => [index, name, estimatedDuration];
+}
+
+/// Duplicate the task at the given index. The new copy is inserted
+/// immediately after the source and assigned a unique id and order.
+class DuplicateTaskAtIndex extends RoutineEvent {
+  const DuplicateTaskAtIndex(this.index);
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}
+
+/// Delete the task at the given index and fix up indices/orders.
+class DeleteTaskAtIndex extends RoutineEvent {
+  const DeleteTaskAtIndex(this.index);
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}
+
 class MarkTaskDone extends RoutineEvent {
   const MarkTaskDone({required this.actualDuration});
   final int actualDuration;

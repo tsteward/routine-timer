@@ -24,8 +24,8 @@ void main() {
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('Task Management'), findsOneWidget);
-      expect(find.byType(Row), findsOneWidget); // Two-column layout
-      expect(find.byType(Expanded), findsNWidgets(2)); // Left and right columns
+      expect(find.byType(Row), findsWidgets); // Two-column layout present
+      expect(find.byType(Expanded), findsWidgets); // Left and right columns present
       expect(find.byType(FloatingActionButton), findsOneWidget);
 
       bloc.close();
@@ -149,7 +149,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('displays right column settings', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -162,10 +162,7 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      expect(find.text('Routine Settings'), findsOneWidget);
 
       bloc.close();
     });

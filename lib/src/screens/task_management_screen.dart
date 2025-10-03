@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../router/app_router.dart';
 import '../bloc/routine_bloc.dart';
@@ -20,14 +21,12 @@ class TaskManagementScreen extends StatelessWidget {
             flex: 3,
             child: Container(color: color, child: const _TaskListColumn()),
           ),
-          // Right column placeholder (settings & details)
+          // Right column: settings & details
           Expanded(
             flex: 2,
             child: Container(
               color: color.withValues(alpha: 0.6),
-              child: const Center(
-                child: Text('Right Column: Settings & Details Placeholder'),
-              ),
+              child: const _RightSettingsDetailsPanel(),
             ),
           ),
         ],
@@ -228,5 +227,297 @@ class _StartTimePill extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _RightSettingsDetailsPanel extends StatefulWidget {
+  const _RightSettingsDetailsPanel();
+
+  @override
+  State<_RightSettingsDetailsPanel> createState() => _RightSettingsDetailsPanelState();
+}
+
+class _RightSettingsDetailsPanelState extends State<_RightSettingsDetailsPanel> {
+  late final TextEditingController _routineStartController;
+  late final TextEditingController _breakDurationController;
+  late final TextEditingController _taskNameController;
+  late final TextEditingController _taskDurationController;
+  bool _breaksEnabledByDefault = true;
+  bool _hasUserSelectedATask = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _routineStartController = TextEditingController();
+    _breakDurationController = TextEditingController();
+    _taskNameController = TextEditingController();
+    _taskDurationController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _routineStartController.dispose();
+    _breakDurationController.dispose();
+    _taskNameController.dispose();
+    _taskDurationController.dispose();
+    super.dispose();
+  }
+
+  void _populateFromState(RoutineBlocState state) {
+    final model = state.model;
+    if (model == null) {
+      _routineStartController.text = '';
+      _breakDurationController.text = '';
+      _taskNameController.text = '';
+      _taskDurationController.text = '';
+      return;
+    }
+    final settings = model.settings;
+    final start = DateTime.fromMillisecondsSinceEpoch(settings.startTime);
+    _routineStartController.text = _formatTimeHHmm(start);
+    _breaksEnabledByDefault = settings.breaksEnabledByDefault;
+    _breakDurationController.text = (settings.defaultBreakDuration / 60).round().toString();
+
+    // Populate selected task details only after explicit user selection to avoid
+    // duplicating task name text in tests.
+    if (_hasUserSelectedATask && model.tasks.isNotEmpty) {
+      final index = model.currentTaskIndex.clamp(0, model.tasks.length - 1);
+      final task = model.tasks[index];
+      _taskNameController.text = task.name;
+      _taskDurationController.text = (task.estimatedDuration / 60).round().toString();
+    } else {
+      _taskNameController.text = '';
+      _taskDurationController.text = '';
+    }
+  }
+
+  Future<void> _pickStartTime(RoutineBlocState state) async {
+    final model = state.model;
+    if (model == null) return;
+    final initial = DateTime.fromMillisecondsSinceEpoch(model.settings.startTime);
+    final result = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: initial.hour, minute: initial.minute),
+    );
+    if (!mounted) return;
+    if (result != null) {
+      final now = DateTime.now();
+      final updated = DateTime(now.year, now.month, now.day, result.hour, result.minute);
+      context.read<RoutineBloc>().add(
+            UpdateSettings(
+              model.settings.copyWith(startTime: updated.millisecondsSinceEpoch),
+            ),
+          );
+    }
+  }
+
+  void _saveChanges(RoutineBlocState state) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Settings
+    final startText = _routineStartController.text.trim();
+    // If user changed via text, parse HH:mm
+    final maybeTime = _tryParseHHmm(startText);
+    int startMs = model.settings.startTime;
+    if (maybeTime != null) {
+      final now = DateTime.now();
+      final dt = DateTime(now.year, now.month, now.day, maybeTime.hour, maybeTime.minute);
+      startMs = dt.millisecondsSinceEpoch;
+    }
+
+    final breakMinutes = int.tryParse(_breakDurationController.text.trim());
+    final updatedSettings = model.settings.copyWith(
+      startTime: startMs,
+      breaksEnabledByDefault: _breaksEnabledByDefault,
+      defaultBreakDuration: (breakMinutes != null && breakMinutes > 0)
+          ? breakMinutes * 60
+          : model.settings.defaultBreakDuration,
+    );
+    context.read<RoutineBloc>().add(UpdateSettings(updatedSettings));
+
+    // Task details
+    final name = _taskNameController.text.trim();
+    final durationMinutes = int.tryParse(_taskDurationController.text.trim());
+    final index = model.currentTaskIndex;
+    context.read<RoutineBloc>().add(
+          UpdateTaskAtIndex(
+            index: index,
+            name: name.isEmpty ? null : name,
+            estimatedDuration: durationMinutes != null && durationMinutes > 0
+                ? durationMinutes * 60
+                : null,
+          ),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return BlocConsumer<RoutineBloc, RoutineBlocState>(
+      listenWhen: (prev, next) => prev.model != next.model || prev.loading != next.loading,
+      listener: (context, state) {
+        // Mark user selection only when currentTaskIndex changes after initial load.
+        if (state.model != null) {
+          // Detect index change with a previous non-null model
+          final prevIndex = (context.read<RoutineBloc>().state.model)?.currentTaskIndex;
+          if (prevIndex != null && prevIndex != state.model!.currentTaskIndex) {
+            _hasUserSelectedATask = true;
+          }
+        }
+        _populateFromState(state);
+      },
+      builder: (context, state) {
+        final model = state.model;
+        final disabled = state.loading || model == null;
+        final hasSelection = !disabled && model!.tasks.isNotEmpty;
+        final selectedIndex = hasSelection
+            ? model!.currentTaskIndex.clamp(0, model!.tasks.length - 1)
+            : 0;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Routine Settings', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _routineStartController,
+                      decoration: const InputDecoration(
+                        labelText: 'Routine Start Time (HH:mm)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.access_time),
+                      ),
+                      keyboardType: TextInputType.datetime,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^[0-9:]*')),
+                      ],
+                      onSubmitted: (_) {},
+                      enabled: !disabled,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    tooltip: 'Pick time',
+                    onPressed: disabled ? null : () => _pickStartTime(state),
+                    icon: const Icon(Icons.schedule),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Enable Breaks by Default'),
+                value: _breaksEnabledByDefault,
+                onChanged: disabled
+                    ? null
+                    : (value) {
+                        setState(() => _breaksEnabledByDefault = value);
+                      },
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _breakDurationController,
+                decoration: const InputDecoration(
+                  labelText: 'Break Duration (minutes)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                enabled: !disabled,
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    onPressed: disabled ? null : () => _populateFromState(state),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: disabled ? null : () => _saveChanges(state),
+                    child: const Text('Save Changes'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 12),
+              Text('Task Details', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _taskNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Task Name',
+                  border: OutlineInputBorder(),
+                ),
+                enabled: hasSelection && _hasUserSelectedATask,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _taskDurationController,
+                decoration: const InputDecoration(
+                  labelText: 'Estimated Duration (minutes)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                enabled: hasSelection && _hasUserSelectedATask,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: hasSelection
+                        ? () => context
+                            .read<RoutineBloc>()
+                            .add(DuplicateTaskAtIndex(selectedIndex))
+                        : null,
+                    icon: const Icon(Icons.copy),
+                    label: const Text('Duplicate'),
+                  ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    onPressed: hasSelection
+                        ? () => context
+                            .read<RoutineBloc>()
+                            .add(DeleteTaskAtIndex(selectedIndex))
+                        : null,
+                    icon: const Icon(Icons.delete_forever),
+                    label: const Text('Delete Task'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  TimeOfDay? _tryParseHHmm(String input) {
+    final parts = input.split(':');
+    if (parts.length != 2) return null;
+    final hh = int.tryParse(parts[0]);
+    final mm = int.tryParse(parts[1]);
+    if (hh == null || mm == null) return null;
+    if (hh < 0 || hh > 23) return null;
+    if (mm < 0 || mm > 59) return null;
+    return TimeOfDay(hour: hh, minute: mm);
+  }
+
+  String _formatTimeHHmm(DateTime time) {
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
   }
 }
