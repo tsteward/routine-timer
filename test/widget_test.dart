@@ -1,30 +1,53 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:routine_timer/main.dart';
+import 'package:routine_timer/src/app_theme.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('App boots to Pre-Start and applies theme colors', (tester) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Pre-Start placeholder should be visible
+    expect(find.text('Pre-Start'), findsOneWidget);
+    expect(find.text('Countdown placeholder'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Theme primary color should match our brand green
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(materialApp.theme!.colorScheme.primary, AppTheme.green);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('Can navigate to Task Management via the test menu', (tester) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+    await tester.pumpAndSettle();
+
+    // Open the popup menu (navigation menu)
+    await tester.tap(find.byIcon(Icons.navigation));
+    await tester.pumpAndSettle();
+
+    // Select Task Management
+    await tester.tap(find.text('Task Management'));
+    await tester.pumpAndSettle();
+
+    // AppBar title should be visible
+    expect(find.text('Task Management'), findsOneWidget);
+    // Left/right column placeholders should be present
+    expect(find.text('Left Column: Task List Placeholder'), findsOneWidget);
+    expect(find.text('Right Column: Settings & Details Placeholder'), findsOneWidget);
+  });
+
+  testWidgets('Can navigate to Main Routine via the test menu', (tester) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.navigation));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Main Routine'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Main Routine'), findsOneWidget);
+    expect(find.text('Timer & progress placeholder'), findsOneWidget);
   });
 }
