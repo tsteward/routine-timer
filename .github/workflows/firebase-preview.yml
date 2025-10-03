@@ -3,6 +3,7 @@ name: Preview Deploy (Firebase Hosting)
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,8 +15,6 @@ jobs:
   build-and-deploy:
     name: Build web and deploy preview
     runs-on: ubuntu-latest
-    # Do not attempt deploys for forked PRs (secrets are not available to forks)
-    if: ${{ github.event.pull_request.head.repo.fork == false }}
     concurrency:
       group: firebase-preview-${{ github.event.pull_request.number }}
       cancel-in-progress: true
@@ -29,7 +28,6 @@ jobs:
         with:
           channel: stable
           cache: true
-          flutter-version: latest
 
       - name: Enable web and install dependencies
         run: |
