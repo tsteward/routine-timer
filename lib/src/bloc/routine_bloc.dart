@@ -27,10 +27,30 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     // Simple hard-coded sample data for development.
     final tasks = <TaskModel>[
-      const TaskModel(id: '1', name: 'Morning Workout', estimatedDuration: 20 * 60, order: 0),
-      const TaskModel(id: '2', name: 'Shower', estimatedDuration: 10 * 60, order: 1),
-      const TaskModel(id: '3', name: 'Breakfast', estimatedDuration: 15 * 60, order: 2),
-      const TaskModel(id: '4', name: 'Review Plan', estimatedDuration: 5 * 60, order: 3),
+      const TaskModel(
+        id: '1',
+        name: 'Morning Workout',
+        estimatedDuration: 20 * 60,
+        order: 0,
+      ),
+      const TaskModel(
+        id: '2',
+        name: 'Shower',
+        estimatedDuration: 10 * 60,
+        order: 1,
+      ),
+      const TaskModel(
+        id: '3',
+        name: 'Breakfast',
+        estimatedDuration: 15 * 60,
+        order: 2,
+      ),
+      const TaskModel(
+        id: '4',
+        name: 'Review Plan',
+        estimatedDuration: 5 * 60,
+        order: 3,
+      ),
     ];
 
     final settings = RoutineSettingsModel(
@@ -53,16 +73,15 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       isRunning: false,
     );
 
-    emit(state.copyWith(
-      loading: false,
-      model: model,
-    ));
+    emit(state.copyWith(loading: false, model: model));
   }
 
   void _onSelectTask(SelectTask event, Emitter<RoutineBlocState> emit) {
-    emit(state.copyWith(
-      model: state.model?.copyWith(currentTaskIndex: event.index),
-    ));
+    emit(
+      state.copyWith(
+        model: state.model?.copyWith(currentTaskIndex: event.index),
+      ),
+    );
   }
 
   void _onReorderTasks(ReorderTasks event, Emitter<RoutineBlocState> emit) {
@@ -83,7 +102,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   }
 
   void _onToggleBreakAtIndex(
-      ToggleBreakAtIndex event, Emitter<RoutineBlocState> emit) {
+    ToggleBreakAtIndex event,
+    Emitter<RoutineBlocState> emit,
+  ) {
     final model = state.model;
     if (model == null || model.breaks == null) return;
 
@@ -91,8 +112,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     final updated = List<BreakModel>.from(model.breaks!);
     final target = updated[event.index];
-    updated[event.index] =
-        target.copyWith(isEnabled: !(target.isEnabled));
+    updated[event.index] = target.copyWith(isEnabled: !(target.isEnabled));
 
     emit(state.copyWith(model: model.copyWith(breaks: updated)));
   }
@@ -114,21 +134,27 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       actualDuration: event.actualDuration,
     );
 
-    final nextIndex = (model.currentTaskIndex + 1).clamp(0, updatedTasks.length - 1);
-    emit(state.copyWith(
-      model: model.copyWith(tasks: updatedTasks, currentTaskIndex: nextIndex),
-    ));
+    final nextIndex = (model.currentTaskIndex + 1).clamp(
+      0,
+      updatedTasks.length - 1,
+    );
+    emit(
+      state.copyWith(
+        model: model.copyWith(tasks: updatedTasks, currentTaskIndex: nextIndex),
+      ),
+    );
   }
 
   void _onGoToPreviousTask(
-      GoToPreviousTask event, Emitter<RoutineBlocState> emit) {
+    GoToPreviousTask event,
+    Emitter<RoutineBlocState> emit,
+  ) {
     final model = state.model;
     if (model == null) return;
-    final prevIndex = (model.currentTaskIndex - 1).clamp(0, model.tasks.length - 1);
-    emit(state.copyWith(
-      model: model.copyWith(currentTaskIndex: prevIndex),
-    ));
+    final prevIndex = (model.currentTaskIndex - 1).clamp(
+      0,
+      model.tasks.length - 1,
+    );
+    emit(state.copyWith(model: model.copyWith(currentTaskIndex: prevIndex)));
   }
 }
-
-

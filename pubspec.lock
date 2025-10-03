@@ -26,7 +26,7 @@ packages:
     source: hosted
     version: "8.1.4"
   bloc_dev_tools:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: bloc_dev_tools
       sha256: "39ba7c59a0df51efa816dfe0621a06304e801aaee5d746b8997d943307b49e8e"

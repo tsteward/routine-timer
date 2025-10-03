@@ -77,7 +77,10 @@ void main() {
         breaksEnabledByDefault: true,
         defaultBreakDuration: 60,
       );
-      final updated = settings.copyWith(defaultBreakDuration: 90, breaksEnabledByDefault: false);
+      final updated = settings.copyWith(
+        defaultBreakDuration: 90,
+        breaksEnabledByDefault: false,
+      );
       expect(updated.defaultBreakDuration, 90);
       expect(updated.breaksEnabledByDefault, false);
       expect(updated.startTime, 1);
@@ -91,9 +94,7 @@ void main() {
           TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
           TaskModel(id: '2', name: 'Task2', estimatedDuration: 120, order: 1),
         ],
-        breaks: const [
-          BreakModel(duration: 30, isEnabled: true),
-        ],
+        breaks: const [BreakModel(duration: 30, isEnabled: true)],
         settings: RoutineSettingsModel(
           startTime: 2,
           breaksEnabledByDefault: true,
@@ -113,8 +114,14 @@ void main() {
 
     test('copyWith updates nested fields', () {
       final state = RoutineStateModel(
-        tasks: const [TaskModel(id: '1', name: 'A', estimatedDuration: 60, order: 0)],
-        settings: RoutineSettingsModel(startTime: 0, breaksEnabledByDefault: true, defaultBreakDuration: 60),
+        tasks: const [
+          TaskModel(id: '1', name: 'A', estimatedDuration: 60, order: 0),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
       );
       final updated = state.copyWith(currentTaskIndex: 2, isRunning: true);
       expect(updated.currentTaskIndex, 2);

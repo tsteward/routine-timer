@@ -50,9 +50,5 @@ class RoutineSettingsModel {
   String toJson() => json.encode(toMap());
 
   factory RoutineSettingsModel.fromJson(String source) =>
-      RoutineSettingsModel.fromMap(
-        json.decode(source) as Map<String, dynamic>,
-      );
+      RoutineSettingsModel.fromMap(json.decode(source) as Map<String, dynamic>);
 }
-
-

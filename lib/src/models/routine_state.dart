@@ -65,7 +65,8 @@ class RoutineStateModel {
           ?.map((e) => BreakModel.fromMap(e as Map<String, dynamic>))
           .toList(),
       settings: RoutineSettingsModel.fromMap(
-          map['settings'] as Map<String, dynamic>),
+        map['settings'] as Map<String, dynamic>,
+      ),
       currentTaskIndex: map['currentTaskIndex'] as int? ?? 0,
       isRunning: map['isRunning'] as bool? ?? false,
     );
@@ -74,9 +75,5 @@ class RoutineStateModel {
   String toJson() => json.encode(toMap());
 
   factory RoutineStateModel.fromJson(String source) =>
-      RoutineStateModel.fromMap(
-        json.decode(source) as Map<String, dynamic>,
-      );
+      RoutineStateModel.fromMap(json.decode(source) as Map<String, dynamic>);
 }
-
-

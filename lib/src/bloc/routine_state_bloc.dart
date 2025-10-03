@@ -28,5 +28,3 @@ class RoutineBlocState extends Equatable {
   @override
   List<Object?> get props => [loading, model, errorMessage];
 }
-
-
