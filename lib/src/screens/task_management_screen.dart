@@ -32,6 +32,7 @@ class TaskManagementScreen extends StatelessWidget {
           ),
         ],
       ),
+      bottomNavigationBar: const _BottomBar(),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final selected = await showMenu<String>(
@@ -229,4 +230,234 @@ class _StartTimePill extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BottomBar extends StatelessWidget {
+  const _BottomBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      elevation: 8,
+      color: theme.colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: BlocBuilder<RoutineBloc, RoutineBlocState>(
+            builder: (context, state) {
+              final model = state.model;
+              if (model == null) {
+                return Row(
+                  children: [
+                    _MetricTile(label: 'Est. Finish', value: '--:--'),
+                    const SizedBox(width: 16),
+                    _MetricTile(label: 'Total', value: '0 min'),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add New Task'),
+                    ),
+                  ],
+                );
+              }
+
+              final totalTaskSeconds = _computeTotalTaskSeconds(model);
+              final finish = _computeEstimatedFinish(model);
+              return Row(
+                children: [
+                  _MetricTile(
+                    label: 'Est. Finish',
+                    value: _formatTimeHHmm(finish),
+                  ),
+                  const SizedBox(width: 16),
+                  _MetricTile(
+                    label: 'Total',
+                    value: _formatDurationMinutes(totalTaskSeconds),
+                  ),
+                  const Spacer(),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final result = await showDialog<_NewTaskResult>(
+                        context: context,
+                        builder: (context) => const _AddTaskDialog(),
+                      );
+                      if (result != null) {
+                        // ignore: use_build_context_synchronously
+                        context.read<RoutineBloc>().add(
+                              AddTask(
+                                name: result.name,
+                                estimatedDurationSeconds: result.durationSeconds,
+                              ),
+                            );
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add New Task'),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  int _computeTotalTaskSeconds(RoutineStateModel model) {
+    int total = 0;
+    for (final t in model.tasks) {
+      total += t.estimatedDuration;
+    }
+    return total;
+  }
+
+  DateTime _computeEstimatedFinish(RoutineStateModel model) {
+    final start = DateTime.fromMillisecondsSinceEpoch(model.settings.startTime);
+    int total = _computeTotalTaskSeconds(model);
+    if (model.breaks != null) {
+      for (final b in model.breaks!) {
+        if (b.isEnabled) total += b.duration;
+      }
+    }
+    return start.add(Duration(seconds: total));
+  }
+
+  String _formatTimeHHmm(DateTime time) {
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  String _formatDurationMinutes(int seconds) {
+    final minutes = (seconds / 60).round();
+    return '$minutes min';
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddTaskDialog extends StatefulWidget {
+  const _AddTaskDialog();
+
+  @override
+  State<_AddTaskDialog> createState() => _AddTaskDialogState();
+}
+
+class _AddTaskDialogState extends State<_AddTaskDialog> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _minutesController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _minutesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('Add New Task'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Task name',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Enter a task name';
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _minutesController,
+              decoration: const InputDecoration(
+                labelText: 'Duration (minutes)',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Enter minutes';
+                final parsed = int.tryParse(v);
+                if (parsed == null || parsed <= 0) return 'Enter a positive number';
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() != true) return;
+            final minutes = int.parse(_minutesController.text.trim());
+            Navigator.of(context).pop(
+              _NewTaskResult(
+                name: _nameController.text.trim(),
+                durationSeconds: minutes * 60,
+              ),
+            );
+          },
+          child: const Text('Add Task'),
+        ),
+      ],
+    );
+  }
+}
+
+class _NewTaskResult {
+  _NewTaskResult({required this.name, required this.durationSeconds});
+  final String name;
+  final int durationSeconds;
 }

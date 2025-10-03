@@ -20,6 +20,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<UpdateSettings>(_onUpdateSettings);
     on<MarkTaskDone>(_onMarkTaskDone);
     on<GoToPreviousTask>(_onGoToPreviousTask);
+    on<AddTask>(_onAddTask);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -156,5 +157,35 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       model.tasks.length - 1,
     );
     emit(state.copyWith(model: model.copyWith(currentTaskIndex: prevIndex)));
+  }
+
+  void _onAddTask(AddTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    final nextOrder = model.tasks.isEmpty ? 0 : model.tasks.length;
+    final newTask = TaskModel(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: event.name,
+      estimatedDuration: event.estimatedDurationSeconds,
+      order: nextOrder,
+    );
+
+    final updatedTasks = List<TaskModel>.from(model.tasks)..add(newTask);
+
+    // Maintain breaks length: typically breaks.length == tasks.length - 1.
+    List<BreakModel>? updatedBreaks = model.breaks;
+    if (updatedBreaks != null) {
+      updatedBreaks = List<BreakModel>.from(updatedBreaks)
+        ..add(
+          BreakModel(
+            duration: model.settings.defaultBreakDuration,
+            isEnabled: model.settings.breaksEnabledByDefault,
+          ),
+        );
+    }
+
+    final updatedModel = model.copyWith(tasks: updatedTasks, breaks: updatedBreaks);
+    emit(state.copyWith(model: updatedModel));
   }
 }

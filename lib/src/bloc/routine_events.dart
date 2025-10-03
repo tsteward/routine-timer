@@ -55,3 +55,12 @@ class MarkTaskDone extends RoutineEvent {
 class GoToPreviousTask extends RoutineEvent {
   const GoToPreviousTask();
 }
+
+class AddTask extends RoutineEvent {
+  const AddTask({required this.name, required this.estimatedDurationSeconds});
+  final String name;
+  final int estimatedDurationSeconds;
+
+  @override
+  List<Object?> get props => [name, estimatedDurationSeconds];
+}
