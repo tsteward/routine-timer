@@ -10,12 +10,12 @@
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/common-utils:2": {
-      "username": "codespace",
+      "username": "vscode",
       "installZsh": true,
       "configureZshAsDefaultShell": true
     }
   },
-  "remoteUser": "codespace",
+  "remoteUser": "vscode",
   "postCreateCommand": "/bin/bash .devcontainer/post-create.sh",
   "customizations": {
     "vscode": {
@@ -34,10 +34,9 @@
     }
   },
   "forwardPorts": [
-    3000, 4000
+    8080
   ],
   "portsAttributes": {
-    "3000": { "label": "Web preview" },
-    "4000": { "label": "Alt preview" }
+    "8080": { "label": "Flutter web preview" }
   }
 }

@@ -2,7 +2,7 @@
 
 FROM mcr.microsoft.com/devcontainers/base:jammy
 
-ARG USERNAME=codespace
+ARG USERNAME=vscode
 ENV DEBIAN_FRONTEND=noninteractive
 ENV FLUTTER_HOME=/usr/local/flutter
 ENV PATH=${FLUTTER_HOME}/bin:${FLUTTER_HOME}/bin/cache/dart-sdk/bin:${PATH}
@@ -15,9 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Flutter SDK (stable channel)
 RUN git clone --depth 1 -b stable https://github.com/flutter/flutter.git ${FLUTTER_HOME} \
-    && chown -R ${USERNAME}:${USERNAME} ${FLUTTER_HOME} \
-    && mkdir -p /home/${USERNAME}/.pub-cache \
-    && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.pub-cache
+    && mkdir -p /home/${USERNAME}/.pub-cache
 
 # Avoid analytics noise from CI/containers
 ENV FLUTTER_DISABLE_ANALYTICS=true
