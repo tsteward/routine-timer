@@ -249,12 +249,18 @@ class _BottomBar extends StatelessWidget {
             builder: (context, state) {
               final model = state.model;
               if (model == null) {
-                return Row(
+                return Flex(
+                  direction: Axis.horizontal,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _MetricTile(label: 'Est. Finish', value: '--:--'),
-                    const SizedBox(width: 16),
-                    _MetricTile(label: 'Total', value: '0 min'),
-                    const Spacer(),
+                    Wrap(
+                      spacing: 16,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: const [
+                        _MetricTile(label: 'Est. Finish', value: '--:--'),
+                        _MetricTile(label: 'Total', value: '0 min'),
+                      ],
+                    ),
                     FilledButton.icon(
                       onPressed: null,
                       icon: const Icon(Icons.add),
@@ -266,18 +272,24 @@ class _BottomBar extends StatelessWidget {
 
               final totalTaskSeconds = _computeTotalTaskSeconds(model);
               final finish = _computeEstimatedFinish(model);
-              return Row(
+              return Flex(
+                direction: Axis.horizontal,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _MetricTile(
-                    label: 'Est. Finish',
-                    value: _formatTimeHHmm(finish),
+                  Wrap(
+                    spacing: 16,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _MetricTile(
+                        label: 'Est. Finish',
+                        value: _formatTimeHHmm(finish),
+                      ),
+                      _MetricTile(
+                        label: 'Total',
+                        value: _formatDurationMinutes(totalTaskSeconds),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  _MetricTile(
-                    label: 'Total',
-                    value: _formatDurationMinutes(totalTaskSeconds),
-                  ),
-                  const Spacer(),
                   FilledButton.icon(
                     onPressed: () async {
                       final result = await showDialog<_NewTaskResult>(
@@ -395,7 +407,6 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return AlertDialog(
       title: const Text('Add New Task'),
       content: Form(
