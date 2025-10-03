@@ -71,14 +71,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Fill form
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Task name'),
-        'UI New Task',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Duration (minutes)'),
-        '3',
-      );
+      final nameField = find.byType(TextFormField).at(0);
+      final minutesField = find.byType(TextFormField).at(1);
+      await tester.enterText(nameField, 'UI New Task');
+      await tester.enterText(minutesField, '3');
 
       // Submit
       await tester.tap(find.text('Add Task'));
