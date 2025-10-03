@@ -1,4 +1,4 @@
-# Agent Playbook: Routine Timer (Flutter + Dart MCP)
+# Agent Playbook: Routine Timer (Flutter + Dart)
 
 This project includes MCP integrations and conventions so you can run, test, and debug autonomously. Follow this playbook end-to-end without human input.
 
@@ -8,11 +8,10 @@ This project includes MCP integrations and conventions so you can run, test, and
 - Routes: `lib/src/router/app_router.dart`
 - Theme: `lib/src/app_theme.dart`
 - Placeholder screens: `lib/src/screens/*`
-- Tests: `test/widget_test.dart`
+- Tests: `test/`
  - Plan directory: `plan/` — see `plan/Plan.md` and `plan/Routine Timer.md` for a high-level overview and roadmap.
 
 ## 0) Environment Assumptions
-- Shell: Windows PowerShell
 - Project root: `C:\Users\tstew\projects\routine_timer`
 - Flutter installed on stable; Dart ≥ 3.9.
 
@@ -71,7 +70,6 @@ flutter analyze
 ```powershell
 dart format .
 ```
-- Re-run tests with MCP and ensure they all pass
 - Run local tests and ensure they all pass (include edge cases):
 ```powershell
 flutter test
@@ -118,7 +116,6 @@ Every change must be covered by tests. Add or update tests for new functionality
 ```powershell
 flutter test
 ```
-- **Run tests via MCP** when applicable and confirm green status
 - **Avoid flakiness**: use proper async/waits, pumps, and deterministic inputs
 
 ## 14) Pre-Commit Quality Gate
