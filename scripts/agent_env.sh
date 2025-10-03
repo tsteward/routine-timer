@@ -47,8 +47,17 @@ append_if_missing() {
   fi
 }
 
-# Install Flutter if missing
+# Install Flutter if missing (with fallback to user directory when system path is not writable)
 if [ ! -x "$FLUTTER_HOME/bin/flutter" ]; then
+  # If installing to /usr/local/flutter and parent is not writable, fall back to user dir
+  parent_dir="$(dirname "$FLUTTER_HOME")"
+  if [ ! -w "$parent_dir" ] && ! { [ "$(id -u)" -eq 0 ] || command -v sudo >/dev/null 2>&1; }; then
+    FLUTTER_HOME="$HOME/.local/flutter"
+    export FLUTTER_HOME
+    export PATH="$FLUTTER_HOME/bin:$FLUTTER_HOME/bin/cache/dart-sdk/bin:$PATH"
+    echo "[agent_env] Falling back to user install at $FLUTTER_HOME"
+  fi
+
   echo "[agent_env] Installing Flutter to $FLUTTER_HOME (stable channel)"
   if [ "$(id -u)" -eq 0 ]; then
     mkdir -p "$FLUTTER_HOME"
