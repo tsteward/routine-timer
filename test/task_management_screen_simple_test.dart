@@ -73,6 +73,10 @@ void main() {
       expect(find.text('Breakfast'), findsOneWidget);
       expect(find.text('Review Plan'), findsOneWidget);
 
+      // Right column visible with controls
+      expect(find.text('Routine Settings'), findsOneWidget);
+      expect(find.text('Task Details'), findsOneWidget);
+
       bloc.close();
     });
 
@@ -145,6 +149,10 @@ void main() {
 
       // Verify selection changed
       expect(bloc.state.model?.currentTaskIndex, 1);
+
+      // Task details populated on right
+      expect(find.widgetWithText(TextField, 'Task Name'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Estimated Duration'), findsOneWidget);
 
       bloc.close();
     });

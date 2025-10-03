@@ -24,7 +24,7 @@ class TaskManagementScreen extends StatelessWidget {
           Expanded(
             flex: 2,
             child: Container(
-              color: color.withValues(alpha: 0.6),
+              color: color.withOpacity(0.6),
               child: const _SettingsDetailsColumn(),
             ),
           ),
@@ -111,7 +111,7 @@ class _TaskListColumn extends StatelessWidget {
                       side: BorderSide(
                         color: isSelected
                             ? theme.colorScheme.primary
-                            : theme.colorScheme.outline.withValues(alpha: 0.2),
+                            : theme.colorScheme.outline.withOpacity(0.2),
                         width: isSelected ? 2 : 1,
                       ),
                     ),

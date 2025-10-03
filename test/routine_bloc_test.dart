@@ -190,5 +190,65 @@ void main() {
       final uniqueOrders = orders.toSet();
       expect(uniqueOrders.length, orders.length);
     });
+
+    test('update task at index updates name and duration', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      expect(loaded.model!.tasks[1].name, 'Shower');
+
+      bloc.add(const UpdateTaskAtIndex(
+        index: 1,
+        name: 'Shower+',
+        estimatedDurationSeconds: 12 * 60,
+      ));
+
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks[1].name == 'Shower+',
+      );
+      expect(updated.model!.tasks[1].estimatedDuration, 12 * 60);
+    });
+
+    test('duplicate task at index inserts copy and adjusts breaks', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalTasksLen = loaded.model!.tasks.length;
+      final originalBreaksLen = loaded.model!.breaks!.length;
+
+      bloc.add(const DuplicateTaskAtIndex(1));
+
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == originalTasksLen + 1,
+      );
+
+      final tasks = updated.model!.tasks;
+      // New task appears right after the original
+      expect(tasks[1].name, 'Shower');
+      expect(tasks[2].name, 'Shower');
+      // Orders are reindexed
+      expect(tasks.map((t) => t.order), List.generate(tasks.length, (i) => i));
+      // Breaks increased by one
+      expect(updated.model!.breaks!.length, originalBreaksLen + 1);
+      // Current selection moved to the duplicate
+      expect(updated.model!.currentTaskIndex, 2);
+    });
+
+    test('delete task at index removes task and adjusts breaks', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalTasksLen = loaded.model!.tasks.length;
+      final originalBreaksLen = loaded.model!.breaks!.length;
+
+      bloc.add(const DeleteTaskAtIndex(2));
+
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == originalTasksLen - 1,
+      );
+
+      final tasks = updated.model!.tasks;
+      // Orders are reindexed
+      expect(tasks.map((t) => t.order), List.generate(tasks.length, (i) => i));
+      // Breaks adjusted to tasks - 1
+      expect(updated.model!.breaks!.length, tasks.length - 1);
+    });
   });
 }
