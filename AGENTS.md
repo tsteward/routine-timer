@@ -9,6 +9,7 @@ This project includes MCP integrations and conventions so you can run, test, and
 - Theme: `lib/src/app_theme.dart`
 - Placeholder screens: `lib/src/screens/*`
 - Tests: `test/widget_test.dart`
+ - Plan directory: `plan/` — see `plan/Plan.md` and `plan/Routine Timer.md` for a high-level overview and roadmap.
 
 ## 0) Environment Assumptions
 - Shell: Windows PowerShell
@@ -27,35 +28,24 @@ flutter devices
 ```
 Choose the physical Android device (e.g., `356120352015875`).
 
-## 3) Run the App and Print the DTD URI
-Use `--print-dtd` so you can connect via MCP automatically:
+## 3) Run the App
+Launch the app on your selected device:
 ```powershell
-flutter run -d <deviceId> --target=lib/main.dart --print-dtd
+flutter run -d <deviceId> --target=lib/main.dart
 ```
-Parse stdout for:
-```
-The Dart Tooling Daemon is available at: ws://127.0.0.1:PORT/TOKEN
-```
-Extract the full `ws://…` URI.
+Optional: If you plan to use MCP, add `--print-dtd` to also print a DTD URI (you will see "The Dart Tooling Daemon is available at: ws://...").
 
-## 4) Connect to Dart MCP (DTD)
-Call:
-- `connect_dart_tooling_daemon(uri)`
-- Optionally `hot_reload(clearRuntimeErrors: true)` to ensure active session
-- `get_widget_tree()` and `get_runtime_errors(clearRuntimeErrors: true)` to verify
+## 4) Optional: Connect to Dart MCP (DTD)
+If using MCP tooling, call `connect_dart_tooling_daemon(uri)`, then `hot_reload(clearRuntimeErrors: true)` if needed. Use `get_widget_tree()` and `get_runtime_errors(clearRuntimeErrors: true)` to verify.
 
-If you see “No active debug session”:
-- Ensure the `flutter run` session from step 3 is still active
-- Call `hot_reload(clearRuntimeErrors: true)` and retry
-
-## 5) Common MCP Commands
+## 5) Common MCP Commands (Optional)
 - Hot reload: `hot_reload(clearRuntimeErrors: true)`
 - Runtime errors: `get_runtime_errors(clearRuntimeErrors: true)`
 - Widget tree: `get_widget_tree()`
 - Selected widget: `get_selected_widget()`
 - Enable inspector selection: `set_widget_selection_mode(enabled: true|false)`
 
-## 6) Running Tests via MCP
+## 6) Running Tests via MCP (Optional)
 1) Ensure root is registered:
 ```json
 mcp_dart_add_roots: [{ "uri": "file:///C:/Users/tstew/projects/routine_timer", "name": "routine_timer" }]
@@ -69,10 +59,11 @@ Expected: all tests pass.
 ## 7) Editing & Verifying Changes
 - Make edits with apply_patch/edit_file tools only
 - If `pubspec.yaml` changed → run `flutter pub get`
+- Format code before finishing: `dart format .`
 - Re-run tests with MCP
 - If app is running, trigger `hot_reload`
 
-## 8) DTD Troubleshooting
+## 8) DTD Troubleshooting (Optional)
 - Version error: update Cursor to latest and restart; re-run step 3 for a fresh URI
 - URI expired: re-run with `--print-dtd` to print a new URI
 
@@ -81,7 +72,12 @@ Expected: all tests pass.
 
 ## 10) One-Command Recap
 ```powershell
-flutter run -d <deviceId> --target=lib/main.dart --print-dtd
-# parse URI from stdout → connect_dart_tooling_daemon(uri)
-# then: hot_reload → get_widget_tree → get_runtime_errors
+flutter run -d <deviceId> --target=lib/main.dart
+# Optional: add --print-dtd and connect to DTD if needed
+```
+
+## 11) Code Formatting
+Run the formatter before finishing any change:
+```powershell
+dart format .
 ```
