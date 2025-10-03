@@ -55,3 +55,11 @@ class MarkTaskDone extends RoutineEvent {
 class GoToPreviousTask extends RoutineEvent {
   const GoToPreviousTask();
 }
+
+class SetBreaksEnabledByDefault extends RoutineEvent {
+  const SetBreaksEnabledByDefault(this.enabled);
+  final bool enabled;
+
+  @override
+  List<Object?> get props => [enabled];
+}

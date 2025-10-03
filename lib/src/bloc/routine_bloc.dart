@@ -20,6 +20,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<UpdateSettings>(_onUpdateSettings);
     on<MarkTaskDone>(_onMarkTaskDone);
     on<GoToPreviousTask>(_onGoToPreviousTask);
+    on<SetBreaksEnabledByDefault>(_onSetBreaksEnabledByDefault);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -106,13 +107,35 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     Emitter<RoutineBlocState> emit,
   ) {
     final model = state.model;
-    if (model == null || model.breaks == null) return;
+    if (model == null) return;
 
-    if (event.index < 0 || event.index >= model.breaks!.length) return;
+    final int expectedBreakCount = (model.tasks.length - 1).clamp(0, 1 << 31);
+    if (event.index < 0 || event.index >= expectedBreakCount) return;
 
-    final updated = List<BreakModel>.from(model.breaks!);
-    final target = updated[event.index];
-    updated[event.index] = target.copyWith(isEnabled: !(target.isEnabled));
+    // Ensure a breaks list of expected size exists
+    final List<BreakModel> updated = List<BreakModel>.generate(
+      expectedBreakCount,
+      (i) {
+        final existing = (model.breaks != null && i < model.breaks!.length)
+            ? model.breaks![i]
+            : null;
+        if (existing != null) return existing;
+        return BreakModel(
+          duration: model.settings.defaultBreakDuration,
+          isEnabled: model.settings.breaksEnabledByDefault,
+        );
+      },
+    );
+
+    final current = updated[event.index];
+    final toggledEnabled = !current.isEnabled;
+    updated[event.index] = current.copyWith(
+      isEnabled: toggledEnabled,
+      // When enabling a break, force duration to current default
+      duration: toggledEnabled
+          ? model.settings.defaultBreakDuration
+          : current.duration,
+    );
 
     emit(state.copyWith(model: model.copyWith(breaks: updated)));
   }
@@ -121,6 +144,50 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     final model = state.model;
     if (model == null) return;
     emit(state.copyWith(model: model.copyWith(settings: event.settings)));
+  }
+
+  void _onSetBreaksEnabledByDefault(
+    SetBreaksEnabledByDefault event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+
+    final updatedSettings = model.settings.copyWith(
+      breaksEnabledByDefault: event.enabled,
+    );
+
+    // Ensure we have a breaks list sized to gaps (tasks.length - 1)
+    final int expectedBreakCount = (model.tasks.length - 1).clamp(0, 1 << 31);
+    List<BreakModel> updatedBreaks;
+
+    if (model.breaks == null || model.breaks!.length != expectedBreakCount) {
+      updatedBreaks = List<BreakModel>.generate(
+        expectedBreakCount,
+        (_) => BreakModel(
+          duration: updatedSettings.defaultBreakDuration,
+          isEnabled: event.enabled,
+        ),
+      );
+    } else {
+      updatedBreaks = model.breaks!
+          .map(
+            (b) => b.copyWith(
+              isEnabled: event.enabled,
+              duration: updatedSettings.defaultBreakDuration,
+            ),
+          )
+          .toList();
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          settings: updatedSettings,
+          breaks: updatedBreaks,
+        ),
+      ),
+    );
   }
 
   void _onMarkTaskDone(MarkTaskDone event, Emitter<RoutineBlocState> emit) {
