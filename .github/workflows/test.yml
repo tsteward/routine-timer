@@ -18,7 +18,6 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.24.0'
         channel: 'stable'
         cache: true
 
@@ -29,11 +28,12 @@ jobs:
       run: flutter test --coverage
 
     - name: Upload coverage reports to Codecov
-      if: matrix.os == 'ubuntu-latest'
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
-        file: coverage/lcov.info
+        files: coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
