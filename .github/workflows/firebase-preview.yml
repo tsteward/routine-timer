@@ -7,15 +7,11 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  issues: write
-  deployments: write
 
 jobs:
   build-and-deploy:
     name: Build web and deploy preview
     runs-on: ubuntu-latest
-    # Do not attempt deploys for forked PRs (secrets are not available)
-    if: ${{ github.event.pull_request.head.repo.fork == false && secrets.FIREBASE_PROJECT_ID != '' && secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
     concurrency:
       group: firebase-preview-${{ github.event.pull_request.number }}
       cancel-in-progress: true
@@ -29,12 +25,9 @@ jobs:
         with:
           channel: stable
           cache: true
-          flutter-version: latest
 
-      - name: Enable web and install dependencies
-        run: |
-          flutter config --enable-web
-          flutter pub get
+      - name: Install dependencies
+        run: flutter pub get
 
       - name: Build web
         run: flutter build web --release
@@ -46,6 +39,5 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: '${{ secrets.FIREBASE_PROJECT_ID }}'
           channelId: 'pr-${{ github.event.pull_request.number }}'
-          # Quote to avoid YAML parsing ambiguity
-          expires: '7d'
+          expires: 7d
           entryPoint: '.'
