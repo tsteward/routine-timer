@@ -44,7 +44,8 @@ void main() {
         ),
       );
 
-      expect(find.text('No routine loaded'), findsOneWidget);
+      // Both left and right columns show this message initially
+      expect(find.text('No routine loaded'), findsWidgets);
 
       bloc.close();
     });
@@ -68,10 +69,34 @@ void main() {
 
       // Should show task list
       expect(find.byType(ReorderableListView), findsOneWidget);
-      expect(find.text('Morning Workout'), findsOneWidget);
-      expect(find.text('Shower'), findsOneWidget);
-      expect(find.text('Breakfast'), findsOneWidget);
-      expect(find.text('Review Plan'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(ReorderableListView),
+          matching: find.text('Morning Workout'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ReorderableListView),
+          matching: find.text('Shower'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ReorderableListView),
+          matching: find.text('Breakfast'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ReorderableListView),
+          matching: find.text('Review Plan'),
+        ),
+        findsOneWidget,
+      );
 
       bloc.close();
     });
@@ -149,7 +174,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('displays right column with settings panel', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -161,11 +186,11 @@ void main() {
           ),
         ),
       );
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      expect(find.text('Routine Settings'), findsOneWidget);
+      expect(find.text('Task Details'), findsOneWidget);
 
       bloc.close();
     });

@@ -20,14 +20,12 @@ class TaskManagementScreen extends StatelessWidget {
             flex: 3,
             child: Container(color: color, child: const _TaskListColumn()),
           ),
-          // Right column placeholder (settings & details)
+          // Right column: routine settings and task details
           Expanded(
             flex: 2,
             child: Container(
               color: color.withValues(alpha: 0.6),
-              child: const Center(
-                child: Text('Right Column: Settings & Details Placeholder'),
-              ),
+              child: const _RightSettingsPanel(),
             ),
           ),
         ],
@@ -227,6 +225,283 @@ class _StartTimePill extends StatelessWidget {
           letterSpacing: 0.2,
         ),
       ),
+    );
+  }
+}
+
+class _RightSettingsPanel extends StatefulWidget {
+  const _RightSettingsPanel();
+
+  @override
+  State<_RightSettingsPanel> createState() => _RightSettingsPanelState();
+}
+
+class _RightSettingsPanelState extends State<_RightSettingsPanel> {
+  final TextEditingController _taskNameController = TextEditingController();
+  final TextEditingController _taskDurationMinutesController =
+      TextEditingController();
+  final TextEditingController _breakDurationMinutesController =
+      TextEditingController();
+
+  bool _breaksEnabledByDefault = true;
+  TimeOfDay _startTimeOfDay = const TimeOfDay(hour: 8, minute: 0);
+
+  // Track last applied values to avoid clobbering user edits on rebuilds
+  String? _lastTaskId;
+  int? _lastTaskDurationSeconds;
+  String? _lastTaskName;
+  int? _lastSettingsStartTime;
+  bool? _lastSettingsBreaksEnabled;
+  int? _lastSettingsDefaultBreakSeconds;
+
+  @override
+  void dispose() {
+    _taskNameController.dispose();
+    _taskDurationMinutesController.dispose();
+    _breakDurationMinutesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return BlocBuilder<RoutineBloc, RoutineBlocState>(
+      builder: (context, state) {
+        final model = state.model;
+        if (model == null) {
+          return const Center(child: Text('No routine loaded'));
+        }
+
+        // Populate settings controls if changed
+        if (_lastSettingsStartTime != model.settings.startTime ||
+            _lastSettingsBreaksEnabled !=
+                model.settings.breaksEnabledByDefault ||
+            _lastSettingsDefaultBreakSeconds !=
+                model.settings.defaultBreakDuration) {
+          final start = DateTime.fromMillisecondsSinceEpoch(
+            model.settings.startTime,
+          );
+          _startTimeOfDay = TimeOfDay(hour: start.hour, minute: start.minute);
+          _breaksEnabledByDefault = model.settings.breaksEnabledByDefault;
+          _breakDurationMinutesController.text =
+              (model.settings.defaultBreakDuration / 60).round().toString();
+          _lastSettingsStartTime = model.settings.startTime;
+          _lastSettingsBreaksEnabled = model.settings.breaksEnabledByDefault;
+          _lastSettingsDefaultBreakSeconds =
+              model.settings.defaultBreakDuration;
+        }
+
+        // Populate task details if selected task changes
+        final task = model.tasks.isNotEmpty
+            ? model.tasks[model.currentTaskIndex.clamp(
+                0,
+                model.tasks.length - 1,
+              )]
+            : null;
+        if (task != null &&
+            (_lastTaskId != task.id ||
+                _lastTaskDurationSeconds != task.estimatedDuration ||
+                _lastTaskName != task.name)) {
+          _taskNameController.text = task.name;
+          _taskDurationMinutesController.text = (task.estimatedDuration / 60)
+              .round()
+              .toString();
+          _lastTaskId = task.id;
+          _lastTaskDurationSeconds = task.estimatedDuration;
+          _lastTaskName = task.name;
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Routine Settings',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildStartTimePicker(context, theme),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Enable Breaks by Default'),
+                value: _breaksEnabledByDefault,
+                onChanged: (v) {
+                  setState(() => _breaksEnabledByDefault = v);
+                },
+              ),
+              TextField(
+                key: const Key('settings_break_duration_field'),
+                controller: _breakDurationMinutesController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Break Duration (minutes)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    key: const Key('settings_cancel_button'),
+                    onPressed: () {
+                      // Reset settings inputs to bloc state
+                      _lastSettingsStartTime =
+                          null; // force repopulate on rebuild
+                      _lastTaskId = null; // also reset task inputs
+                      setState(() {});
+                    },
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    key: const Key('settings_save_button'),
+                    onPressed: () {
+                      final now = DateTime.fromMillisecondsSinceEpoch(
+                        model.settings.startTime,
+                      );
+                      final updatedStart = DateTime(
+                        now.year,
+                        now.month,
+                        now.day,
+                        _startTimeOfDay.hour,
+                        _startTimeOfDay.minute,
+                      ).millisecondsSinceEpoch;
+                      final breakMinutes =
+                          int.tryParse(
+                            _breakDurationMinutesController.text.trim(),
+                          ) ??
+                          (model.settings.defaultBreakDuration / 60).round();
+                      final updatedSettings = model.settings.copyWith(
+                        startTime: updatedStart,
+                        breaksEnabledByDefault: _breaksEnabledByDefault,
+                        defaultBreakDuration: breakMinutes * 60,
+                      );
+                      context.read<RoutineBloc>().add(
+                        UpdateSettings(updatedSettings),
+                      );
+
+                      final newName = _taskNameController.text.trim();
+                      final taskMinutes =
+                          int.tryParse(
+                            _taskDurationMinutesController.text.trim(),
+                          ) ??
+                          (task?.estimatedDuration ?? 0) ~/ 60;
+                      context.read<RoutineBloc>().add(
+                        UpdateSelectedTask(
+                          name: newName.isEmpty ? task?.name : newName,
+                          estimatedDuration: taskMinutes * 60,
+                        ),
+                      );
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Changes saved')),
+                      );
+                    },
+                    child: const Text('Save Changes'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Task Details',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('task_name_field'),
+                controller: _taskNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Task Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('task_duration_field'),
+                controller: _taskDurationMinutesController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Estimated Duration (minutes)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    key: const Key('task_duplicate_button'),
+                    onPressed: task == null
+                        ? null
+                        : () {
+                            context.read<RoutineBloc>().add(
+                              const DuplicateSelectedTask(),
+                            );
+                          },
+                    icon: const Icon(Icons.copy),
+                    label: const Text('Duplicate'),
+                  ),
+                  TextButton.icon(
+                    key: const Key('task_delete_button'),
+                    onPressed: task == null
+                        ? null
+                        : () {
+                            context.read<RoutineBloc>().add(
+                              const DeleteSelectedTask(),
+                            );
+                          },
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                    ),
+                    icon: const Icon(Icons.delete_forever),
+                    label: const Text('Delete Task'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStartTimePicker(BuildContext context, ThemeData theme) {
+    return Row(
+      children: [
+        Expanded(
+          child: InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Routine Start Time',
+              border: OutlineInputBorder(),
+            ),
+            child: Text(
+              '${_startTimeOfDay.hour.toString().padLeft(2, '0')}:${_startTimeOfDay.minute.toString().padLeft(2, '0')}',
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: _startTimeOfDay,
+            );
+            if (picked != null) {
+              setState(() => _startTimeOfDay = picked);
+            }
+          },
+          icon: const Icon(Icons.schedule),
+          label: const Text('Pick Time'),
+        ),
+      ],
     );
   }
 }

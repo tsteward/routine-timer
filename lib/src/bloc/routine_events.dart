@@ -44,6 +44,25 @@ class UpdateSettings extends RoutineEvent {
   List<Object?> get props => [settings];
 }
 
+class UpdateSelectedTask extends RoutineEvent {
+  const UpdateSelectedTask({this.name, this.estimatedDuration});
+  final String? name;
+
+  /// Estimated duration in seconds
+  final int? estimatedDuration;
+
+  @override
+  List<Object?> get props => [name, estimatedDuration];
+}
+
+class DuplicateSelectedTask extends RoutineEvent {
+  const DuplicateSelectedTask();
+}
+
+class DeleteSelectedTask extends RoutineEvent {
+  const DeleteSelectedTask();
+}
+
 class MarkTaskDone extends RoutineEvent {
   const MarkTaskDone({required this.actualDuration});
   final int actualDuration;
