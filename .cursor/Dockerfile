@@ -8,7 +8,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV FLUTTER_HOME=/opt/flutter
 ENV PATH=${FLUTTER_HOME}/bin:${FLUTTER_HOME}/bin/cache/dart-sdk/bin:${PATH}
 ENV FLUTTER_DISABLE_ANALYTICS=true
-ENV PUB_CACHE=/root/.pub-cache
 
 # Create a non-root user for development
 ARG USERNAME=developer
@@ -50,9 +49,17 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
-# Install Flutter SDK
+# Install Flutter SDK as root and set proper ownership
 RUN git clone --depth 1 -b stable https://github.com/flutter/flutter.git ${FLUTTER_HOME} \
-    && chown -R root:root ${FLUTTER_HOME}
+    && git config --global --add safe.directory ${FLUTTER_HOME}
+
+# Run Flutter doctor as root to download artifacts
+RUN ${FLUTTER_HOME}/bin/flutter doctor -v \
+    && ${FLUTTER_HOME}/bin/flutter config --no-analytics \
+    && ${FLUTTER_HOME}/bin/flutter precache --linux --web
+
+# Make Flutter writable for all users (needed for .dart_tool directories)
+RUN chmod -R a+rw ${FLUTTER_HOME}
 
 # Pre-accept Android licenses and install Android SDK
 RUN mkdir -p /opt/android-sdk \
@@ -77,13 +84,32 @@ RUN yes | sdkmanager --licenses \
 USER $USERNAME
 WORKDIR /home/$USERNAME
 
+# Configure git safe directory for the user
+RUN git config --global --add safe.directory /opt/flutter
+
 # Create pub cache directory
 RUN mkdir -p /home/$USERNAME/.pub-cache
 
-# Set up Flutter for the user
-RUN flutter config --no-analytics \
-    && flutter doctor --android-licenses --accept-licenses \
-    && flutter precache
+# Set user-specific environment variables
+ENV PUB_CACHE=/home/$USERNAME/.pub-cache
+
+# Set user-specific environment variables in profile
+RUN echo 'export FLUTTER_HOME=/opt/flutter' >> ~/.bashrc \
+    && echo 'export PATH=$FLUTTER_HOME/bin:$FLUTTER_HOME/bin/cache/dart-sdk/bin:$PATH' >> ~/.bashrc \
+    && echo 'export FLUTTER_DISABLE_ANALYTICS=true' >> ~/.bashrc \
+    && echo 'export PUB_CACHE=$HOME/.pub-cache' >> ~/.bashrc \
+    && echo 'export ANDROID_HOME=/opt/android-sdk' >> ~/.bashrc \
+    && echo 'export ANDROID_SDK_ROOT=/opt/android-sdk' >> ~/.bashrc \
+    && echo 'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools' >> ~/.bashrc
+
+# Also set in .profile for non-interactive shells
+RUN echo 'export FLUTTER_HOME=/opt/flutter' >> ~/.profile \
+    && echo 'export PATH=$FLUTTER_HOME/bin:$FLUTTER_HOME/bin/cache/dart-sdk/bin:$PATH' >> ~/.profile \
+    && echo 'export FLUTTER_DISABLE_ANALYTICS=true' >> ~/.profile \
+    && echo 'export PUB_CACHE=$HOME/.pub-cache' >> ~/.profile \
+    && echo 'export ANDROID_HOME=/opt/android-sdk' >> ~/.profile \
+    && echo 'export ANDROID_SDK_ROOT=/opt/android-sdk' >> ~/.profile \
+    && echo 'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools' >> ~/.profile
 
 # Create workspace directory
 RUN mkdir -p /home/$USERNAME/workspace
