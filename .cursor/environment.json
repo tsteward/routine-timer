@@ -1,7 +1,7 @@
 {
   "name": "Routine Timer Flutter Development",
-  // "install": "flutter pub get",
-  // "start": "flutter run -d web-server --web-port=8080 --target=lib/main.dart --print-dtd",
+  "install": "flutter pub get",
+  "start": "flutter run -d web-server --web-port=8080 --target=lib/main.dart --print-dtd",
   "build": {
     "context": ".",
     "dockerfile": "Dockerfile"
