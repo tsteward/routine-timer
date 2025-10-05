@@ -16,6 +16,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<LoadSampleRoutine>(_onLoadSample);
     on<SelectTask>(_onSelectTask);
     on<ReorderTasks>(_onReorderTasks);
+    on<AddTask>(_onAddTask);
     on<ToggleBreakAtIndex>(_onToggleBreakAtIndex);
     on<UpdateSettings>(_onUpdateSettings);
     on<MarkTaskDone>(_onMarkTaskDone);
@@ -99,6 +100,31 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     }
 
     emit(state.copyWith(model: model.copyWith(tasks: reindexed)));
+  }
+
+  void _onAddTask(AddTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    final newOrder = updatedTasks.length;
+    final newTask = TaskModel(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: event.name,
+      estimatedDuration: event.estimatedDurationSeconds,
+      order: newOrder,
+    );
+    updatedTasks.add(newTask);
+
+    // Maintain breaks length: breaks typically equals tasks.length - 1.
+    List<BreakModel>? updatedBreaks;
+    if (model.breaks != null) {
+      updatedBreaks = List<BreakModel>.from(model.breaks!);
+      // No break is inserted automatically at the very end; length remains
+      // tasks.length - 1 after append.
+    }
+
+    emit(state.copyWith(model: model.copyWith(tasks: updatedTasks, breaks: updatedBreaks)));
   }
 
   void _onToggleBreakAtIndex(

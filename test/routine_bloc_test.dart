@@ -190,5 +190,21 @@ void main() {
       final uniqueOrders = orders.toSet();
       expect(uniqueOrders.length, orders.length);
     });
+
+    test('add task appends to end with correct order', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final initialLen = loaded.model!.tasks.length;
+
+      bloc.add(const AddTask(name: 'New Task', estimatedDurationSeconds: 180));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == initialLen + 1,
+      );
+
+      final last = updated.model!.tasks.last;
+      expect(last.name, 'New Task');
+      expect(last.estimatedDuration, 180);
+      expect(last.order, initialLen);
+    });
   });
 }

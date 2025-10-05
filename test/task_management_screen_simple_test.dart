@@ -49,7 +49,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays task list after loading data', (tester) async {
+    testWidgets('displays task list and bottom bar after loading data', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -72,6 +72,45 @@ void main() {
       expect(find.text('Shower'), findsOneWidget);
       expect(find.text('Breakfast'), findsOneWidget);
       expect(find.text('Review Plan'), findsOneWidget);
+
+      // Bottom bar content exists
+      expect(find.textContaining('Estimated finish:'), findsOneWidget);
+      expect(find.textContaining('Total time:'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('can add a new task via dialog', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Tap Add New Task button in the bottom bar
+      await tester.tap(find.widgetWithText(FilledButton, 'Add New Task'));
+      await tester.pumpAndSettle();
+
+      // Enter name and duration
+      await tester.enterText(find.byType(TextFormField).at(0), 'New Item');
+      await tester.enterText(find.byType(TextFormField).at(1), '3');
+
+      // Submit
+      await tester.tap(find.widgetWithText(FilledButton, 'Add Task'));
+      await tester.pumpAndSettle();
+
+      // Verify appears in list
+      expect(find.text('New Item'), findsOneWidget);
+      expect(find.text('3 min'), findsOneWidget);
 
       bloc.close();
     });

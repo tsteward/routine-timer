@@ -28,6 +28,15 @@ class ReorderTasks extends RoutineEvent {
   List<Object?> get props => [oldIndex, newIndex];
 }
 
+class AddTask extends RoutineEvent {
+  const AddTask({required this.name, required this.estimatedDurationSeconds});
+  final String name;
+  final int estimatedDurationSeconds;
+
+  @override
+  List<Object?> get props => [name, estimatedDurationSeconds];
+}
+
 class ToggleBreakAtIndex extends RoutineEvent {
   const ToggleBreakAtIndex(this.index);
   final int index;
