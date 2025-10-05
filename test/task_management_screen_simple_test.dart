@@ -76,6 +76,107 @@ void main() {
       bloc.close();
     });
 
+    testWidgets('populates task details when a task is selected', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Select second task
+      await tester.tap(find.text('Shower'));
+      await tester.pumpAndSettle();
+
+      // The task details fields should reflect selection
+      final nameField = find.byKey(const Key('task-name-field'));
+      final durationField = find.byKey(const Key('task-duration-field'));
+      expect(nameField, findsOneWidget);
+      expect(durationField, findsOneWidget);
+
+      final nameText = tester.widget<TextField>(nameField).controller?.text;
+      final durationText = tester.widget<TextField>(durationField).controller?.text;
+      expect(nameText, 'Shower');
+      expect(durationText, '10');
+
+      bloc.close();
+    });
+
+    testWidgets('save updates settings and task', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Change task name and duration
+      await tester.enterText(find.byKey(const Key('task-name-field')), 'New Name');
+      await tester.enterText(find.byKey(const Key('task-duration-field')), '7');
+
+      // Change default break duration
+      await tester.enterText(
+        find.byKey(const Key('settings-break-duration-field')),
+        '3',
+      );
+
+      // Save
+      await tester.tap(find.byKey(const Key('settings-save-button')));
+      await tester.pumpAndSettle();
+
+      // Verify bloc updated
+      expect(bloc.state.model!.tasks[0].name, 'New Name');
+      expect(bloc.state.model!.tasks[0].estimatedDuration, 7 * 60);
+      expect(bloc.state.model!.settings.defaultBreakDuration, 3 * 60);
+
+      bloc.close();
+    });
+
+    testWidgets('duplicate and delete task actions work', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Duplicate current (index 0)
+      await tester.tap(find.byKey(const Key('task-duplicate-button')));
+      await tester.pumpAndSettle();
+      expect(bloc.state.model!.tasks.length, 5);
+
+      // Delete selected (which becomes the duplicate at index 1)
+      await tester.tap(find.byKey(const Key('task-delete-button')));
+      await tester.pumpAndSettle();
+      expect(bloc.state.model!.tasks.length, 4);
+
+      bloc.close();
+    });
+
     testWidgets('displays task durations correctly', (tester) async {
       final bloc = RoutineBloc();
 
@@ -149,7 +250,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('displays right column settings and task details', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -162,10 +263,8 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      expect(find.text('Routine Settings'), findsOneWidget);
+      expect(find.text('Task Details'), findsOneWidget);
 
       bloc.close();
     });

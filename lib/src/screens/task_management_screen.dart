@@ -20,14 +20,12 @@ class TaskManagementScreen extends StatelessWidget {
             flex: 3,
             child: Container(color: color, child: const _TaskListColumn()),
           ),
-          // Right column placeholder (settings & details)
+          // Right column: settings & details
           Expanded(
             flex: 2,
             child: Container(
               color: color.withValues(alpha: 0.6),
-              child: const Center(
-                child: Text('Right Column: Settings & Details Placeholder'),
-              ),
+              child: const _SettingsDetailsColumn(),
             ),
           ),
         ],
@@ -227,6 +225,255 @@ class _StartTimePill extends StatelessWidget {
           letterSpacing: 0.2,
         ),
       ),
+    );
+  }
+}
+
+class _SettingsDetailsColumn extends StatefulWidget {
+  const _SettingsDetailsColumn();
+
+  @override
+  State<_SettingsDetailsColumn> createState() => _SettingsDetailsColumnState();
+}
+
+class _SettingsDetailsColumnState extends State<_SettingsDetailsColumn> {
+  // Routine settings local form state
+  TimeOfDay? _startTimeOfDay;
+  bool _breaksEnabledByDefault = true;
+  final TextEditingController _breakDurationMinutesController =
+      TextEditingController();
+
+  // Task details local form state
+  final TextEditingController _taskNameController = TextEditingController();
+  final TextEditingController _taskDurationMinutesController =
+      TextEditingController();
+
+  int? _lastSyncedTaskIndex;
+
+  @override
+  void dispose() {
+    _breakDurationMinutesController.dispose();
+    _taskNameController.dispose();
+    _taskDurationMinutesController.dispose();
+    super.dispose();
+  }
+
+  void _syncFromState(RoutineBlocState state) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Sync routine settings
+    final start = DateTime.fromMillisecondsSinceEpoch(model.settings.startTime);
+    _startTimeOfDay = TimeOfDay(hour: start.hour, minute: start.minute);
+    _breaksEnabledByDefault = model.settings.breaksEnabledByDefault;
+    _breakDurationMinutesController.text =
+        (model.settings.defaultBreakDuration / 60).round().toString();
+
+    // Sync current task
+    final index = model.currentTaskIndex;
+    if (index < 0 || index >= model.tasks.length) {
+      _taskNameController.text = '';
+      _taskDurationMinutesController.text = '';
+      _lastSyncedTaskIndex = null;
+      return;
+    }
+    final task = model.tasks[index];
+    _taskNameController.text = task.name;
+    _taskDurationMinutesController.text =
+        (task.estimatedDuration / 60).round().toString();
+    _lastSyncedTaskIndex = index;
+  }
+
+  Future<void> _pickStartTime(BuildContext context) async {
+    final initial = _startTimeOfDay ?? const TimeOfDay(hour: 8, minute: 0);
+    final picked = await showTimePicker(context: context, initialTime: initial);
+    if (picked != null) {
+      setState(() => _startTimeOfDay = picked);
+    }
+  }
+
+  void _handleCancel(RoutineBlocState state) {
+    setState(() => _syncFromState(state));
+  }
+
+  void _handleSave(RoutineBlocState state) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Prepare updated settings
+    final now = DateTime.fromMillisecondsSinceEpoch(model.settings.startTime);
+    final time = _startTimeOfDay ?? TimeOfDay(hour: now.hour, minute: now.minute);
+    final updatedStart = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    final parsedBreakMinutes = int.tryParse(_breakDurationMinutesController.text.trim()) ?? 0;
+    final updatedSettings = model.settings.copyWith(
+      startTime: updatedStart.millisecondsSinceEpoch,
+      breaksEnabledByDefault: _breaksEnabledByDefault,
+      defaultBreakDuration: (parsedBreakMinutes * 60).clamp(0, 24 * 60 * 60),
+    );
+
+    // Prepare updated current task
+    final parsedTaskMinutes = int.tryParse(_taskDurationMinutesController.text.trim()) ?? 0;
+    context.read<RoutineBloc>().add(UpdateSettings(updatedSettings));
+    context.read<RoutineBloc>().add(
+          UpdateCurrentTask(
+            name: _taskNameController.text.trim(),
+            estimatedDuration: (parsedTaskMinutes * 60).clamp(0, 24 * 60 * 60),
+          ),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return BlocConsumer<RoutineBloc, RoutineBlocState>(
+      listenWhen: (prev, curr) {
+        // Resync when model first loads or when the selected task changes
+        final prevIndex = prev.model?.currentTaskIndex;
+        final currIndex = curr.model?.currentTaskIndex;
+        return prev.model == null || prevIndex != currIndex;
+      },
+      listener: (context, state) {
+        _syncFromState(state);
+      },
+      builder: (context, state) {
+        if (state.loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final model = state.model;
+        if (model == null) {
+          return const Center(child: Text('No routine loaded'));
+        }
+
+        // Ensure initial sync at first build after load
+        if (_lastSyncedTaskIndex == null) {
+          _syncFromState(state);
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Routine Settings',
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('settings-start-time-button'),
+                      onPressed: () => _pickStartTime(context),
+                      icon: const Icon(Icons.access_time),
+                      label: Text(
+                        _startTimeOfDay == null
+                            ? '--:--'
+                            : '${_startTimeOfDay!.hour.toString().padLeft(2, '0')}:${_startTimeOfDay!.minute.toString().padLeft(2, '0')}',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Enable Breaks by Default',
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                        ),
+                        Switch(
+                          key: const Key('settings-breaks-default-switch'),
+                          value: _breaksEnabledByDefault,
+                          onChanged: (v) => setState(() => _breaksEnabledByDefault = v),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('settings-break-duration-field'),
+                controller: _breakDurationMinutesController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Break Duration (min)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  OutlinedButton(
+                    key: const Key('settings-cancel-button'),
+                    onPressed: () => _handleCancel(state),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton(
+                    key: const Key('settings-save-button'),
+                    onPressed: () => _handleSave(state),
+                    child: const Text('Save Changes'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text(
+                'Task Details',
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('task-name-field'),
+                controller: _taskNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Task Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('task-duration-field'),
+                controller: _taskDurationMinutesController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Estimated Duration (min)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    key: const Key('task-duplicate-button'),
+                    onPressed: model.tasks.isEmpty
+                        ? null
+                        : () => context.read<RoutineBloc>().add(const DuplicateSelectedTask()),
+                    icon: const Icon(Icons.copy),
+                    label: const Text('Duplicate'),
+                  ),
+                  const SizedBox(width: 12),
+                  TextButton.icon(
+                    key: const Key('task-delete-button'),
+                    onPressed: model.tasks.isEmpty
+                        ? null
+                        : () => context.read<RoutineBloc>().add(const DeleteSelectedTask()),
+                    icon: Icon(Icons.delete, color: theme.colorScheme.error),
+                    label: Text(
+                      'Delete Task',
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

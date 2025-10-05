@@ -55,3 +55,23 @@ class MarkTaskDone extends RoutineEvent {
 class GoToPreviousTask extends RoutineEvent {
   const GoToPreviousTask();
 }
+
+/// Update properties of the currently selected task.
+class UpdateCurrentTask extends RoutineEvent {
+  const UpdateCurrentTask({required this.name, required this.estimatedDuration});
+  final String name; // human readable name
+  final int estimatedDuration; // in seconds
+
+  @override
+  List<Object?> get props => [name, estimatedDuration];
+}
+
+/// Duplicate the currently selected task and insert it after the current index.
+class DuplicateSelectedTask extends RoutineEvent {
+  const DuplicateSelectedTask();
+}
+
+/// Delete the currently selected task.
+class DeleteSelectedTask extends RoutineEvent {
+  const DeleteSelectedTask();
+}
