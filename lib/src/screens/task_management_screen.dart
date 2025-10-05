@@ -281,6 +281,21 @@ class _RightSettingsAndDetailsState extends State<_RightSettingsAndDetails> {
                     );
                     if (picked != null) {
                       setState(() => _startTimeOfDay = picked);
+                      // Immediately persist to settings using today's date
+                      final now = DateTime.now();
+                      final start = DateTime(
+                        now.year,
+                        now.month,
+                        now.day,
+                        picked.hour,
+                        picked.minute,
+                      ).millisecondsSinceEpoch;
+                      final newSettings = model.settings.copyWith(
+                        startTime: start,
+                      );
+                      context.read<RoutineBloc>().add(
+                        UpdateSettings(newSettings),
+                      );
                     }
                   },
                   child: InputDecorator(
@@ -306,7 +321,13 @@ class _RightSettingsAndDetailsState extends State<_RightSettingsAndDetails> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Enable Breaks by Default'),
                 value: _breaksEnabledByDefault,
-                onChanged: (v) => setState(() => _breaksEnabledByDefault = v),
+                onChanged: (v) {
+                  setState(() => _breaksEnabledByDefault = v);
+                  final newSettings = model.settings.copyWith(
+                    breaksEnabledByDefault: v,
+                  );
+                  context.read<RoutineBloc>().add(UpdateSettings(newSettings));
+                },
               ),
               _LabeledField(
                 label: 'Break Duration (min)',
@@ -316,66 +337,22 @@ class _RightSettingsAndDetailsState extends State<_RightSettingsAndDetails> {
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.coffee),
                   ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton(
-                    onPressed: () {
-                      // Reset to current model values
-                      final start = DateTime.fromMillisecondsSinceEpoch(
-                        model.settings.startTime,
-                      );
-                      setState(() {
-                        _startTimeOfDay = TimeOfDay(
-                          hour: start.hour,
-                          minute: start.minute,
-                        );
-                        _breaksEnabledByDefault =
-                            model.settings.breaksEnabledByDefault;
-                        _breakDurationController.text =
-                            (model.settings.defaultBreakDuration / 60)
-                                .round()
-                                .toString();
-                      });
-                    },
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      final now = DateTime.now();
-                      final time =
-                          _startTimeOfDay ??
-                          TimeOfDay(hour: now.hour, minute: now.minute);
-                      final start = DateTime(
-                        now.year,
-                        now.month,
-                        now.day,
-                        time.hour,
-                        time.minute,
-                      ).millisecondsSinceEpoch;
-
-                      final breakMinutes = int.tryParse(
-                        _breakDurationController.text.trim(),
-                      );
+                  onChanged: (text) {
+                    final mins = int.tryParse(text.trim());
+                    if (mins != null) {
                       final newSettings = model.settings.copyWith(
-                        startTime: start,
-                        breaksEnabledByDefault: _breaksEnabledByDefault,
-                        defaultBreakDuration: (breakMinutes ?? 0) * 60,
+                        defaultBreakDuration: mins * 60,
                       );
-
                       context.read<RoutineBloc>().add(
                         UpdateSettings(newSettings),
                       );
-                    },
-                    child: const Text('Save Changes'),
-                  ),
-                ],
+                    }
+                  },
+                ),
               ),
+              const SizedBox(height: 12),
 
+              // Save buttons removed; saving occurs automatically on change
               const Divider(height: 32),
               Text('Task Details', style: theme.textTheme.titleLarge),
               const SizedBox(height: 12),
@@ -386,6 +363,15 @@ class _RightSettingsAndDetailsState extends State<_RightSettingsAndDetails> {
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.edit),
                   ),
+                  onChanged: (value) {
+                    final updated = selected.copyWith(name: value);
+                    context.read<RoutineBloc>().add(
+                      UpdateTaskAtIndex(
+                        index: model.currentTaskIndex,
+                        task: updated,
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 8),
@@ -397,6 +383,20 @@ class _RightSettingsAndDetailsState extends State<_RightSettingsAndDetails> {
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.timer),
                   ),
+                  onChanged: (text) {
+                    final mins = int.tryParse(text.trim());
+                    if (mins != null) {
+                      final updated = selected.copyWith(
+                        estimatedDuration: mins * 60,
+                      );
+                      context.read<RoutineBloc>().add(
+                        UpdateTaskAtIndex(
+                          index: model.currentTaskIndex,
+                          task: updated,
+                        ),
+                      );
+                    }
+                  },
                 ),
               ),
               const SizedBox(height: 12),
@@ -421,27 +421,6 @@ class _RightSettingsAndDetailsState extends State<_RightSettingsAndDetails> {
                         const DeleteSelectedTask(),
                       );
                     },
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      final name = _taskNameController.text.trim();
-                      final mins = int.tryParse(
-                        _taskDurationController.text.trim(),
-                      );
-                      final updated = selected.copyWith(
-                        name: name.isEmpty ? selected.name : name,
-                        estimatedDuration: mins != null
-                            ? mins * 60
-                            : selected.estimatedDuration,
-                      );
-                      context.read<RoutineBloc>().add(
-                        UpdateTaskAtIndex(
-                          index: model.currentTaskIndex,
-                          task: updated,
-                        ),
-                      );
-                    },
-                    child: const Text('Save Task'),
                   ),
                 ],
               ),
