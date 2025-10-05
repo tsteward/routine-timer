@@ -190,5 +190,56 @@ void main() {
       final uniqueOrders = orders.toSet();
       expect(uniqueOrders.length, orders.length);
     });
+
+    test('update current task edits name and duration', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      expect(loaded.model!.tasks[0].name, isNotEmpty);
+
+      bloc.add(const UpdateCurrentTask(name: 'Edited', estimatedDuration: 999));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks[0].name == 'Edited',
+      );
+      expect(updated.model!.tasks[0].estimatedDuration, 999);
+    });
+
+    test('duplicate current task inserts copy and selects it', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalLen = loaded.model!.tasks.length;
+      final originalSecondId = loaded.model!.tasks[1].id;
+
+      // Select first, then duplicate
+      bloc.add(const SelectTask(0));
+      await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 0);
+
+      bloc.add(const DuplicateCurrentTask());
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == originalLen + 1,
+      );
+
+      // New selection should be at index 1 and not equal to previous second id
+      expect(updated.model!.currentTaskIndex, 1);
+      expect(updated.model!.tasks[1].id, isNot(equals(originalSecondId)));
+      expect(updated.model!.tasks[1].name.contains('(copy)'), isTrue);
+    });
+
+    test('delete current task removes item and adjusts selection', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalLen = loaded.model!.tasks.length;
+
+      // Select second task then delete
+      bloc.add(const SelectTask(1));
+      await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 1);
+
+      bloc.add(const DeleteCurrentTask());
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == originalLen - 1,
+      );
+
+      // Selection should remain valid
+      expect(updated.model!.currentTaskIndex, inInclusiveRange(0, updated.model!.tasks.length - 1));
+    });
   });
 }

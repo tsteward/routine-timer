@@ -149,7 +149,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('right column shows settings and details UI', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -162,10 +162,19 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      // Before loading, it should still render the scaffold and right column controls with defaults
+      expect(find.text('Routine Settings'), findsOneWidget);
+      expect(find.text('Task Details'), findsOneWidget);
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // After loading, fields should reflect the selected task
+      expect(find.byKey(const ValueKey('task_name_field')), findsOneWidget);
+      expect(find.byKey(const ValueKey('task_duration_field')), findsOneWidget);
+      expect(find.byKey(const ValueKey('break_duration_field')), findsOneWidget);
+      expect(find.byKey(const ValueKey('start_time_button')), findsOneWidget);
+      expect(find.byKey(const ValueKey('breaks_enabled_switch')), findsOneWidget);
 
       bloc.close();
     });
