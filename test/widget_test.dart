@@ -38,12 +38,11 @@ void main() {
     expect(find.text('Task Management'), findsOneWidget);
     // Left column should show a reorderable task list with sample data
     expect(find.byType(ReorderableListView), findsOneWidget);
-    expect(find.text('Morning Workout'), findsOneWidget);
-    // Right column placeholder should still be present
-    expect(
-      find.text('Right Column: Settings & Details Placeholder'),
-      findsOneWidget,
-    );
+    // Task appears in both list and text field
+    expect(find.text('Morning Workout'), findsAtLeastNWidgets(1));
+    // Right column should show settings sections
+    expect(find.text('Routine Settings'), findsOneWidget);
+    expect(find.text('Task Details'), findsOneWidget);
   });
 
   testWidgets('Can navigate to Main Routine via the test menu', (tester) async {
