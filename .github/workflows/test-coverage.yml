@@ -1,0 +1,106 @@
+name: Test Coverage
+
+on:
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  coverage:
+    name: Generate and Report Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        cache: true
+
+    - name: Install dependencies
+      run: flutter pub get
+
+    - name: Run tests with coverage
+      run: flutter test --coverage
+
+    - name: Generate coverage report
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lcov
+        genhtml coverage/lcov.info -o coverage/html
+        echo "### Test Coverage Report" > coverage-summary.txt
+        echo "" >> coverage-summary.txt
+        lcov --list coverage/lcov.info | tail -n 3 >> coverage-summary.txt
+
+    - name: Extract coverage percentage
+      id: coverage
+      run: |
+        COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 | grep "lines" | awk '{print $2}')
+        echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
+        echo "Coverage: $COVERAGE"
+
+    - name: Comment PR with coverage
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const coverage = '${{ steps.coverage.outputs.percentage }}';
+          
+          // Read the full lcov list output
+          const { execSync } = require('child_process');
+          const lcovOutput = execSync('lcov --list coverage/lcov.info', { encoding: 'utf-8' });
+          
+          // Parse coverage percentage
+          const coverageNum = parseFloat(coverage);
+          const emoji = coverageNum >= 80 ? '✅' : coverageNum >= 60 ? '⚠️' : '❌';
+          
+          const comment = `## ${emoji} Test Coverage Report
+          
+          **Overall Coverage: ${coverage}**
+          
+          <details>
+          <summary>📊 Detailed Coverage</summary>
+          
+          \`\`\`
+          ${lcovOutput}
+          \`\`\`
+          
+          </details>
+          
+          ---
+          *Coverage threshold: ✅ ≥80% | ⚠️ ≥60% | ❌ <60%*
+          `;
+          
+          // Find existing coverage comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const botComment = comments.find(comment => 
+            comment.user.type === 'Bot' && 
+            comment.body.includes('Test Coverage Report')
+          );
+          
+          // Update or create comment
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
