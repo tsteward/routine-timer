@@ -20,6 +20,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<UpdateSettings>(_onUpdateSettings);
     on<MarkTaskDone>(_onMarkTaskDone);
     on<GoToPreviousTask>(_onGoToPreviousTask);
+    on<UpdateTask>(_onUpdateTask);
+    on<DuplicateTask>(_onDuplicateTask);
+    on<DeleteTask>(_onDeleteTask);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -156,5 +159,112 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       model.tasks.length - 1,
     );
     emit(state.copyWith(model: model.copyWith(currentTaskIndex: prevIndex)));
+  }
+
+  void _onUpdateTask(UpdateTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks[event.index] = updatedTasks[event.index].copyWith(
+      name: event.name,
+      estimatedDuration: event.estimatedDuration,
+    );
+
+    emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+  }
+
+  void _onDuplicateTask(DuplicateTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    final taskToDuplicate = updatedTasks[event.index];
+
+    // Generate a new ID for the duplicated task
+    final newId = '${DateTime.now().millisecondsSinceEpoch}';
+    final duplicatedTask = TaskModel(
+      id: newId,
+      name: '${taskToDuplicate.name} (Copy)',
+      estimatedDuration: taskToDuplicate.estimatedDuration,
+      order: event.index + 1,
+    );
+
+    updatedTasks.insert(event.index + 1, duplicatedTask);
+
+    // Reindex tasks
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // If we have breaks, insert a new break at the appropriate position
+    List<BreakModel>? updatedBreaks;
+    if (model.breaks != null && event.index < model.breaks!.length) {
+      updatedBreaks = List<BreakModel>.from(model.breaks!);
+      updatedBreaks.insert(
+        event.index + 1,
+        BreakModel(
+          duration: model.settings.defaultBreakDuration,
+          isEnabled: model.settings.breaksEnabledByDefault,
+        ),
+      );
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: reindexed,
+          breaks: updatedBreaks,
+          currentTaskIndex: event.index + 1,
+        ),
+      ),
+    );
+  }
+
+  void _onDeleteTask(DeleteTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+    if (model.tasks.length <= 1) return; // Prevent deleting the last task
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks.removeAt(event.index);
+
+    // Reindex tasks
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // Update breaks list
+    List<BreakModel>? updatedBreaks;
+    if (model.breaks != null && event.index < model.breaks!.length) {
+      updatedBreaks = List<BreakModel>.from(model.breaks!);
+      updatedBreaks.removeAt(event.index);
+    }
+
+    // Adjust current task index if necessary
+    int newCurrentIndex = model.currentTaskIndex;
+    if (event.index < model.currentTaskIndex) {
+      newCurrentIndex = (model.currentTaskIndex - 1).clamp(
+        0,
+        reindexed.length - 1,
+      );
+    } else if (event.index == model.currentTaskIndex) {
+      newCurrentIndex = event.index.clamp(0, reindexed.length - 1);
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: reindexed,
+          breaks: updatedBreaks,
+          currentTaskIndex: newCurrentIndex,
+        ),
+      ),
+    );
   }
 }

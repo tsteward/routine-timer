@@ -44,7 +44,8 @@ void main() {
         ),
       );
 
-      expect(find.text('No routine loaded'), findsOneWidget);
+      // It appears in both left and right columns
+      expect(find.text('No routine loaded'), findsAtLeastNWidgets(1));
 
       bloc.close();
     });
@@ -66,12 +67,12 @@ void main() {
       bloc.add(const LoadSampleRoutine());
       await tester.pumpAndSettle();
 
-      // Should show task list
+      // Should show task list (tasks appear in both list and text field)
       expect(find.byType(ReorderableListView), findsOneWidget);
-      expect(find.text('Morning Workout'), findsOneWidget);
-      expect(find.text('Shower'), findsOneWidget);
-      expect(find.text('Breakfast'), findsOneWidget);
-      expect(find.text('Review Plan'), findsOneWidget);
+      expect(find.text('Morning Workout'), findsAtLeastNWidgets(1));
+      expect(find.text('Shower'), findsAtLeastNWidgets(1));
+      expect(find.text('Breakfast'), findsAtLeastNWidgets(1));
+      expect(find.text('Review Plan'), findsAtLeastNWidgets(1));
 
       bloc.close();
     });
@@ -149,8 +150,8 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
-      final bloc = RoutineBloc();
+    testWidgets('displays right column settings panel', (tester) async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
 
       await tester.pumpWidget(
         MaterialApp(
@@ -161,11 +162,11 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      // Verify right column shows settings panel
+      expect(find.text('Routine Settings'), findsOneWidget);
+      expect(find.text('Task Details'), findsOneWidget);
 
       bloc.close();
     });
