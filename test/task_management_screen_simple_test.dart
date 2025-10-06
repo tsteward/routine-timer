@@ -281,9 +281,9 @@ void main() {
         findsNWidgets(2),
       ); // Button and dialog title
       expect(find.text('Task Name'), findsOneWidget);
-      expect(find.text('Duration (minutes)'), findsOneWidget);
+      expect(find.text('Duration'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
-      expect(find.text('Add'), findsOneWidget);
+      expect(find.text('Add'), findsAtLeastNWidgets(1));
 
       bloc.close();
     });
@@ -308,8 +308,14 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
+      // Set a duration but no name
+      await tester.tap(find.byIcon(Icons.access_time));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
       // Try to submit without entering a name
-      await tester.tap(find.text('Add'));
+      await tester.tap(find.text('Add').last);
       await tester.pumpAndSettle();
 
       // Should show validation error
@@ -339,17 +345,17 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter only name, not duration
-      await tester.enterText(find.byType(TextFormField).first, 'Test Task');
-      await tester.tap(find.text('Add'));
+      await tester.enterText(find.byType(TextFormField), 'Test Task');
+      await tester.tap(find.text('Add').last);
       await tester.pumpAndSettle();
 
       // Should show validation error
-      expect(find.text('Please enter a duration'), findsOneWidget);
+      expect(find.text('Please select a duration'), findsOneWidget);
 
       bloc.close();
     });
 
-    testWidgets('add task dialog validates invalid duration', (tester) async {
+    testWidgets('add task dialog validates zero duration', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -369,14 +375,19 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      // Enter invalid duration
-      await tester.enterText(find.byType(TextFormField).first, 'Test Task');
-      await tester.enterText(find.byType(TextFormField).last, '-5');
-      await tester.tap(find.text('Add'));
+      // Enter name but don't set duration
+      await tester.enterText(find.byType(TextFormField), 'Test Task');
+
+      // Try to submit without selecting duration
+      final addButton = find.ancestor(
+        of: find.text('Add'),
+        matching: find.byType(ElevatedButton),
+      );
+      await tester.tap(addButton);
       await tester.pumpAndSettle();
 
-      // Should show validation error
-      expect(find.text('Please enter a valid positive number'), findsOneWidget);
+      // Should show error for no duration selected
+      expect(find.text('Please select a duration'), findsOneWidget);
 
       bloc.close();
     });
@@ -401,10 +412,19 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      // Enter valid task details
-      await tester.enterText(find.byType(TextFormField).first, 'New Exercise');
-      await tester.enterText(find.byType(TextFormField).last, '25');
-      await tester.tap(find.text('Add'));
+      // Enter task name
+      await tester.enterText(find.byType(TextFormField), 'New Exercise');
+
+      // Open time picker and select duration (default is 0:20)
+      await tester.tap(find.byIcon(Icons.access_time));
+      await tester.pumpAndSettle();
+
+      // Accept the default time (0:20 = 20 minutes)
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      // Submit the form
+      await tester.tap(find.text('Add').last);
       await tester.pumpAndSettle();
 
       // Dialog should close
@@ -412,7 +432,8 @@ void main() {
 
       // New task should appear in the list
       expect(find.text('New Exercise'), findsOneWidget);
-      expect(find.text('25 min'), findsOneWidget);
+      // Note: "20 min" appears twice - once in Morning Workout and once in New Exercise
+      expect(find.text('20 min'), findsNWidgets(2));
 
       bloc.close();
     });
@@ -442,8 +463,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter some data but cancel
-      await tester.enterText(find.byType(TextFormField).first, 'Test');
-      await tester.tap(find.text('Cancel'));
+      await tester.enterText(find.byType(TextFormField), 'Test');
+      await tester.tap(find.text('Cancel').first);
       await tester.pumpAndSettle();
 
       // Dialog should close

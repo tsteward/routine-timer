@@ -401,17 +401,51 @@ class _AddTaskDialog extends StatefulWidget {
 class _AddTaskDialogState extends State<_AddTaskDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _durationController = TextEditingController();
+  TimeOfDay? _selectedDuration;
+  String? _durationError;
 
   @override
   void dispose() {
     _nameController.dispose();
-    _durationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectDuration() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedDuration ?? const TimeOfDay(hour: 0, minute: 20),
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+      helpText: 'Select Duration',
+      hourLabelText: 'Hours',
+      minuteLabelText: 'Minutes',
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDuration = picked;
+        _durationError = null;
+      });
+    }
+  }
+
+  String _formatDuration(TimeOfDay time) {
+    final hours = time.hour;
+    final minutes = time.minute;
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else {
+      return '${minutes}m';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AlertDialog(
       title: const Text('Add New Task'),
       content: Form(
@@ -434,23 +468,27 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
               },
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _durationController,
-              decoration: const InputDecoration(
-                labelText: 'Duration (minutes)',
-                hintText: 'e.g., 20',
+            InkWell(
+              onTap: _selectDuration,
+              borderRadius: BorderRadius.circular(4),
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: 'Duration',
+                  hintText: 'Tap to select',
+                  errorText: _durationError,
+                  suffixIcon: const Icon(Icons.access_time),
+                ),
+                child: Text(
+                  _selectedDuration != null
+                      ? _formatDuration(_selectedDuration!)
+                      : '',
+                  style: _selectedDuration != null
+                      ? theme.textTheme.bodyLarge
+                      : theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.hintColor,
+                        ),
+                ),
               ),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a duration';
-                }
-                final duration = int.tryParse(value);
-                if (duration == null || duration <= 0) {
-                  return 'Please enter a valid positive number';
-                }
-                return null;
-              },
             ),
           ],
         ),
@@ -462,13 +500,27 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              final name = _nameController.text.trim();
-              final durationMinutes = int.parse(_durationController.text);
-              final durationSeconds = durationMinutes * 60;
-              widget.onAdd(name, durationSeconds);
-              Navigator.of(context).pop();
+            if (!_formKey.currentState!.validate()) {
+              return;
             }
+            if (_selectedDuration == null) {
+              setState(() {
+                _durationError = 'Please select a duration';
+              });
+              return;
+            }
+            final totalMinutes =
+                (_selectedDuration!.hour * 60) + _selectedDuration!.minute;
+            if (totalMinutes == 0) {
+              setState(() {
+                _durationError = 'Duration must be greater than 0';
+              });
+              return;
+            }
+            final name = _nameController.text.trim();
+            final durationSeconds = totalMinutes * 60;
+            widget.onAdd(name, durationSeconds);
+            Navigator.of(context).pop();
           },
           child: const Text('Add'),
         ),
