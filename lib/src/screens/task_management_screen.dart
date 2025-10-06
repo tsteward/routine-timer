@@ -14,21 +14,31 @@ class TaskManagementScreen extends StatelessWidget {
     final color = Theme.of(context).colorScheme.surfaceContainerHighest;
     return Scaffold(
       appBar: AppBar(title: const Text('Task Management')),
-      body: Row(
+      body: Column(
         children: [
-          // Left column placeholder (task list with breaks)
           Expanded(
-            flex: 3,
-            child: Container(color: color, child: const _TaskListColumn()),
-          ),
-          // Right column (settings & details)
-          Expanded(
-            flex: 2,
-            child: Container(
-              color: color.withValues(alpha: 0.6),
-              child: const _SettingsAndDetailsColumn(),
+            child: Row(
+              children: [
+                // Left column (task list with breaks)
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    color: color,
+                    child: const _TaskListColumn(),
+                  ),
+                ),
+                // Right column (settings & details)
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    color: color.withValues(alpha: 0.6),
+                    child: const _SettingsAndDetailsColumn(),
+                  ),
+                ),
+              ],
             ),
           ),
+          const _BottomBar(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -819,5 +829,290 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
     } else {
       return '${minutes}m';
     }
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  const _BottomBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return BlocBuilder<RoutineBloc, RoutineBlocState>(
+      builder: (context, state) {
+        final model = state.model;
+        if (model == null) {
+          return const SizedBox.shrink();
+        }
+
+        final totalTime = _calculateTotalTime(model);
+        final estimatedFinishTime = _calculateEstimatedFinishTime(model);
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Total Time',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatDurationHoursMinutes(totalTime),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Estimated Finish',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatTimeHHmm(estimatedFinishTime),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: () => _showAddTaskDialog(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Add New Task'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  foregroundColor: theme.colorScheme.onPrimaryContainer,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  int _calculateTotalTime(RoutineStateModel model) {
+    int total = 0;
+    for (final task in model.tasks) {
+      total += task.estimatedDuration;
+    }
+    if (model.breaks != null) {
+      for (final breakItem in model.breaks!) {
+        if (breakItem.isEnabled) {
+          total += breakItem.duration;
+        }
+      }
+    }
+    return total;
+  }
+
+  DateTime _calculateEstimatedFinishTime(RoutineStateModel model) {
+    final startTime = DateTime.fromMillisecondsSinceEpoch(
+      model.settings.startTime,
+    );
+    final totalSeconds = _calculateTotalTime(model);
+    return startTime.add(Duration(seconds: totalSeconds));
+  }
+
+  String _formatTimeHHmm(DateTime time) {
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  String _formatDurationHoursMinutes(int seconds) {
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m';
+  }
+
+  void _showAddTaskDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => BlocProvider.value(
+        value: context.read<RoutineBloc>(),
+        child: const _AddTaskDialog(),
+      ),
+    );
+  }
+}
+
+class _AddTaskDialog extends StatefulWidget {
+  const _AddTaskDialog();
+
+  @override
+  State<_AddTaskDialog> createState() => _AddTaskDialogState();
+}
+
+class _AddTaskDialogState extends State<_AddTaskDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  TimeOfDay _selectedDuration = const TimeOfDay(hour: 0, minute: 10);
+  String? _durationError;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDuration() async {
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _selectedDuration,
+      helpText: 'Select Duration',
+      hourLabelText: 'Hours',
+      minuteLabelText: 'Minutes',
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime != null) {
+      setState(() {
+        _selectedDuration = pickedTime;
+        _durationError = null;
+      });
+    }
+  }
+
+  String _formatDuration() {
+    final hours = _selectedDuration.hour;
+    final minutes = _selectedDuration.minute;
+    if (hours == 0 && minutes == 0) {
+      return 'Tap to select duration';
+    }
+    if (hours > 0 && minutes > 0) {
+      return '$hours hr $minutes min';
+    } else if (hours > 0) {
+      return '$hours hr';
+    } else {
+      return '$minutes min';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('Add New Task'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Task Name',
+                hintText: 'e.g., Morning Stretch',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a task name';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: _pickDuration,
+              borderRadius: BorderRadius.circular(4),
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: 'Duration',
+                  border: const OutlineInputBorder(),
+                  errorText: _durationError,
+                  suffixIcon: const Icon(Icons.access_time),
+                ),
+                child: Text(
+                  _formatDuration(),
+                  style: theme.textTheme.bodyLarge,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              // Validate that duration is greater than 0
+              final totalMinutes =
+                  _selectedDuration.hour * 60 + _selectedDuration.minute;
+              if (totalMinutes <= 0) {
+                setState(() {
+                  _durationError = 'Please select a duration greater than 0';
+                });
+                return;
+              }
+
+              final name = _nameController.text.trim();
+              final durationSeconds = totalMinutes * 60;
+
+              context.read<RoutineBloc>().add(
+                AddTask(name: name, durationSeconds: durationSeconds),
+              );
+              Navigator.of(context).pop();
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: theme.colorScheme.onPrimary,
+          ),
+          child: const Text('Add Task'),
+        ),
+      ],
+    );
   }
 }

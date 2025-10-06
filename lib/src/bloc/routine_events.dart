@@ -80,3 +80,12 @@ class DeleteTask extends RoutineEvent {
   @override
   List<Object?> get props => [index];
 }
+
+class AddTask extends RoutineEvent {
+  const AddTask({required this.name, required this.durationSeconds});
+  final String name;
+  final int durationSeconds;
+
+  @override
+  List<Object?> get props => [name, durationSeconds];
+}

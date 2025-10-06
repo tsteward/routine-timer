@@ -404,5 +404,107 @@ void main() {
       // Should remain unchanged
       expect(bloc.state.model!.tasks.length, taskCount);
     });
+
+    test('add task appends new task to the end of the list', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final initialCount = loaded.model!.tasks.length;
+
+      bloc.add(const AddTask(name: 'New Task', durationSeconds: 600));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length > initialCount,
+      );
+
+      expect(updated.model!.tasks.length, initialCount + 1);
+      expect(updated.model!.tasks.last.name, 'New Task');
+      expect(updated.model!.tasks.last.estimatedDuration, 600);
+      expect(updated.model!.tasks.last.order, initialCount);
+    });
+
+    test('add task creates new break when breaks exist', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final initialBreaksCount = loaded.model!.breaks!.length;
+
+      bloc.add(const AddTask(name: 'Another Task', durationSeconds: 300));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.breaks!.length > initialBreaksCount,
+      );
+
+      expect(updated.model!.breaks!.length, initialBreaksCount + 1);
+      final newBreak = updated.model!.breaks!.last;
+      expect(newBreak.duration, updated.model!.settings.defaultBreakDuration);
+      expect(
+        newBreak.isEnabled,
+        updated.model!.settings.breaksEnabledByDefault,
+      );
+    });
+
+    test('add task assigns unique id to new task', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      bloc.add(const AddTask(name: 'Task 1', durationSeconds: 100));
+      final first = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.any((t) => t.name == 'Task 1'),
+      );
+
+      bloc.add(const AddTask(name: 'Task 2', durationSeconds: 200));
+      final second = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.any((t) => t.name == 'Task 2'),
+      );
+
+      final task1 = first.model!.tasks.firstWhere((t) => t.name == 'Task 1');
+      final task2 = second.model!.tasks.firstWhere((t) => t.name == 'Task 2');
+
+      expect(task1.id != task2.id, true);
+    });
+
+    test('add multiple tasks in sequence', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final initialCount = loaded.model!.tasks.length;
+
+      bloc.add(const AddTask(name: 'Task A', durationSeconds: 100));
+      await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == initialCount + 1,
+      );
+
+      bloc.add(const AddTask(name: 'Task B', durationSeconds: 200));
+      await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == initialCount + 2,
+      );
+
+      bloc.add(const AddTask(name: 'Task C', durationSeconds: 300));
+      final finalState = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == initialCount + 3,
+      );
+
+      expect(finalState.model!.tasks.length, initialCount + 3);
+      expect(finalState.model!.tasks[initialCount].name, 'Task A');
+      expect(finalState.model!.tasks[initialCount + 1].name, 'Task B');
+      expect(finalState.model!.tasks[initialCount + 2].name, 'Task C');
+
+      // Verify all orders are sequential
+      final orders = finalState.model!.tasks.map((t) => t.order).toList();
+      expect(orders, List.generate(initialCount + 3, (i) => i));
+    });
+
+    test('add task initializes with correct defaults', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      bloc.add(const AddTask(name: 'Test Task', durationSeconds: 500));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.any((t) => t.name == 'Test Task'),
+      );
+
+      final newTask = updated.model!.tasks.firstWhere(
+        (t) => t.name == 'Test Task',
+      );
+
+      expect(newTask.isCompleted, false);
+      expect(newTask.actualDuration, null);
+    });
   });
 }
