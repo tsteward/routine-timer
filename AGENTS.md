@@ -125,20 +125,81 @@ flutter test
 - **Avoid flakiness**: use proper async/waits, pumps, and deterministic inputs
 - **Test location**: Place tests in the `test/` directory, mirroring the structure of `lib/`
 
+### 13.1) Verifying Test Coverage
+**MANDATORY**: Always verify that your new code is covered by tests. Do not consider a change complete without coverage verification.
+
+#### Generate Coverage Report
+Run tests with coverage collection enabled:
+```powershell
+flutter test --coverage
+```
+This generates a `coverage/lcov.info` file containing line-by-line coverage data.
+
+#### View Coverage Report (HTML)
+To generate a human-readable HTML report:
+```powershell
+# Install lcov if not already available (Linux/WSL)
+# sudo apt-get install lcov
+
+# Generate HTML report from lcov.info
+genhtml coverage/lcov.info -o coverage/html
+
+# Open the report in your browser
+# Windows:
+start coverage/html/index.html
+# Linux:
+xdg-open coverage/html/index.html
+```
+
+#### View Coverage Summary (Command Line)
+For a quick summary without generating HTML:
+```powershell
+# Linux/WSL with lcov installed:
+lcov --summary coverage/lcov.info
+
+# Or use Flutter's built-in summary (if available):
+flutter test --coverage --reporter=compact
+```
+
+#### Inspect Specific File Coverage
+To check coverage for specific files you modified:
+```powershell
+# View coverage for a specific file
+lcov --list coverage/lcov.info | grep "your_file.dart"
+```
+
+#### Coverage Requirements
+- **100% coverage of new code**: All new lines, branches, and functions you add MUST be covered by tests
+- **Verify before committing**: Always check coverage reports to ensure your new code is tested
+- **No untested code paths**: Every conditional branch, error handler, and edge case must have a corresponding test
+- **Review the HTML report**: Visually inspect the coverage report to identify any untested lines (highlighted in red)
+
+#### Workflow for Coverage Verification
+1. **Make your code changes** in `lib/`
+2. **Write tests** in `test/` that exercise the new code
+3. **Generate coverage**: `flutter test --coverage`
+4. **Review the report**: Check the HTML report or lcov summary
+5. **Identify gaps**: Look for red/uncovered lines in your new code
+6. **Add missing tests**: Write additional tests to cover any gaps
+7. **Repeat steps 3-6** until all new code is covered
+
+**IMPORTANT**: Do not proceed to the quality gate (Section 14) until you have verified 100% coverage of your new code.
+
 ## 14) Pre-Commit Quality Gate
 Before considering a change complete, verify all of the following are green:
 
 1. **Test coverage added**: All new functionality has accompanying tests (see Section 13)
-2. Tests pass locally (including edge cases):
+2. **Coverage verified**: Run `flutter test --coverage` and confirm 100% coverage of new code (see Section 13.1)
+3. Tests pass locally (including edge cases):
    ```powershell
    flutter test
    ```
-3. Static analysis clean (0 issues):
+4. Static analysis clean (0 issues):
    ```powershell
    dart analyze
    ```
-4. Tests pass via MCP (if using MCP workflow)
-5. Code formatted:
+5. Tests pass via MCP (if using MCP workflow)
+6. Code formatted:
    ```powershell
    dart format .
    ```
