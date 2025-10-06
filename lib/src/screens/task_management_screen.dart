@@ -13,23 +13,35 @@ class TaskManagementScreen extends StatelessWidget {
     final color = Theme.of(context).colorScheme.surfaceContainerHighest;
     return Scaffold(
       appBar: AppBar(title: const Text('Task Management')),
-      body: Row(
+      body: Column(
         children: [
-          // Left column placeholder (task list with breaks)
           Expanded(
-            flex: 3,
-            child: Container(color: color, child: const _TaskListColumn()),
-          ),
-          // Right column placeholder (settings & details)
-          Expanded(
-            flex: 2,
-            child: Container(
-              color: color.withValues(alpha: 0.6),
-              child: const Center(
-                child: Text('Right Column: Settings & Details Placeholder'),
-              ),
+            child: Row(
+              children: [
+                // Left column placeholder (task list with breaks)
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    color: color,
+                    child: const _TaskListColumn(),
+                  ),
+                ),
+                // Right column placeholder (settings & details)
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    color: color.withValues(alpha: 0.6),
+                    child: const Center(
+                      child: Text(
+                        'Right Column: Settings & Details Placeholder',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+          const _BottomBar(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -227,6 +239,242 @@ class _StartTimePill extends StatelessWidget {
           letterSpacing: 0.2,
         ),
       ),
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  const _BottomBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return BlocBuilder<RoutineBloc, RoutineBlocState>(
+      builder: (context, state) {
+        if (state.loading || state.model == null) {
+          return const SizedBox.shrink();
+        }
+
+        final model = state.model!;
+        final totalTime = _calculateTotalTime(model);
+        final finishTime = _calculateFinishTime(model);
+
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                offset: const Offset(0, -2),
+                blurRadius: 4,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Total time
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Time',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatDuration(totalTime),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              // Estimated finish time
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Est. Finish Time',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatTime12Hour(finishTime),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              // Add new task button
+              ElevatedButton.icon(
+                onPressed: () => _showAddTaskDialog(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Add New Task'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  int _calculateTotalTime(RoutineStateModel model) {
+    int total = 0;
+    // Sum all task durations
+    for (final task in model.tasks) {
+      total += task.estimatedDuration;
+    }
+    // Add enabled breaks
+    if (model.breaks != null) {
+      for (final breakItem in model.breaks!) {
+        if (breakItem.isEnabled) {
+          total += breakItem.duration;
+        }
+      }
+    }
+    return total;
+  }
+
+  DateTime _calculateFinishTime(RoutineStateModel model) {
+    final startTime = DateTime.fromMillisecondsSinceEpoch(
+      model.settings.startTime,
+    );
+    final totalTime = _calculateTotalTime(model);
+    return startTime.add(Duration(seconds: totalTime));
+  }
+
+  String _formatDuration(int seconds) {
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m';
+  }
+
+  String _formatTime12Hour(DateTime time) {
+    final hour = time.hour;
+    final minute = time.minute;
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final hour12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    return '$hour12:${minute.toString().padLeft(2, '0')} $period';
+  }
+
+  void _showAddTaskDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => _AddTaskDialog(
+        onAdd: (name, duration) {
+          context.read<RoutineBloc>().add(
+            AddTask(name: name, estimatedDuration: duration),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AddTaskDialog extends StatefulWidget {
+  const _AddTaskDialog({required this.onAdd});
+
+  final void Function(String name, int estimatedDuration) onAdd;
+
+  @override
+  State<_AddTaskDialog> createState() => _AddTaskDialogState();
+}
+
+class _AddTaskDialogState extends State<_AddTaskDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _durationController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _durationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add New Task'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Task Name',
+                hintText: 'e.g., Morning Workout',
+              ),
+              autofocus: true,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a task name';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _durationController,
+              decoration: const InputDecoration(
+                labelText: 'Duration (minutes)',
+                hintText: 'e.g., 20',
+              ),
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a duration';
+                }
+                final minutes = int.tryParse(value.trim());
+                if (minutes == null || minutes <= 0) {
+                  return 'Please enter a valid positive number';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              final name = _nameController.text.trim();
+              final minutes = int.parse(_durationController.text.trim());
+              final seconds = minutes * 60;
+              widget.onAdd(name, seconds);
+              Navigator.of(context).pop();
+            }
+          },
+          child: const Text('Add Task'),
+        ),
+      ],
     );
   }
 }
