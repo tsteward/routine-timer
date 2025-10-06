@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../router/app_router.dart';
 import '../bloc/routine_bloc.dart';
 import '../models/routine_state.dart';
+import '../models/routine_settings.dart';
+import '../models/task.dart';
 import '../models/break.dart';
 
 class TaskManagementScreen extends StatelessWidget {
@@ -20,14 +22,12 @@ class TaskManagementScreen extends StatelessWidget {
             flex: 3,
             child: Container(color: color, child: const _TaskListColumn()),
           ),
-          // Right column placeholder (settings & details)
+          // Right column (settings & details)
           Expanded(
             flex: 2,
             child: Container(
               color: color.withValues(alpha: 0.6),
-              child: const Center(
-                child: Text('Right Column: Settings & Details Placeholder'),
-              ),
+              child: const _SettingsColumn(),
             ),
           ),
         ],
@@ -225,6 +225,410 @@ class _StartTimePill extends StatelessWidget {
         style: theme.textTheme.labelLarge?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
           letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsColumn extends StatefulWidget {
+  const _SettingsColumn();
+
+  @override
+  State<_SettingsColumn> createState() => _SettingsColumnState();
+}
+
+class _SettingsColumnState extends State<_SettingsColumn> {
+  // Local controllers for text fields
+  late TextEditingController _breakDurationController;
+  late TextEditingController _taskNameController;
+  late TextEditingController _taskDurationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _breakDurationController = TextEditingController();
+    _taskNameController = TextEditingController();
+    _taskDurationController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _breakDurationController.dispose();
+    _taskNameController.dispose();
+    _taskDurationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<RoutineBloc, RoutineBlocState>(
+      builder: (context, state) {
+        final model = state.model;
+        if (model == null) {
+          return const Center(child: Text('No routine loaded'));
+        }
+
+        // Update text controllers when state changes
+        final selectedTask = model.currentTaskIndex < model.tasks.length
+            ? model.tasks[model.currentTaskIndex]
+            : null;
+
+        // Update break duration from settings
+        if (_breakDurationController.text !=
+            (model.settings.defaultBreakDuration ~/ 60).toString()) {
+          _breakDurationController.text =
+              (model.settings.defaultBreakDuration ~/ 60).toString();
+        }
+
+        // Update task fields from selected task
+        if (selectedTask != null) {
+          if (_taskNameController.text != selectedTask.name) {
+            _taskNameController.text = selectedTask.name;
+          }
+          if (_taskDurationController.text !=
+              (selectedTask.estimatedDuration ~/ 60).toString()) {
+            _taskDurationController.text =
+                (selectedTask.estimatedDuration ~/ 60).toString();
+          }
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _RoutineSettingsSection(
+                model: model,
+                breakDurationController: _breakDurationController,
+              ),
+              const SizedBox(height: 24),
+              _TaskDetailsSection(
+                task: selectedTask,
+                taskIndex: model.currentTaskIndex,
+                taskNameController: _taskNameController,
+                taskDurationController: _taskDurationController,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RoutineSettingsSection extends StatelessWidget {
+  const _RoutineSettingsSection({
+    required this.model,
+    required this.breakDurationController,
+  });
+
+  final RoutineStateModel model;
+  final TextEditingController breakDurationController;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Routine Settings',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Routine Start Time',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            _TimePickerField(
+              startTime: DateTime.fromMillisecondsSinceEpoch(
+                model.settings.startTime,
+              ),
+              onTimeChanged: (newTime) {
+                final updatedSettings = model.settings.copyWith(
+                  startTime: newTime.millisecondsSinceEpoch,
+                );
+                context.read<RoutineBloc>().add(UpdateSettings(updatedSettings));
+              },
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Enable Breaks by Default',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                Switch(
+                  value: model.settings.breaksEnabledByDefault,
+                  onChanged: (value) {
+                    final updatedSettings = model.settings.copyWith(
+                      breaksEnabledByDefault: value,
+                    );
+                    context
+                        .read<RoutineBloc>()
+                        .add(UpdateSettings(updatedSettings));
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Break Duration (minutes)',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: breakDurationController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Enter break duration',
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    // Reset to current values
+                    breakDurationController.text =
+                        (model.settings.defaultBreakDuration ~/ 60).toString();
+                  },
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () {
+                    final breakMinutes =
+                        int.tryParse(breakDurationController.text) ?? 0;
+                    final updatedSettings = model.settings.copyWith(
+                      defaultBreakDuration: breakMinutes * 60,
+                    );
+                    context
+                        .read<RoutineBloc>()
+                        .add(UpdateSettings(updatedSettings));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Settings saved')),
+                    );
+                  },
+                  child: const Text('Save Changes'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TimePickerField extends StatelessWidget {
+  const _TimePickerField({
+    required this.startTime,
+    required this.onTimeChanged,
+  });
+
+  final DateTime startTime;
+  final ValueChanged<DateTime> onTimeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () async {
+        final timeOfDay = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.fromDateTime(startTime),
+        );
+        if (timeOfDay != null) {
+          final newTime = DateTime(
+            startTime.year,
+            startTime.month,
+            startTime.day,
+            timeOfDay.hour,
+            timeOfDay.minute,
+          );
+          onTimeChanged(newTime);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: theme.colorScheme.outline),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.access_time, color: theme.colorScheme.primary),
+            const SizedBox(width: 12),
+            Text(
+              TimeOfDay.fromDateTime(startTime).format(context),
+              style: theme.textTheme.bodyLarge,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TaskDetailsSection extends StatelessWidget {
+  const _TaskDetailsSection({
+    required this.task,
+    required this.taskIndex,
+    required this.taskNameController,
+    required this.taskDurationController,
+  });
+
+  final TaskModel? task;
+  final int taskIndex;
+  final TextEditingController taskNameController;
+  final TextEditingController taskDurationController;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (task == null) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: Text(
+              'Select a task to edit',
+              style: theme.textTheme.bodyLarge,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Task Details',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Task Name',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: taskNameController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Enter task name',
+              ),
+              onChanged: (value) {
+                // Auto-save on change
+                if (value.isNotEmpty) {
+                  final updatedTask = task.copyWith(name: value);
+                  context.read<RoutineBloc>().add(
+                        UpdateTask(index: taskIndex, task: updatedTask),
+                      );
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Estimated Duration (minutes)',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: taskDurationController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Enter duration',
+              ),
+              onChanged: (value) {
+                // Auto-save on change
+                final minutes = int.tryParse(value);
+                if (minutes != null && minutes > 0) {
+                  final updatedTask =
+                      task.copyWith(estimatedDuration: minutes * 60);
+                  context.read<RoutineBloc>().add(
+                        UpdateTask(index: taskIndex, task: updatedTask),
+                      );
+                }
+              },
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      context.read<RoutineBloc>().add(DuplicateTask(taskIndex));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Task duplicated')),
+                      );
+                    },
+                    icon: const Icon(Icons.content_copy),
+                    label: const Text('Duplicate'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete Task'),
+                          content: const Text(
+                            'Are you sure you want to delete this task?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      ).then((confirmed) {
+                        if (confirmed == true) {
+                          context.read<RoutineBloc>().add(DeleteTask(taskIndex));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Task deleted')),
+                          );
+                        }
+                      });
+                    },
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Delete'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
