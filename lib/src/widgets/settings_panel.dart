@@ -194,4 +194,3 @@ class SettingsPanel extends StatelessWidget {
     context.read<RoutineBloc>().add(UpdateSettings(updatedSettings));
   }
 }
-

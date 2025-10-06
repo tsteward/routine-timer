@@ -44,4 +44,3 @@ class TimeFormatter {
     return '${minutes}m';
   }
 }
-

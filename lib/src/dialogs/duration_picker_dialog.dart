@@ -159,4 +159,3 @@ class _DurationPickerDialogState extends State<DurationPickerDialog> {
     );
   }
 }
-

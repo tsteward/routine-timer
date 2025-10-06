@@ -135,4 +135,3 @@ class TaskManagementBottomBar extends StatelessWidget {
     );
   }
 }
-

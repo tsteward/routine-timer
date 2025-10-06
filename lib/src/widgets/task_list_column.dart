@@ -145,4 +145,3 @@ class TaskListColumn extends StatelessWidget {
     return results;
   }
 }
-
