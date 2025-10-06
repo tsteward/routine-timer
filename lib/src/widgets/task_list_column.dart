@@ -1,0 +1,148 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../bloc/routine_bloc.dart';
+import '../models/break.dart';
+import '../models/routine_state.dart';
+import '../utils/time_formatter.dart';
+import 'start_time_pill.dart';
+
+/// A column displaying the reorderable list of tasks with their start times
+class TaskListColumn extends StatelessWidget {
+  const TaskListColumn({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return BlocBuilder<RoutineBloc, RoutineBlocState>(
+      builder: (context, state) {
+        if (state.loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final model = state.model;
+        if (model == null) {
+          return const Center(child: Text('No routine loaded'));
+        }
+
+        final startTimes = _computeTaskStartTimes(model);
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: ReorderableListView.builder(
+            padding: const EdgeInsets.only(bottom: 24),
+            itemCount: model.tasks.length,
+            onReorder: (oldIndex, newIndex) {
+              // Flutter's ReorderableListView reports newIndex after removal; adjust when moving down.
+              if (newIndex > oldIndex) newIndex -= 1;
+              context.read<RoutineBloc>().add(
+                ReorderTasks(oldIndex: oldIndex, newIndex: newIndex),
+              );
+            },
+            buildDefaultDragHandles: false,
+            itemBuilder: (context, index) {
+              final task = model.tasks[index];
+              final isSelected = index == model.currentTaskIndex;
+              final startTime = startTimes[index];
+
+              return Padding(
+                key: ValueKey('task-${task.id}'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () =>
+                      context.read<RoutineBloc>().add(SelectTask(index)),
+                  child: Card(
+                    elevation: isSelected ? 2 : 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outline.withValues(alpha: 0.2),
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    color: isSelected
+                        ? theme.colorScheme.primaryContainer
+                        : theme.colorScheme.surface,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          StartTimePill(
+                            text: TimeFormatter.formatTimeHHmm(startTime),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  task.name,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  TimeFormatter.formatDurationMinutes(
+                                    task.estimatedDuration,
+                                  ),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: Icon(
+                              Icons.drag_handle,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  /// Computes the absolute start DateTime for each task index, based on
+  /// routine start time, prior task durations, and enabled breaks.
+  List<DateTime> _computeTaskStartTimes(RoutineStateModel model) {
+    final start = DateTime.fromMillisecondsSinceEpoch(model.settings.startTime);
+    final results = <DateTime>[];
+    int accumulatedSeconds = 0;
+
+    for (var i = 0; i < model.tasks.length; i++) {
+      results.add(start.add(Duration(seconds: accumulatedSeconds)));
+      // Add this task's duration to accumulate for the next index
+      accumulatedSeconds += model.tasks[i].estimatedDuration;
+      // If there is a break after this task (i < breaks.length), and it is enabled, include it
+      if (model.breaks != null && i < (model.breaks!.length)) {
+        final BreakModel gap = model.breaks![i];
+        if (gap.isEnabled) {
+          accumulatedSeconds += gap.duration;
+        }
+      }
+    }
+    return results;
+  }
+}
+
