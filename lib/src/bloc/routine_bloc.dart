@@ -20,6 +20,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<UpdateSettings>(_onUpdateSettings);
     on<MarkTaskDone>(_onMarkTaskDone);
     on<GoToPreviousTask>(_onGoToPreviousTask);
+    on<UpdateTask>(_onUpdateTask);
+    on<DuplicateTask>(_onDuplicateTask);
+    on<DeleteTask>(_onDeleteTask);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -156,5 +159,109 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       model.tasks.length - 1,
     );
     emit(state.copyWith(model: model.copyWith(currentTaskIndex: prevIndex)));
+  }
+
+  void _onUpdateTask(UpdateTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks[event.index] = event.task;
+
+    emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+  }
+
+  void _onDuplicateTask(DuplicateTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final original = model.tasks[event.index];
+    final duplicate = TaskModel(
+      id: '${original.id}-copy-${DateTime.now().millisecondsSinceEpoch}',
+      name: '${original.name} (Copy)',
+      estimatedDuration: original.estimatedDuration,
+      order: original.order + 1,
+    );
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks.insert(event.index + 1, duplicate);
+
+    // Reindex all tasks after the insertion
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // Also add a new break after the duplicated task if breaks are enabled
+    List<BreakModel>? updatedBreaks = model.breaks;
+    if (updatedBreaks != null) {
+      updatedBreaks = List<BreakModel>.from(updatedBreaks);
+      final newBreak = BreakModel(
+        duration: model.settings.defaultBreakDuration,
+        isEnabled: model.settings.breaksEnabledByDefault,
+      );
+      // Insert break at the same index as the duplicated task
+      updatedBreaks.insert(
+        event.index.clamp(0, updatedBreaks.length),
+        newBreak,
+      );
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: reindexed,
+          breaks: updatedBreaks,
+          currentTaskIndex: event.index + 1,
+        ),
+      ),
+    );
+  }
+
+  void _onDeleteTask(DeleteTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks.removeAt(event.index);
+
+    // Reindex all tasks after deletion
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // Also remove the corresponding break if it exists
+    List<BreakModel>? updatedBreaks = model.breaks;
+    if (updatedBreaks != null && event.index < updatedBreaks.length) {
+      updatedBreaks = List<BreakModel>.from(updatedBreaks);
+      updatedBreaks.removeAt(event.index);
+    }
+
+    // Adjust currentTaskIndex if needed
+    var newCurrentIndex = model.currentTaskIndex;
+    if (event.index == model.currentTaskIndex) {
+      // If we deleted the current task, select the next one (or previous if at end)
+      newCurrentIndex = event.index.clamp(0, updatedTasks.length - 1);
+    } else if (event.index < model.currentTaskIndex) {
+      // If we deleted a task before the current one, shift index down
+      newCurrentIndex = model.currentTaskIndex - 1;
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: reindexed,
+          breaks: updatedBreaks,
+          currentTaskIndex: newCurrentIndex.clamp(
+            0,
+            updatedTasks.isEmpty ? 0 : updatedTasks.length - 1,
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -44,7 +44,8 @@ void main() {
         ),
       );
 
-      expect(find.text('No routine loaded'), findsOneWidget);
+      // Appears in both left and right columns
+      expect(find.text('No routine loaded'), findsWidgets);
 
       bloc.close();
     });
@@ -68,10 +69,11 @@ void main() {
 
       // Should show task list
       expect(find.byType(ReorderableListView), findsOneWidget);
-      expect(find.text('Morning Workout'), findsOneWidget);
-      expect(find.text('Shower'), findsOneWidget);
-      expect(find.text('Breakfast'), findsOneWidget);
-      expect(find.text('Review Plan'), findsOneWidget);
+      // Tasks appear both in the list and in the task details text field
+      expect(find.text('Morning Workout'), findsWidgets);
+      expect(find.text('Shower'), findsWidgets);
+      expect(find.text('Breakfast'), findsWidgets);
+      expect(find.text('Review Plan'), findsWidgets);
 
       bloc.close();
     });
@@ -149,7 +151,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('displays right column settings and details', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -162,10 +164,23 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      // Load sample data so we have content to display
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Should show settings section
+      expect(find.text('Routine Settings'), findsOneWidget);
+      expect(find.text('Routine Start Time'), findsOneWidget);
+      expect(find.text('Enable Breaks by Default'), findsOneWidget);
+      expect(find.text('Break Duration (minutes)'), findsOneWidget);
+      expect(find.text('Save Changes'), findsOneWidget);
+
+      // Should show task details section
+      expect(find.text('Task Details'), findsOneWidget);
+      expect(find.text('Task Name'), findsOneWidget);
+      expect(find.text('Estimated Duration (minutes)'), findsOneWidget);
+      expect(find.text('Duplicate'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
 
       bloc.close();
     });
