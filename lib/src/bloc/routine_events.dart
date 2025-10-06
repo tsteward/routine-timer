@@ -55,3 +55,28 @@ class MarkTaskDone extends RoutineEvent {
 class GoToPreviousTask extends RoutineEvent {
   const GoToPreviousTask();
 }
+
+class UpdateTask extends RoutineEvent {
+  const UpdateTask({required this.index, required this.task});
+  final int index;
+  final TaskModel task;
+
+  @override
+  List<Object?> get props => [index, task];
+}
+
+class DuplicateTask extends RoutineEvent {
+  const DuplicateTask(this.index);
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}
+
+class DeleteTask extends RoutineEvent {
+  const DeleteTask(this.index);
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}
