@@ -458,29 +458,30 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
               ),
             ),
             const SizedBox(height: 16),
-            // Duplicate button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _duplicateTask(context, model),
-                icon: const Icon(Icons.content_copy),
-                label: const Text('Duplicate'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Delete button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: model.tasks.length > 1
-                    ? () => _deleteTask(context, model)
-                    : null,
-                icon: const Icon(Icons.delete),
-                label: const Text('Delete Task'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: theme.colorScheme.error,
+            // Duplicate and Delete buttons side by side
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _duplicateTask(context, model),
+                    icon: const Icon(Icons.content_copy),
+                    label: const Text('Duplicate'),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: model.tasks.length > 1
+                        ? () => _deleteTask(context, model)
+                        : null,
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Delete'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -529,14 +530,15 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
     final hours = currentDuration ~/ 3600;
     final minutes = (currentDuration % 3600) ~/ 60;
 
-    final picked = await showTimePicker(
+    final picked = await _showDurationPicker(
       context: context,
-      initialTime: TimeOfDay(hour: hours, minute: minutes),
-      helpText: 'Select Break Duration',
+      initialHours: hours,
+      initialMinutes: minutes,
+      title: 'Break Duration',
     );
 
     if (picked != null && mounted) {
-      final durationInSeconds = (picked.hour * 3600) + (picked.minute * 60);
+      final durationInSeconds = picked;
 
       if (durationInSeconds <= 0) {
         // ignore: use_build_context_synchronously
@@ -594,14 +596,15 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
     final hours = currentDuration ~/ 3600;
     final minutes = (currentDuration % 3600) ~/ 60;
 
-    final picked = await showTimePicker(
+    final picked = await _showDurationPicker(
       context: context,
-      initialTime: TimeOfDay(hour: hours, minute: minutes),
-      helpText: 'Select Task Duration',
+      initialHours: hours,
+      initialMinutes: minutes,
+      title: 'Task Duration',
     );
 
     if (picked != null && mounted) {
-      final durationInSeconds = (picked.hour * 3600) + (picked.minute * 60);
+      final durationInSeconds = picked;
 
       if (durationInSeconds <= 0) {
         // ignore: use_build_context_synchronously
@@ -666,6 +669,139 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
         const SnackBar(content: Text('Task deleted successfully')),
       );
     }
+  }
+
+  Future<int?> _showDurationPicker({
+    required BuildContext context,
+    required int initialHours,
+    required int initialMinutes,
+    required String title,
+  }) async {
+    int hours = initialHours;
+    int minutes = initialMinutes;
+
+    return showDialog<int>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(title),
+              content: SizedBox(
+                width: 300,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Hours
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_drop_up),
+                              onPressed: () {
+                                setState(() {
+                                  hours = (hours + 1).clamp(0, 23);
+                                });
+                              },
+                            ),
+                            Container(
+                              width: 60,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                hours.toString().padLeft(2, '0'),
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineMedium,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_drop_down),
+                              onPressed: () {
+                                setState(() {
+                                  hours = (hours - 1).clamp(0, 23);
+                                });
+                              },
+                            ),
+                            const Text('hours'),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          ':',
+                          style: Theme.of(context).textTheme.headlineLarge,
+                        ),
+                        const SizedBox(width: 16),
+                        // Minutes
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_drop_up),
+                              onPressed: () {
+                                setState(() {
+                                  minutes = (minutes + 5).clamp(0, 59);
+                                });
+                              },
+                            ),
+                            Container(
+                              width: 60,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                minutes.toString().padLeft(2, '0'),
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineMedium,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_drop_down),
+                              onPressed: () {
+                                setState(() {
+                                  minutes = (minutes - 5).clamp(0, 59);
+                                });
+                              },
+                            ),
+                            const Text('minutes'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final totalSeconds = (hours * 3600) + (minutes * 60);
+                    Navigator.of(dialogContext).pop(totalSeconds);
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   String _formatTimeOfDay(TimeOfDay time) {

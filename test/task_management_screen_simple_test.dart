@@ -178,7 +178,7 @@ void main() {
       expect(find.text('Task Name'), findsOneWidget);
       expect(find.text('Estimated Duration'), findsOneWidget);
       expect(find.text('Duplicate'), findsOneWidget);
-      expect(find.text('Delete Task'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
 
       bloc.close();
     });
