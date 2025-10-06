@@ -239,20 +239,15 @@ class _SettingsAndDetailsColumn extends StatefulWidget {
 }
 
 class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
-  // Controllers for routine settings
-  final _breakDurationController = TextEditingController();
-  TimeOfDay? _selectedTime;
-  bool? _breaksEnabledByDefault;
-
   // Controllers for task details
   final _taskNameController = TextEditingController();
-  final _taskDurationController = TextEditingController();
+
+  // Track if we're currently updating from bloc to prevent feedback loops
+  bool _isUpdatingFromBloc = false;
 
   @override
   void dispose() {
-    _breakDurationController.dispose();
     _taskNameController.dispose();
-    _taskDurationController.dispose();
     super.dispose();
   }
 
@@ -270,28 +265,13 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
             ? model.tasks[model.currentTaskIndex]
             : null;
 
-        // Initialize task controllers
-        if (selectedTask != null) {
+        // Initialize task name controller
+        if (selectedTask != null && !_isUpdatingFromBloc) {
           if (_taskNameController.text != selectedTask.name) {
+            _isUpdatingFromBloc = true;
             _taskNameController.text = selectedTask.name;
+            _isUpdatingFromBloc = false;
           }
-          final durationMinutes = (selectedTask.estimatedDuration / 60).round();
-          if (_taskDurationController.text != durationMinutes.toString()) {
-            _taskDurationController.text = durationMinutes.toString();
-          }
-        }
-
-        // Initialize routine settings controllers
-        if (_selectedTime == null) {
-          final startTime = DateTime.fromMillisecondsSinceEpoch(
-            model.settings.startTime,
-          );
-          _selectedTime = TimeOfDay.fromDateTime(startTime);
-        }
-        _breaksEnabledByDefault ??= model.settings.breaksEnabledByDefault;
-        final breakMinutes = (model.settings.defaultBreakDuration / 60).round();
-        if (_breakDurationController.text != breakMinutes.toString()) {
-          _breakDurationController.text = breakMinutes.toString();
         }
 
         return SingleChildScrollView(
@@ -330,13 +310,44 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
             ),
             const SizedBox(height: 16),
             // Routine Start Time
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Routine Start Time'),
-              subtitle: Text(_formatTimeOfDay(_selectedTime!)),
-              trailing: IconButton(
-                icon: const Icon(Icons.access_time),
-                onPressed: () => _pickStartTime(context),
+            InkWell(
+              onTap: () => _pickStartTime(context, model),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Routine Start Time',
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatTimeOfDay(
+                              TimeOfDay.fromDateTime(
+                                DateTime.fromMillisecondsSinceEpoch(
+                                  model.settings.startTime,
+                                ),
+                              ),
+                            ),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.access_time, color: theme.colorScheme.primary),
+                  ],
+                ),
               ),
             ),
             const Divider(),
@@ -344,39 +355,51 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Enable Breaks by Default'),
-              value: _breaksEnabledByDefault!,
+              value: model.settings.breaksEnabledByDefault,
               onChanged: (value) {
-                setState(() {
-                  _breaksEnabledByDefault = value;
-                });
+                _updateBreaksEnabledByDefault(context, model, value);
               },
             ),
             const Divider(),
             // Break Duration
-            TextField(
-              controller: _breakDurationController,
-              decoration: const InputDecoration(
-                labelText: 'Break Duration (minutes)',
-                border: OutlineInputBorder(),
+            InkWell(
+              onTap: () => _pickBreakDuration(context, model),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Break Duration',
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatDuration(
+                              model.settings.defaultBreakDuration,
+                            ),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.timer_outlined,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ],
+                ),
               ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            // Cancel and Save buttons
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                TextButton(
-                  onPressed: () => _cancelSettingsChanges(model),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => _saveSettingsChanges(context, model),
-                  child: const Text('Save'),
-                ),
-              ],
             ),
           ],
         ),
@@ -411,16 +434,28 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
                 labelText: 'Task Name',
                 border: OutlineInputBorder(),
               ),
+              onChanged: (value) {
+                if (!_isUpdatingFromBloc) {
+                  _updateTaskName(context, model, task, value);
+                }
+              },
             ),
             const SizedBox(height: 16),
             // Estimated Duration
-            TextField(
-              controller: _taskDurationController,
-              decoration: const InputDecoration(
-                labelText: 'Estimated Duration (minutes)',
-                border: OutlineInputBorder(),
+            InkWell(
+              onTap: () => _pickTaskDuration(context, model, task),
+              borderRadius: BorderRadius.circular(8),
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Estimated Duration',
+                  border: OutlineInputBorder(),
+                  suffixIcon: Icon(Icons.timer_outlined),
+                ),
+                child: Text(
+                  _formatDuration(task.estimatedDuration),
+                  style: theme.textTheme.bodyLarge,
+                ),
               ),
-              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
             // Duplicate button
@@ -447,110 +482,142 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            // Save task changes button
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => _saveTaskChanges(context, model, task),
-                child: const Text('Save Task Changes'),
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _pickStartTime(BuildContext context) async {
+  Future<void> _pickStartTime(
+    BuildContext context,
+    RoutineStateModel model,
+  ) async {
+    final currentTime = TimeOfDay.fromDateTime(
+      DateTime.fromMillisecondsSinceEpoch(model.settings.startTime),
+    );
+
     final picked = await showTimePicker(
       context: context,
-      initialTime: _selectedTime!,
+      initialTime: currentTime,
     );
-    if (picked != null) {
-      setState(() {
-        _selectedTime = picked;
-      });
+
+    if (picked != null && mounted) {
+      // Create a DateTime from the selected time
+      final now = DateTime.now();
+      final startTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        picked.hour,
+        picked.minute,
+      );
+
+      final updatedSettings = model.settings.copyWith(
+        startTime: startTime.millisecondsSinceEpoch,
+      );
+
+      // ignore: use_build_context_synchronously
+      context.read<RoutineBloc>().add(UpdateSettings(updatedSettings));
     }
   }
 
-  void _cancelSettingsChanges(RoutineStateModel model) {
-    setState(() {
-      final startTime = DateTime.fromMillisecondsSinceEpoch(
-        model.settings.startTime,
-      );
-      _selectedTime = TimeOfDay.fromDateTime(startTime);
-      _breaksEnabledByDefault = model.settings.breaksEnabledByDefault;
-      final breakMinutes = (model.settings.defaultBreakDuration / 60).round();
-      _breakDurationController.text = breakMinutes.toString();
-    });
-  }
+  Future<void> _pickBreakDuration(
+    BuildContext context,
+    RoutineStateModel model,
+  ) async {
+    final currentDuration = model.settings.defaultBreakDuration;
+    final hours = currentDuration ~/ 3600;
+    final minutes = (currentDuration % 3600) ~/ 60;
 
-  void _saveSettingsChanges(BuildContext context, RoutineStateModel model) {
-    final breakMinutes = int.tryParse(_breakDurationController.text) ?? 0;
-    if (breakMinutes <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Break duration must be greater than 0')),
-      );
-      return;
-    }
-
-    // Create a DateTime from the selected time
-    final now = DateTime.now();
-    final startTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      _selectedTime!.hour,
-      _selectedTime!.minute,
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: hours, minute: minutes),
+      helpText: 'Select Break Duration',
     );
 
+    if (picked != null && mounted) {
+      final durationInSeconds = (picked.hour * 3600) + (picked.minute * 60);
+
+      if (durationInSeconds <= 0) {
+        // ignore: use_build_context_synchronously
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Duration must be greater than 0')),
+        );
+        return;
+      }
+
+      final updatedSettings = model.settings.copyWith(
+        defaultBreakDuration: durationInSeconds,
+      );
+
+      // ignore: use_build_context_synchronously
+      context.read<RoutineBloc>().add(UpdateSettings(updatedSettings));
+    }
+  }
+
+  void _updateBreaksEnabledByDefault(
+    BuildContext context,
+    RoutineStateModel model,
+    bool value,
+  ) {
     final updatedSettings = model.settings.copyWith(
-      startTime: startTime.millisecondsSinceEpoch,
-      breaksEnabledByDefault: _breaksEnabledByDefault,
-      defaultBreakDuration: breakMinutes * 60,
+      breaksEnabledByDefault: value,
     );
 
     context.read<RoutineBloc>().add(UpdateSettings(updatedSettings));
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settings saved successfully')),
-    );
   }
 
-  void _saveTaskChanges(
+  void _updateTaskName(
     BuildContext context,
     RoutineStateModel model,
     TaskModel task,
+    String value,
   ) {
-    final taskName = _taskNameController.text.trim();
-    if (taskName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task name cannot be empty')),
-      );
-      return;
+    final trimmedName = value.trim();
+    if (trimmedName.isEmpty) {
+      return; // Don't update with empty name
     }
 
-    final durationMinutes = int.tryParse(_taskDurationController.text) ?? 0;
-    if (durationMinutes <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Duration must be greater than 0')),
-      );
-      return;
-    }
-
-    final updatedTask = task.copyWith(
-      name: taskName,
-      estimatedDuration: durationMinutes * 60,
-    );
+    final updatedTask = task.copyWith(name: value);
 
     context.read<RoutineBloc>().add(
       UpdateTask(index: model.currentTaskIndex, task: updatedTask),
     );
+  }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Task updated successfully')));
+  Future<void> _pickTaskDuration(
+    BuildContext context,
+    RoutineStateModel model,
+    TaskModel task,
+  ) async {
+    final currentDuration = task.estimatedDuration;
+    final hours = currentDuration ~/ 3600;
+    final minutes = (currentDuration % 3600) ~/ 60;
+
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: hours, minute: minutes),
+      helpText: 'Select Task Duration',
+    );
+
+    if (picked != null && mounted) {
+      final durationInSeconds = (picked.hour * 3600) + (picked.minute * 60);
+
+      if (durationInSeconds <= 0) {
+        // ignore: use_build_context_synchronously
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Duration must be greater than 0')),
+        );
+        return;
+      }
+
+      final updatedTask = task.copyWith(estimatedDuration: durationInSeconds);
+
+      // ignore: use_build_context_synchronously
+      context.read<RoutineBloc>().add(
+        UpdateTask(index: model.currentTaskIndex, task: updatedTask),
+      );
+    }
   }
 
   void _duplicateTask(BuildContext context, RoutineStateModel model) {
@@ -605,5 +672,16 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  String _formatDuration(int seconds) {
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else {
+      return '${minutes}m';
+    }
   }
 }

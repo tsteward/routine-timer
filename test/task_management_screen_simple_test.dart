@@ -171,12 +171,12 @@ void main() {
       expect(find.text('Routine Settings'), findsOneWidget);
       expect(find.text('Routine Start Time'), findsOneWidget);
       expect(find.text('Enable Breaks by Default'), findsOneWidget);
-      expect(find.text('Break Duration (minutes)'), findsOneWidget);
+      expect(find.text('Break Duration'), findsOneWidget);
 
       // Check for task details section
       expect(find.text('Task Details'), findsOneWidget);
       expect(find.text('Task Name'), findsOneWidget);
-      expect(find.text('Estimated Duration (minutes)'), findsOneWidget);
+      expect(find.text('Estimated Duration'), findsOneWidget);
       expect(find.text('Duplicate'), findsOneWidget);
       expect(find.text('Delete Task'), findsOneWidget);
 
