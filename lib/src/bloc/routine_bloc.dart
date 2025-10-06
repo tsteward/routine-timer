@@ -20,6 +20,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<UpdateSettings>(_onUpdateSettings);
     on<MarkTaskDone>(_onMarkTaskDone);
     on<GoToPreviousTask>(_onGoToPreviousTask);
+    on<UpdateTask>(_onUpdateTask);
+    on<DuplicateTask>(_onDuplicateTask);
+    on<DeleteTask>(_onDeleteTask);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -156,5 +159,107 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       model.tasks.length - 1,
     );
     emit(state.copyWith(model: model.copyWith(currentTaskIndex: prevIndex)));
+  }
+
+  void _onUpdateTask(UpdateTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks[event.index] = event.task;
+
+    emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+  }
+
+  void _onDuplicateTask(DuplicateTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+
+    final taskToDuplicate = model.tasks[event.index];
+    final duplicatedTask = taskToDuplicate.copyWith(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: '${taskToDuplicate.name} (Copy)',
+      order: taskToDuplicate.order + 1,
+    );
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks.insert(event.index + 1, duplicatedTask);
+
+    // Reassign order values to maintain consistency
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // Update breaks list to match new task count
+    List<BreakModel>? updatedBreaks;
+    if (model.breaks != null) {
+      updatedBreaks = List<BreakModel>.from(model.breaks!);
+      // Insert a new break after the duplicated task
+      final newBreak = BreakModel(
+        duration: model.settings.defaultBreakDuration,
+        isEnabled: model.settings.breaksEnabledByDefault,
+      );
+      if (event.index < updatedBreaks.length) {
+        updatedBreaks.insert(event.index + 1, newBreak);
+      } else {
+        updatedBreaks.add(newBreak);
+      }
+    }
+
+    emit(state.copyWith(
+      model: model.copyWith(tasks: reindexed, breaks: updatedBreaks),
+    ));
+  }
+
+  void _onDeleteTask(DeleteTask event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    if (event.index < 0 || event.index >= model.tasks.length) return;
+    
+    // Don't allow deleting if there's only one task
+    if (model.tasks.length <= 1) return;
+
+    final updatedTasks = List<TaskModel>.from(model.tasks);
+    updatedTasks.removeAt(event.index);
+
+    // Reassign order values to maintain consistency
+    final reindexed = <TaskModel>[];
+    for (var i = 0; i < updatedTasks.length; i++) {
+      reindexed.add(updatedTasks[i].copyWith(order: i));
+    }
+
+    // Update breaks list to match new task count
+    List<BreakModel>? updatedBreaks;
+    if (model.breaks != null) {
+      updatedBreaks = List<BreakModel>.from(model.breaks!);
+      // Remove the corresponding break
+      if (event.index < updatedBreaks.length) {
+        updatedBreaks.removeAt(event.index);
+      } else if (updatedBreaks.isNotEmpty) {
+        updatedBreaks.removeLast();
+      }
+    }
+
+    // Adjust current task index if necessary
+    int newCurrentTaskIndex = model.currentTaskIndex;
+    if (newCurrentTaskIndex >= updatedTasks.length) {
+      newCurrentTaskIndex = (updatedTasks.length - 1).clamp(0, updatedTasks.length - 1);
+    } else if (newCurrentTaskIndex > event.index) {
+      newCurrentTaskIndex--;
+    }
+
+    emit(state.copyWith(
+      model: model.copyWith(
+        tasks: reindexed,
+        breaks: updatedBreaks,
+        currentTaskIndex: newCurrentTaskIndex,
+      ),
+    ));
   }
 }
