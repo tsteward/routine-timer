@@ -58,6 +58,10 @@ Expected: all tests pass.
 ## 7) Editing & Verifying Changes
 - Make edits with apply_patch/edit_file tools only
 - If `pubspec.yaml` changed → run `flutter pub get`
+- Run local tests and ensure they all pass (include edge cases):
+```powershell
+flutter test
+```
 - Run static analysis and fix all errors and warnings (treat warnings as errors). Do not proceed until 0 issues:
 ```powershell
 dart analyze
@@ -65,10 +69,6 @@ dart analyze
 - Optionally run analyzer in Flutter context as well:
 ```powershell
 flutter analyze
-```
-- Run local tests and ensure they all pass (include edge cases):
-```powershell
-flutter test
 ```
 - Format code before finishing (no unformatted files allowed):
 ```powershell
@@ -121,13 +121,13 @@ flutter test
 ## 14) Pre-Commit Quality Gate
 Before considering a change complete, verify all of the following are green:
 
-1. Static analysis clean (0 issues):
-   ```powershell
-   dart analyze
-   ```
-2. Tests pass locally (including edge cases):
+1. Tests pass locally (including edge cases):
    ```powershell
    flutter test
+   ```
+2. Static analysis clean (0 issues):
+   ```powershell
+   dart analyze
    ```
 3. Tests pass via MCP (if using MCP workflow)
 4. Code formatted:
