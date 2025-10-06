@@ -24,8 +24,11 @@ void main() {
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('Task Management'), findsOneWidget);
-      expect(find.byType(Row), findsOneWidget); // Two-column layout
-      expect(find.byType(Expanded), findsNWidgets(2)); // Left and right columns
+      expect(
+        find.byType(Column),
+        findsAtLeastNWidgets(1),
+      ); // Main column with content and bottom bar
+      expect(find.byType(Row), findsAtLeastNWidgets(1)); // Two-column layout
       expect(find.byType(FloatingActionButton), findsOneWidget);
 
       bloc.close();
@@ -166,6 +169,358 @@ void main() {
         find.text('Right Column: Settings & Details Placeholder'),
         findsOneWidget,
       );
+
+      bloc.close();
+    });
+
+    testWidgets('displays bottom bar with total time and estimated finish', (
+      tester,
+    ) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Should display Total Time and Estimated Finish labels
+      expect(find.text('Total Time'), findsOneWidget);
+      expect(find.text('Estimated Finish'), findsOneWidget);
+
+      // Should display Add New Task button
+      expect(find.text('Add New Task'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('calculates total time correctly', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Sample routine: 20 + 10 + 15 + 5 = 50 min for tasks
+      // Breaks: 2 enabled breaks of 2 min each = 4 min
+      // Total: 54 min
+      expect(find.text('54m'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('updates total time after adding task', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Initial total: 54m
+      expect(find.text('54m'), findsOneWidget);
+
+      // Add a new task (10 minutes = 600 seconds)
+      bloc.add(const AddTask(name: 'New Task', estimatedDuration: 600));
+      await tester.pumpAndSettle();
+
+      // New total: 54 + 10 + 2 (break) = 66m displayed as "1h 6m"
+      expect(find.text('1h 6m'), findsOneWidget);
+      expect(find.text('54m'), findsNothing);
+
+      bloc.close();
+    });
+
+    testWidgets('add new task button opens dialog', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Tap the Add New Task button
+      await tester.tap(find.text('Add New Task'));
+      await tester.pumpAndSettle();
+
+      // Dialog should be displayed
+      expect(
+        find.text('Add New Task'),
+        findsNWidgets(2),
+      ); // Button and dialog title
+      expect(find.text('Task Name'), findsOneWidget);
+      expect(find.text('Duration (minutes)'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Add'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('add task dialog validates empty name', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Open dialog
+      await tester.tap(find.text('Add New Task'));
+      await tester.pumpAndSettle();
+
+      // Try to submit without entering a name
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      // Should show validation error
+      expect(find.text('Please enter a task name'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('add task dialog validates empty duration', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Open dialog
+      await tester.tap(find.text('Add New Task'));
+      await tester.pumpAndSettle();
+
+      // Enter only name, not duration
+      await tester.enterText(find.byType(TextFormField).first, 'Test Task');
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      // Should show validation error
+      expect(find.text('Please enter a duration'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('add task dialog validates invalid duration', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Open dialog
+      await tester.tap(find.text('Add New Task'));
+      await tester.pumpAndSettle();
+
+      // Enter invalid duration
+      await tester.enterText(find.byType(TextFormField).first, 'Test Task');
+      await tester.enterText(find.byType(TextFormField).last, '-5');
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      // Should show validation error
+      expect(find.text('Please enter a valid positive number'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('add task dialog successfully adds task', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Open dialog
+      await tester.tap(find.text('Add New Task'));
+      await tester.pumpAndSettle();
+
+      // Enter valid task details
+      await tester.enterText(find.byType(TextFormField).first, 'New Exercise');
+      await tester.enterText(find.byType(TextFormField).last, '25');
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      // Dialog should close
+      expect(find.text('Task Name'), findsNothing);
+
+      // New task should appear in the list
+      expect(find.text('New Exercise'), findsOneWidget);
+      expect(find.text('25 min'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('cancel button closes dialog without adding task', (
+      tester,
+    ) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      final initialTaskCount = bloc.state.model!.tasks.length;
+
+      // Open dialog
+      await tester.tap(find.text('Add New Task'));
+      await tester.pumpAndSettle();
+
+      // Enter some data but cancel
+      await tester.enterText(find.byType(TextFormField).first, 'Test');
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Dialog should close
+      expect(find.text('Task Name'), findsNothing);
+
+      // Task count should not change
+      expect(bloc.state.model!.tasks.length, initialTaskCount);
+
+      bloc.close();
+    });
+
+    testWidgets('total time displays hours and minutes for long durations', (
+      tester,
+    ) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Add tasks to exceed 1 hour (3600 seconds = 1 hour)
+      bloc.add(const AddTask(name: 'Long Task 1', estimatedDuration: 3600));
+      await tester.pumpAndSettle();
+
+      // Should display in h m format - total should be 1h 56m
+      // (54m initial + 60m new task + 2m break = 116m = 1h 56m)
+      expect(find.text('1h 56m'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('estimated finish time updates correctly', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Get initial finish time
+      final initialFinishTimeFinder = find.textContaining(':').last;
+      expect(initialFinishTimeFinder, findsOneWidget);
+
+      // Store the initial finish time text
+      final initialFinishTime = tester
+          .widget<Text>(initialFinishTimeFinder)
+          .data;
+
+      // Add a new task
+      bloc.add(const AddTask(name: 'Additional Task', estimatedDuration: 600));
+      await tester.pumpAndSettle();
+
+      // Get updated finish time
+      final updatedFinishTimeFinder = find.textContaining(':').last;
+      final updatedFinishTime = tester
+          .widget<Text>(updatedFinishTimeFinder)
+          .data;
+
+      // Finish time should change (we can't test exact time due to dynamic start time)
+      expect(updatedFinishTime, isNot(equals(initialFinishTime)));
 
       bloc.close();
     });
