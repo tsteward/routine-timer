@@ -44,7 +44,8 @@ void main() {
         ),
       );
 
-      expect(find.text('No routine loaded'), findsOneWidget);
+      // Both columns show "No routine loaded" when no data is present
+      expect(find.text('No routine loaded'), findsNWidgets(2));
 
       bloc.close();
     });
@@ -68,10 +69,11 @@ void main() {
 
       // Should show task list
       expect(find.byType(ReorderableListView), findsOneWidget);
-      expect(find.text('Morning Workout'), findsOneWidget);
-      expect(find.text('Shower'), findsOneWidget);
-      expect(find.text('Breakfast'), findsOneWidget);
-      expect(find.text('Review Plan'), findsOneWidget);
+      // Tasks appear in both the list and the settings panel, so we check for at least one
+      expect(find.text('Morning Workout'), findsAtLeastNWidgets(1));
+      expect(find.text('Shower'), findsAtLeastNWidgets(1));
+      expect(find.text('Breakfast'), findsAtLeastNWidgets(1));
+      expect(find.text('Review Plan'), findsAtLeastNWidgets(1));
 
       bloc.close();
     });
@@ -149,7 +151,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('displays right column with settings panel', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -162,10 +164,8 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      // Should show "No routine loaded" in both columns initially
+      expect(find.text('No routine loaded'), findsNWidgets(2));
 
       bloc.close();
     });
