@@ -66,13 +66,13 @@ dart analyze
 ```powershell
 flutter analyze
 ```
-- Format code before finishing (no unformatted files allowed):
-```powershell
-dart format .
-```
 - Run local tests and ensure they all pass (include edge cases):
 ```powershell
 flutter test
+```
+- Format code before finishing (no unformatted files allowed):
+```powershell
+dart format .
 ```
 - If app is running, trigger `hot_reload`
 
@@ -121,16 +121,16 @@ flutter test
 ## 14) Pre-Commit Quality Gate
 Before considering a change complete, verify all of the following are green:
 
-1. Code formatted:
-   ```powershell
-   dart format .
-   ```
-2. Static analysis clean (0 issues):
+1. Static analysis clean (0 issues):
    ```powershell
    dart analyze
    ```
-3. Tests pass locally (including edge cases):
+2. Tests pass locally (including edge cases):
    ```powershell
    flutter test
    ```
-4. Tests pass via MCP (if using MCP workflow)
+3. Tests pass via MCP (if using MCP workflow)
+4. Code formatted:
+   ```powershell
+   dart format .
+   ```
