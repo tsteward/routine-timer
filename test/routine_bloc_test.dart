@@ -190,5 +190,101 @@ void main() {
       final uniqueOrders = orders.toSet();
       expect(uniqueOrders.length, orders.length);
     });
+
+    test('update task modifies task properties', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalTask = loaded.model!.tasks[0];
+
+      final updatedTask = originalTask.copyWith(
+        name: 'Updated Task Name',
+        estimatedDuration: 1800,
+      );
+
+      bloc.add(UpdateTask(index: 0, task: updatedTask));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks[0].name == 'Updated Task Name',
+      );
+
+      expect(updated.model!.tasks[0].name, 'Updated Task Name');
+      expect(updated.model!.tasks[0].estimatedDuration, 1800);
+      expect(updated.model!.tasks[0].id, originalTask.id);
+    });
+
+    test('duplicate task creates copy with new ID', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalTaskCount = loaded.model!.tasks.length;
+      final taskToDuplicate = loaded.model!.tasks[1];
+
+      bloc.add(const DuplicateTask(1));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == originalTaskCount + 1,
+      );
+
+      expect(updated.model!.tasks.length, originalTaskCount + 1);
+      final duplicatedTask = updated.model!.tasks[2];
+      expect(duplicatedTask.name, '${taskToDuplicate.name} (Copy)');
+      expect(duplicatedTask.estimatedDuration, taskToDuplicate.estimatedDuration);
+      expect(duplicatedTask.id, isNot(taskToDuplicate.id));
+    });
+
+    test('delete task removes task and adjusts indices', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalTaskCount = loaded.model!.tasks.length;
+      final taskToDelete = loaded.model!.tasks[1];
+
+      bloc.add(const DeleteTask(1));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == originalTaskCount - 1,
+      );
+
+      expect(updated.model!.tasks.length, originalTaskCount - 1);
+      expect(
+        updated.model!.tasks.every((task) => task.id != taskToDelete.id),
+        true,
+      );
+      // Verify orders are still sequential
+      final orders = updated.model!.tasks.map((t) => t.order).toList();
+      expect(orders, [0, 1, 2]);
+    });
+
+    test('delete task adjusts currentTaskIndex when needed', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Select last task
+      bloc.add(const SelectTask(3));
+      await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 3);
+
+      // Delete it
+      bloc.add(const DeleteTask(3));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks.length == 3,
+      );
+
+      // Index should be adjusted to the new last task
+      expect(updated.model!.currentTaskIndex, 2);
+    });
+
+    test('delete task does not delete last remaining task', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Delete tasks until only one remains
+      bloc.add(const DeleteTask(0));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 3);
+      bloc.add(const DeleteTask(0));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 2);
+      bloc.add(const DeleteTask(0));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 1);
+
+      // Try to delete the last task - should be ignored
+      bloc.add(const DeleteTask(0));
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      expect(bloc.state.model!.tasks.length, 1);
+    });
   });
 }

@@ -149,7 +149,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('displays routine settings section', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -162,10 +162,62 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Routine Settings'), findsOneWidget);
+      expect(find.text('Task Details'), findsOneWidget);
+      expect(find.text('Routine Start Time'), findsOneWidget);
+      expect(find.text('Enable Breaks by Default'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('displays task details when task is selected', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
       );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Should show task details for selected task
+      expect(find.text('Save Task'), findsOneWidget);
+      expect(find.text('Duplicate'), findsOneWidget);
+      expect(find.text('Delete Task'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('shows message when no task is selected', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+        ),
+      );
+
+      bloc.add(const LoadSampleRoutine());
+      await tester.pumpAndSettle();
+
+      // Deselect all tasks by selecting an invalid index
+      bloc.add(const SelectTask(-1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Select a task to edit details'), findsOneWidget);
 
       bloc.close();
     });
