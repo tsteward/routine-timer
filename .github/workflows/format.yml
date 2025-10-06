@@ -1,0 +1,52 @@
+name: Format Code
+
+on:
+  workflow_dispatch:  # Allows manual triggering from GitHub Actions tab
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write  # Required to push commits
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Run formatter
+        run: dart format .
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "chore: auto-format code with dart format"
+          git push
+      
+      - name: No changes
+        if: steps.check_changes.outputs.changes == 'false'
+        run: echo "No formatting changes needed"
+
