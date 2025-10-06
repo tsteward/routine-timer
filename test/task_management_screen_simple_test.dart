@@ -25,7 +25,10 @@ void main() {
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('Task Management'), findsOneWidget);
       expect(find.byType(Row), findsOneWidget); // Two-column layout
-      expect(find.byType(Expanded), findsNWidgets(2)); // Left and right columns
+      expect(
+        find.byType(Expanded),
+        findsNWidgets(3),
+      ); // Main content + left and right columns
       expect(find.byType(FloatingActionButton), findsOneWidget);
 
       bloc.close();
