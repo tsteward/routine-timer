@@ -149,7 +149,7 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays right column placeholder', (tester) async {
+    testWidgets('displays right column with controls', (tester) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -162,10 +162,9 @@ void main() {
         ),
       );
 
-      expect(
-        find.text('Right Column: Settings & Details Placeholder'),
-        findsOneWidget,
-      );
+      // Should show section titles
+      expect(find.text('Routine Settings'), findsOneWidget);
+      expect(find.text('Task Details'), findsOneWidget);
 
       bloc.close();
     });

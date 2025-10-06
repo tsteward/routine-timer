@@ -44,6 +44,30 @@ class UpdateSettings extends RoutineEvent {
   List<Object?> get props => [settings];
 }
 
+/// Update the currently selected task's editable fields.
+class UpdateSelectedTask extends RoutineEvent {
+  const UpdateSelectedTask({required this.name, required this.estimatedDurationSeconds});
+
+  /// New human-friendly name.
+  final String name;
+
+  /// New estimated duration in seconds.
+  final int estimatedDurationSeconds;
+
+  @override
+  List<Object?> get props => [name, estimatedDurationSeconds];
+}
+
+/// Duplicate the currently selected task, inserting the copy after it.
+class DuplicateSelectedTask extends RoutineEvent {
+  const DuplicateSelectedTask();
+}
+
+/// Delete the currently selected task.
+class DeleteSelectedTask extends RoutineEvent {
+  const DeleteSelectedTask();
+}
+
 class MarkTaskDone extends RoutineEvent {
   const MarkTaskDone({required this.actualDuration});
   final int actualDuration;
