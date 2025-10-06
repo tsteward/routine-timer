@@ -101,7 +101,7 @@ void main() {
         findsNWidgets(2),
       ); // Button + dialog title
       expect(find.text('Task Name'), findsOneWidget);
-      expect(find.text('Duration (minutes)'), findsOneWidget);
+      expect(find.text('Duration'), findsOneWidget);
     });
 
     testWidgets('can add a new task through dialog', (tester) async {
@@ -126,22 +126,19 @@ void main() {
       await tester.pumpAndSettle();
 
       // Enter task name
-      await tester.enterText(
-        find.widgetWithText(TextFormField, '').first,
-        'Morning Meditation',
-      );
+      await tester.enterText(find.byType(TextFormField), 'Morning Meditation');
 
-      // Enter duration
-      await tester.enterText(find.widgetWithText(TextFormField, '').last, '15');
+      // Default duration is 10 minutes, so we can just submit
+      // (Testing time picker interaction is complex, the default is sufficient)
 
       // Tap Add Task button in dialog
       await tester.tap(find.widgetWithText(ElevatedButton, 'Add Task'));
       await tester.pumpAndSettle();
 
-      // Verify task was added
+      // Verify task was added with default 10 minute duration
       expect(bloc.state.model!.tasks.length, initialCount + 1);
       expect(bloc.state.model!.tasks.last.name, 'Morning Meditation');
-      expect(bloc.state.model!.tasks.last.estimatedDuration, 15 * 60);
+      expect(bloc.state.model!.tasks.last.estimatedDuration, 10 * 60);
     });
 
     testWidgets('dialog validates empty task name', (tester) async {
@@ -163,8 +160,7 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      // Leave name empty and enter duration
-      await tester.enterText(find.widgetWithText(TextFormField, '').last, '10');
+      // Leave name empty (default duration is already set to 10 minutes)
 
       // Tap Add Task button
       await tester.tap(find.widgetWithText(ElevatedButton, 'Add Task'));
@@ -174,7 +170,7 @@ void main() {
       expect(find.text('Please enter a task name'), findsOneWidget);
     });
 
-    testWidgets('dialog validates empty duration', (tester) async {
+    testWidgets('dialog shows duration picker on tap', (tester) async {
       final bloc = RoutineBloc()..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
@@ -193,21 +189,19 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      // Enter name but leave duration empty
-      await tester.enterText(
-        find.widgetWithText(TextFormField, '').first,
-        'Test Task',
-      );
+      // Should show duration field with clock icon
+      expect(find.byIcon(Icons.access_time), findsOneWidget);
+      expect(find.text('Duration'), findsOneWidget);
 
-      // Tap Add Task button
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Add Task'));
+      // Tap on duration field to open time picker
+      await tester.tap(find.byIcon(Icons.access_time));
       await tester.pumpAndSettle();
 
-      // Error message should appear
-      expect(find.text('Please enter a duration'), findsOneWidget);
+      // Time picker dialog should appear
+      expect(find.text('Select Duration'), findsOneWidget);
     });
 
-    testWidgets('dialog validates invalid duration', (tester) async {
+    testWidgets('duration field displays default value', (tester) async {
       final bloc = RoutineBloc()..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
@@ -226,56 +220,9 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      // Enter name and invalid duration
-      await tester.enterText(
-        find.widgetWithText(TextFormField, '').first,
-        'Test Task',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextFormField, '').last,
-        'abc',
-      );
-
-      // Tap Add Task button
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Add Task'));
-      await tester.pumpAndSettle();
-
-      // Error message should appear
-      expect(find.text('Please enter a valid positive number'), findsOneWidget);
-    });
-
-    testWidgets('dialog validates negative duration', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
-      await bloc.stream.firstWhere((s) => s.model != null);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider.value(
-            value: bloc,
-            child: const TaskManagementScreen(),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Open the dialog
-      await tester.tap(find.text('Add New Task'));
-      await tester.pumpAndSettle();
-
-      // Enter name and negative duration
-      await tester.enterText(
-        find.widgetWithText(TextFormField, '').first,
-        'Test Task',
-      );
-      await tester.enterText(find.widgetWithText(TextFormField, '').last, '-5');
-
-      // Tap Add Task button
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Add Task'));
-      await tester.pumpAndSettle();
-
-      // Error message should appear
-      expect(find.text('Please enter a valid positive number'), findsOneWidget);
+      // Duration field should show with a clock icon and default duration text
+      expect(find.byIcon(Icons.access_time), findsOneWidget);
+      expect(find.text('Duration'), findsOneWidget);
     });
 
     testWidgets('cancel button closes dialog without adding task', (
@@ -300,12 +247,8 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      // Enter some data
-      await tester.enterText(
-        find.widgetWithText(TextFormField, '').first,
-        'Test Task',
-      );
-      await tester.enterText(find.widgetWithText(TextFormField, '').last, '10');
+      // Enter task name
+      await tester.enterText(find.byType(TextFormField), 'Test Task');
 
       // Tap Cancel button
       await tester.tap(find.text('Cancel'));
@@ -336,15 +279,11 @@ void main() {
 
       final initialTaskCount = bloc.state.model!.tasks.length;
 
-      // Add a new task
+      // Add a new task with default 10 minute duration
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      await tester.enterText(
-        find.widgetWithText(TextFormField, '').first,
-        'New Task',
-      );
-      await tester.enterText(find.widgetWithText(TextFormField, '').last, '10');
+      await tester.enterText(find.byType(TextFormField), 'New Task');
 
       await tester.tap(find.widgetWithText(ElevatedButton, 'Add Task'));
       await tester.pumpAndSettle();

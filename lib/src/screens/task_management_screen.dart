@@ -397,13 +397,51 @@ class _AddTaskDialog extends StatefulWidget {
 class _AddTaskDialogState extends State<_AddTaskDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _durationController = TextEditingController();
+  TimeOfDay _selectedDuration = const TimeOfDay(hour: 0, minute: 10);
+  String? _durationError;
 
   @override
   void dispose() {
     _nameController.dispose();
-    _durationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDuration() async {
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _selectedDuration,
+      helpText: 'Select Duration',
+      hourLabelText: 'Hours',
+      minuteLabelText: 'Minutes',
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime != null) {
+      setState(() {
+        _selectedDuration = pickedTime;
+        _durationError = null;
+      });
+    }
+  }
+
+  String _formatDuration() {
+    final hours = _selectedDuration.hour;
+    final minutes = _selectedDuration.minute;
+    if (hours == 0 && minutes == 0) {
+      return 'Tap to select duration';
+    }
+    if (hours > 0 && minutes > 0) {
+      return '$hours hr $minutes min';
+    } else if (hours > 0) {
+      return '$hours hr';
+    } else {
+      return '$minutes min';
+    }
   }
 
   @override
@@ -433,25 +471,21 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
               },
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _durationController,
-              decoration: const InputDecoration(
-                labelText: 'Duration (minutes)',
-                hintText: 'e.g., 10',
-                border: OutlineInputBorder(),
-                suffixText: 'min',
+            InkWell(
+              onTap: _pickDuration,
+              borderRadius: BorderRadius.circular(4),
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: 'Duration',
+                  border: const OutlineInputBorder(),
+                  errorText: _durationError,
+                  suffixIcon: const Icon(Icons.access_time),
+                ),
+                child: Text(
+                  _formatDuration(),
+                  style: theme.textTheme.bodyLarge,
+                ),
               ),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a duration';
-                }
-                final minutes = int.tryParse(value.trim());
-                if (minutes == null || minutes <= 0) {
-                  return 'Please enter a valid positive number';
-                }
-                return null;
-              },
             ),
           ],
         ),
@@ -464,9 +498,18 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
         ElevatedButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
+              // Validate that duration is greater than 0
+              final totalMinutes =
+                  _selectedDuration.hour * 60 + _selectedDuration.minute;
+              if (totalMinutes <= 0) {
+                setState(() {
+                  _durationError = 'Please select a duration greater than 0';
+                });
+                return;
+              }
+
               final name = _nameController.text.trim();
-              final minutes = int.parse(_durationController.text.trim());
-              final durationSeconds = minutes * 60;
+              final durationSeconds = totalMinutes * 60;
 
               context.read<RoutineBloc>().add(
                 AddTask(name: name, durationSeconds: durationSeconds),
