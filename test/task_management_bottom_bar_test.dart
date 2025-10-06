@@ -100,8 +100,9 @@ void main() {
         find.text('Add New Task'),
         findsNWidgets(2),
       ); // Button + dialog title
-      expect(find.text('Task Name'), findsOneWidget);
-      expect(find.text('Duration'), findsOneWidget);
+      // Note: 'Task Name' appears in both the dialog and the settings column
+      expect(find.text('Task Name'), findsAtLeastNWidgets(1));
+      expect(find.text('Duration'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('can add a new task through dialog', (tester) async {
@@ -189,16 +190,23 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      // Should show duration field with clock icon
-      expect(find.byIcon(Icons.access_time), findsOneWidget);
-      expect(find.text('Duration'), findsOneWidget);
+      // Should show duration field with timer icon
+      // Note: Icon appears in both dialog and settings column
+      expect(find.byIcon(Icons.timer_outlined), findsAtLeastNWidgets(1));
+      expect(find.text('Duration'), findsAtLeastNWidgets(1));
 
-      // Tap on duration field to open time picker
-      await tester.tap(find.byIcon(Icons.access_time));
+      // Tap on duration field to open duration picker (find within dialog)
+      final dialogDurationField = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byIcon(Icons.timer_outlined),
+      );
+      await tester.tap(dialogDurationField.first);
       await tester.pumpAndSettle();
 
-      // Time picker dialog should appear
-      expect(find.text('Select Duration'), findsOneWidget);
+      // Custom duration picker dialog should appear
+      expect(find.text('Task Duration'), findsOneWidget);
+      expect(find.text('hours'), findsOneWidget);
+      expect(find.text('minutes'), findsOneWidget);
     });
 
     testWidgets('duration field displays default value', (tester) async {
@@ -220,9 +228,10 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      // Duration field should show with a clock icon and default duration text
-      expect(find.byIcon(Icons.access_time), findsOneWidget);
-      expect(find.text('Duration'), findsOneWidget);
+      // Duration field should show with a timer icon and default duration text
+      // Note: These appear in both dialog and settings column
+      expect(find.byIcon(Icons.timer_outlined), findsAtLeastNWidgets(1));
+      expect(find.text('Duration'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('cancel button closes dialog without adding task', (
@@ -255,7 +264,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Dialog should be closed and no task added
-      expect(find.text('Task Name'), findsNothing);
+      // Note: 'Task Name' still appears in the settings column
+      expect(find.byType(AlertDialog), findsNothing);
       expect(bloc.state.model!.tasks.length, initialCount);
     });
 
