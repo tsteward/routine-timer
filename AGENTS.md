@@ -109,28 +109,36 @@ flutter analyze
 - **Resolve all findings**: Treat warnings as errors; do not defer fixes. If a rule is inappropriate, prefer improving the code over disabling the lint. Only adjust rules in `analysis_options.yaml` with strong justification.
 
 ## 13) Testing Requirements
-Every change must be covered by tests. Add or update tests for new functionality, bug fixes, and edge cases.
+**CRITICAL**: Every change must be covered by tests. **NEVER** ship new functionality, bug fixes, or refactorings without corresponding test coverage.
 
-- **Write tests** that cover success paths, error handling, and edge cases
+- **Always add tests for new functionality**: Every new feature, method, class, or behavior MUST have accompanying tests before the change is considered complete
+- **Write comprehensive tests** that cover:
+  - Success paths (happy path scenarios)
+  - Error handling and edge cases
+  - Boundary conditions and invalid inputs
+  - Integration points and interactions with other components
+- **Update existing tests** when modifying functionality to reflect the new behavior
 - **Run tests locally** and ensure 100% of executed tests pass:
 ```powershell
 flutter test
 ```
 - **Avoid flakiness**: use proper async/waits, pumps, and deterministic inputs
+- **Test location**: Place tests in the `test/` directory, mirroring the structure of `lib/`
 
 ## 14) Pre-Commit Quality Gate
 Before considering a change complete, verify all of the following are green:
 
-1. Tests pass locally (including edge cases):
+1. **Test coverage added**: All new functionality has accompanying tests (see Section 13)
+2. Tests pass locally (including edge cases):
    ```powershell
    flutter test
    ```
-2. Static analysis clean (0 issues):
+3. Static analysis clean (0 issues):
    ```powershell
    dart analyze
    ```
-3. Tests pass via MCP (if using MCP workflow)
-4. Code formatted:
+4. Tests pass via MCP (if using MCP workflow)
+5. Code formatted:
    ```powershell
    dart format .
    ```
