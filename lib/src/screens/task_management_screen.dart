@@ -757,7 +757,7 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
                               icon: const Icon(Icons.arrow_drop_up),
                               onPressed: () {
                                 setState(() {
-                                  minutes = (minutes + 5).clamp(0, 59);
+                                  minutes = (minutes + 1).clamp(0, 59);
                                 });
                               },
                             ),
@@ -782,7 +782,7 @@ class _SettingsAndDetailsColumnState extends State<_SettingsAndDetailsColumn> {
                               icon: const Icon(Icons.arrow_drop_down),
                               onPressed: () {
                                 setState(() {
-                                  minutes = (minutes - 5).clamp(0, 59);
+                                  minutes = (minutes - 1).clamp(0, 59);
                                 });
                               },
                             ),
@@ -986,7 +986,7 @@ class _AddTaskDialog extends StatefulWidget {
 class _AddTaskDialogState extends State<_AddTaskDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  TimeOfDay _selectedDuration = const TimeOfDay(hour: 0, minute: 10);
+  int _durationInSeconds = 10 * 60; // Default: 10 minutes
   String? _durationError;
 
   @override
@@ -996,40 +996,169 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
   }
 
   Future<void> _pickDuration() async {
-    final pickedTime = await showTimePicker(
+    final hours = _durationInSeconds ~/ 3600;
+    final minutes = (_durationInSeconds % 3600) ~/ 60;
+
+    final picked = await _showDurationPicker(
       context: context,
-      initialTime: _selectedDuration,
-      helpText: 'Select Duration',
-      hourLabelText: 'Hours',
-      minuteLabelText: 'Minutes',
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
-        );
-      },
+      initialHours: hours,
+      initialMinutes: minutes,
+      title: 'Task Duration',
     );
 
-    if (pickedTime != null) {
+    if (picked != null) {
       setState(() {
-        _selectedDuration = pickedTime;
+        _durationInSeconds = picked;
         _durationError = null;
       });
     }
   }
 
+  Future<int?> _showDurationPicker({
+    required BuildContext context,
+    required int initialHours,
+    required int initialMinutes,
+    required String title,
+  }) async {
+    int hours = initialHours;
+    int minutes = initialMinutes;
+
+    return showDialog<int>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(title),
+              content: SizedBox(
+                width: 300,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Hours
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_drop_up),
+                              onPressed: () {
+                                setState(() {
+                                  hours = (hours + 1).clamp(0, 23);
+                                });
+                              },
+                            ),
+                            Container(
+                              width: 60,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                hours.toString().padLeft(2, '0'),
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineMedium,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_drop_down),
+                              onPressed: () {
+                                setState(() {
+                                  hours = (hours - 1).clamp(0, 23);
+                                });
+                              },
+                            ),
+                            const Text('hours'),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          ':',
+                          style: Theme.of(context).textTheme.headlineLarge,
+                        ),
+                        const SizedBox(width: 16),
+                        // Minutes
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_drop_up),
+                              onPressed: () {
+                                setState(() {
+                                  minutes = (minutes + 1).clamp(0, 59);
+                                });
+                              },
+                            ),
+                            Container(
+                              width: 60,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                minutes.toString().padLeft(2, '0'),
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineMedium,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_drop_down),
+                              onPressed: () {
+                                setState(() {
+                                  minutes = (minutes - 1).clamp(0, 59);
+                                });
+                              },
+                            ),
+                            const Text('minutes'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final totalSeconds = (hours * 3600) + (minutes * 60);
+                    Navigator.of(dialogContext).pop(totalSeconds);
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   String _formatDuration() {
-    final hours = _selectedDuration.hour;
-    final minutes = _selectedDuration.minute;
+    final hours = _durationInSeconds ~/ 3600;
+    final minutes = (_durationInSeconds % 3600) ~/ 60;
     if (hours == 0 && minutes == 0) {
       return 'Tap to select duration';
     }
     if (hours > 0 && minutes > 0) {
-      return '$hours hr $minutes min';
+      return '${hours}h ${minutes}m';
     } else if (hours > 0) {
-      return '$hours hr';
+      return '${hours}h';
     } else {
-      return '$minutes min';
+      return '${minutes}m';
     }
   }
 
@@ -1068,7 +1197,7 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
                   labelText: 'Duration',
                   border: const OutlineInputBorder(),
                   errorText: _durationError,
-                  suffixIcon: const Icon(Icons.access_time),
+                  suffixIcon: const Icon(Icons.timer_outlined),
                 ),
                 child: Text(
                   _formatDuration(),
@@ -1088,9 +1217,7 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               // Validate that duration is greater than 0
-              final totalMinutes =
-                  _selectedDuration.hour * 60 + _selectedDuration.minute;
-              if (totalMinutes <= 0) {
+              if (_durationInSeconds <= 0) {
                 setState(() {
                   _durationError = 'Please select a duration greater than 0';
                 });
@@ -1098,10 +1225,9 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
               }
 
               final name = _nameController.text.trim();
-              final durationSeconds = totalMinutes * 60;
 
               context.read<RoutineBloc>().add(
-                AddTask(name: name, durationSeconds: durationSeconds),
+                AddTask(name: name, durationSeconds: _durationInSeconds),
               );
               Navigator.of(context).pop();
             }
