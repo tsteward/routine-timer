@@ -1,4 +1,4 @@
 {
-  "snapshot": "snapshot-20251006-b08dbf64-bc28-486c-a160-f25f1e9c19aa",
-  "terminals": []
+  "install": "if ! command -v flutter &> /dev/null; then echo 'Installing Flutter...'; git clone https://github.com/flutter/flutter.git -b stable $HOME/flutter; fi && export PATH=\"$HOME/flutter/bin:$PATH\" && flutter doctor && flutter pub get",
+  "start": "export PATH=\"$HOME/flutter/bin:$PATH\""
 }
