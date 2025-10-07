@@ -3,11 +3,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/screens/task_management_screen.dart';
+import '../test_helpers/firebase_test_helper.dart';
 
 void main() {
   group('Task Management Bottom Bar', () {
+    setUpAll(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+    });
+
+    setUp(() {
+      FirebaseTestHelper.reset();
+    });
     testWidgets('displays total time correctly', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -29,7 +38,8 @@ void main() {
     });
 
     testWidgets('displays estimated finish time correctly', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -57,7 +67,7 @@ void main() {
     });
 
     testWidgets('shows Add New Task button', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -77,7 +87,8 @@ void main() {
     });
 
     testWidgets('Add Task button opens dialog', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -106,7 +117,8 @@ void main() {
     });
 
     testWidgets('can add a new task through dialog', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -143,7 +155,8 @@ void main() {
     });
 
     testWidgets('dialog validates empty task name', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -172,7 +185,8 @@ void main() {
     });
 
     testWidgets('dialog shows duration picker on tap', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -210,7 +224,8 @@ void main() {
     });
 
     testWidgets('duration field displays default value', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -237,7 +252,8 @@ void main() {
     testWidgets('cancel button closes dialog without adding task', (
       tester,
     ) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final initialCount = loaded.model!.tasks.length;
 
@@ -270,7 +286,8 @@ void main() {
     });
 
     testWidgets('total time updates after adding task', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -308,7 +325,8 @@ void main() {
     testWidgets('formats time in hours and minutes when over 60 minutes', (
       tester,
     ) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(

@@ -4,11 +4,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/widgets/break_gap.dart';
 import 'package:routine_timer/src/widgets/task_list_column.dart';
+import '../test_helpers/firebase_test_helper.dart';
 
 void main() {
   group('TaskListColumn', () {
+    setUpAll(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+    });
+
+    setUp(() {
+      FirebaseTestHelper.reset();
+    });
+
     testWidgets('displays task list when routine is loaded', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -29,12 +39,10 @@ void main() {
       expect(find.text('Shower'), findsOneWidget);
       expect(find.text('Breakfast'), findsOneWidget);
       expect(find.text('Review Plan'), findsOneWidget);
-
-      bloc.close();
     });
 
     testWidgets('shows no routine loaded message initially', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -48,12 +56,11 @@ void main() {
       );
 
       expect(find.text('No routine loaded'), findsOneWidget);
-
-      bloc.close();
     });
 
     testWidgets('displays drag handles for tasks', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -70,12 +77,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.drag_handle), findsNWidgets(4));
-
-      bloc.close();
     });
 
     testWidgets('displays break gaps between tasks', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -93,12 +99,11 @@ void main() {
 
       // Should have 3 break gaps for 4 tasks
       expect(find.byType(BreakGap), findsNWidgets(3));
-
-      bloc.close();
     });
 
     testWidgets('break gaps show enabled and disabled states', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
 
       // Sample routine has breaks at indices 0(enabled), 1(disabled), 2(enabled)
@@ -129,12 +134,11 @@ void main() {
       // Verify second break shows correct state
       final secondGap = tester.widget<BreakGap>(breakGaps.at(1));
       expect(secondGap.isEnabled, secondBreakEnabled);
-
-      bloc.close();
     });
 
     testWidgets('tapping break gap toggles break', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -159,12 +163,11 @@ void main() {
 
       // Check state has changed
       expect(bloc.state.model!.breaks![0].isEnabled, !initialState);
-
-      bloc.close();
     });
 
     testWidgets('break gaps update when breaks are toggled', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -195,14 +198,13 @@ void main() {
       // Verify UI updated
       final updatedGap = tester.widget<BreakGap>(find.byType(BreakGap).first);
       expect(updatedGap.isEnabled, !initialState);
-
-      bloc.close();
     });
 
     testWidgets('task start times update when breaks are toggled', (
       tester,
     ) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -222,12 +224,11 @@ void main() {
       // but we can verify they exist and are being rendered)
       // StartTimePill is used for displaying start times
       expect(find.byType(Card), findsWidgets);
-
-      bloc.close();
     });
 
     testWidgets('displays correct number of break gaps', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -254,8 +255,6 @@ void main() {
 
       // 5 tasks should have 4 break gaps
       expect(find.byType(BreakGap), findsNWidgets(4));
-
-      bloc.close();
     });
   });
 }
