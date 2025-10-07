@@ -33,6 +33,12 @@ jobs:
         sudo apt-get update -qq
         sudo apt-get install -y lcov
 
+    - name: Normalize coverage file paths
+      run: |
+        # Convert Windows-style backslashes to Unix-style forward slashes
+        sed -i 's/\\/\//g' coverage/lcov.info
+        echo "Coverage file paths normalized"
+
     - name: Verify coverage file exists
       run: |
         if [ ! -f coverage/lcov.info ]; then
