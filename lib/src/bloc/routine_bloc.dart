@@ -24,6 +24,8 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<DuplicateTask>(_onDuplicateTask);
     on<DeleteTask>(_onDeleteTask);
     on<AddTask>(_onAddTask);
+    on<UpdateBreakDuration>(_onUpdateBreakDuration);
+    on<ResetBreakToDefault>(_onResetBreakToDefault);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -124,7 +126,31 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   void _onUpdateSettings(UpdateSettings event, Emitter<RoutineBlocState> emit) {
     final model = state.model;
     if (model == null) return;
-    emit(state.copyWith(model: model.copyWith(settings: event.settings)));
+
+    // Check if default break duration changed
+    final oldDuration = model.settings.defaultBreakDuration;
+    final newDuration = event.settings.defaultBreakDuration;
+
+    if (oldDuration != newDuration && model.breaks != null) {
+      // Update all non-customized breaks to use the new default duration
+      final updatedBreaks = model.breaks!.map((breakModel) {
+        if (!breakModel.isCustomized) {
+          return breakModel.copyWith(duration: newDuration);
+        }
+        return breakModel;
+      }).toList();
+
+      emit(
+        state.copyWith(
+          model: model.copyWith(
+            settings: event.settings,
+            breaks: updatedBreaks,
+          ),
+        ),
+      );
+    } else {
+      emit(state.copyWith(model: model.copyWith(settings: event.settings)));
+    }
   }
 
   void _onMarkTaskDone(MarkTaskDone event, Emitter<RoutineBlocState> emit) {
@@ -284,5 +310,44 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
         model: model.copyWith(tasks: updatedTasks, breaks: updatedBreaks),
       ),
     );
+  }
+
+  void _onUpdateBreakDuration(
+    UpdateBreakDuration event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null || model.breaks == null) return;
+
+    if (event.index < 0 || event.index >= model.breaks!.length) return;
+
+    final updated = List<BreakModel>.from(model.breaks!);
+    final target = updated[event.index];
+    // Mark as customized when manually updated
+    updated[event.index] = target.copyWith(
+      duration: event.duration,
+      isCustomized: true,
+    );
+
+    emit(state.copyWith(model: model.copyWith(breaks: updated)));
+  }
+
+  void _onResetBreakToDefault(
+    ResetBreakToDefault event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null || model.breaks == null) return;
+
+    if (event.index < 0 || event.index >= model.breaks!.length) return;
+
+    final updated = List<BreakModel>.from(model.breaks!);
+    // Reset to default: set duration to default and mark as non-customized
+    updated[event.index] = updated[event.index].copyWith(
+      duration: model.settings.defaultBreakDuration,
+      isCustomized: false,
+    );
+
+    emit(state.copyWith(model: model.copyWith(breaks: updated)));
   }
 }

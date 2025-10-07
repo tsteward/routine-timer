@@ -89,3 +89,20 @@ class AddTask extends RoutineEvent {
   @override
   List<Object?> get props => [name, durationSeconds];
 }
+
+class UpdateBreakDuration extends RoutineEvent {
+  const UpdateBreakDuration({required this.index, required this.duration});
+  final int index;
+  final int duration;
+
+  @override
+  List<Object?> get props => [index, duration];
+}
+
+class ResetBreakToDefault extends RoutineEvent {
+  const ResetBreakToDefault({required this.index});
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}
