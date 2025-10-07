@@ -182,7 +182,8 @@ class TaskListColumn extends StatelessWidget {
     int breakIndex,
     RoutineStateModel model,
   ) async {
-    final currentDuration = model.breaks![breakIndex].duration;
+    final currentBreak = model.breaks![breakIndex];
+    final currentDuration = currentBreak.duration;
     final hours = currentDuration ~/ 3600;
     final minutes = (currentDuration % 3600) ~/ 60;
 
@@ -190,7 +191,9 @@ class TaskListColumn extends StatelessWidget {
       context: context,
       initialHours: hours,
       initialMinutes: minutes,
-      title: 'Break Duration',
+      title: currentBreak.isCustomized
+          ? 'Break Duration (Customized)'
+          : 'Break Duration (Default)',
     );
 
     if (picked != null && context.mounted) {

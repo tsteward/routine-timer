@@ -575,5 +575,114 @@ void main() {
         expect(updated.model!.breaks![1].duration, 240);
       },
     );
+
+    test('update break duration marks break as customized', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Initially should not be customized
+      expect(loaded.model!.breaks![0].isCustomized, false);
+
+      bloc.add(const UpdateBreakDuration(index: 0, duration: 300));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.breaks![0].duration == 300,
+      );
+
+      // Should now be marked as customized
+      expect(updated.model!.breaks![0].isCustomized, true);
+    });
+
+    test(
+      'updating default break duration updates non-customized breaks',
+      () async {
+        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Customize one break
+        bloc.add(const UpdateBreakDuration(index: 1, duration: 300));
+        await bloc.stream.firstWhere(
+          (s) => s.model!.breaks![1].isCustomized == true,
+        );
+
+        // Update default break duration
+        final newSettings = RoutineSettingsModel(
+          startTime: bloc.state.model!.settings.startTime,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 180, // 3 minutes
+        );
+
+        bloc.add(UpdateSettings(newSettings));
+        final updated = await bloc.stream.firstWhere(
+          (s) => s.model!.settings.defaultBreakDuration == 180,
+        );
+
+        // Non-customized breaks should update to new default
+        expect(updated.model!.breaks![0].duration, 180);
+        expect(updated.model!.breaks![0].isCustomized, false);
+        expect(updated.model!.breaks![2].duration, 180);
+        expect(updated.model!.breaks![2].isCustomized, false);
+
+        // Customized break should remain unchanged
+        expect(updated.model!.breaks![1].duration, 300);
+        expect(updated.model!.breaks![1].isCustomized, true);
+      },
+    );
+
+    test('updating default break duration preserves customized flag', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Update default break duration
+      final newSettings = RoutineSettingsModel(
+        startTime: bloc.state.model!.settings.startTime,
+        breaksEnabledByDefault: true,
+        defaultBreakDuration: 240,
+      );
+
+      bloc.add(UpdateSettings(newSettings));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.settings.defaultBreakDuration == 240,
+      );
+
+      // All non-customized breaks should still be marked as non-customized
+      for (final breakModel in updated.model!.breaks!) {
+        if (!breakModel.isCustomized) {
+          expect(breakModel.duration, 240);
+        }
+      }
+    });
+
+    test(
+      'updating settings without changing break duration preserves breaks',
+      () async {
+        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+        final originalBreaks = loaded.model!.breaks!;
+
+        // Update start time only (not break duration)
+        final newSettings = RoutineSettingsModel(
+          startTime: 999999,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: loaded.model!.settings.defaultBreakDuration,
+        );
+
+        bloc.add(UpdateSettings(newSettings));
+        final updated = await bloc.stream.firstWhere(
+          (s) => s.model!.settings.startTime == 999999,
+        );
+
+        // Breaks should remain unchanged
+        for (var i = 0; i < originalBreaks.length; i++) {
+          expect(
+            updated.model!.breaks![i].duration,
+            originalBreaks[i].duration,
+          );
+          expect(
+            updated.model!.breaks![i].isCustomized,
+            originalBreaks[i].isCustomized,
+          );
+        }
+      },
+    );
   });
 }

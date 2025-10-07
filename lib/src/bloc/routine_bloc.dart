@@ -125,7 +125,31 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   void _onUpdateSettings(UpdateSettings event, Emitter<RoutineBlocState> emit) {
     final model = state.model;
     if (model == null) return;
-    emit(state.copyWith(model: model.copyWith(settings: event.settings)));
+
+    // Check if default break duration changed
+    final oldDuration = model.settings.defaultBreakDuration;
+    final newDuration = event.settings.defaultBreakDuration;
+
+    if (oldDuration != newDuration && model.breaks != null) {
+      // Update all non-customized breaks to use the new default duration
+      final updatedBreaks = model.breaks!.map((breakModel) {
+        if (!breakModel.isCustomized) {
+          return breakModel.copyWith(duration: newDuration);
+        }
+        return breakModel;
+      }).toList();
+
+      emit(
+        state.copyWith(
+          model: model.copyWith(
+            settings: event.settings,
+            breaks: updatedBreaks,
+          ),
+        ),
+      );
+    } else {
+      emit(state.copyWith(model: model.copyWith(settings: event.settings)));
+    }
   }
 
   void _onMarkTaskDone(MarkTaskDone event, Emitter<RoutineBlocState> emit) {
@@ -298,7 +322,11 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     final updated = List<BreakModel>.from(model.breaks!);
     final target = updated[event.index];
-    updated[event.index] = target.copyWith(duration: event.duration);
+    // Mark as customized when manually updated
+    updated[event.index] = target.copyWith(
+      duration: event.duration,
+      isCustomized: true,
+    );
 
     emit(state.copyWith(model: model.copyWith(breaks: updated)));
   }
