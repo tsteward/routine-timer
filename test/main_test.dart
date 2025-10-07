@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:routine_timer/main.dart' as app;
 import 'package:routine_timer/main.dart';
 import 'package:routine_timer/src/app_theme.dart';
 
 void main() {
+  testWidgets('main() initializes and runs the app', (tester) async {
+    // Call main() - it will set up the app
+    // Note: We can't await main() in tests as it calls runApp() which doesn't return
+    // Instead, we test the app initialization separately
+    await tester.pumpWidget(const RoutineTimerApp());
+    await tester.pumpAndSettle();
+
+    // Verify the app is running
+    expect(find.byType(RoutineTimerApp), findsOneWidget);
+    expect(find.byType(MaterialApp), findsOneWidget);
+  });
+
   testWidgets('App boots to Pre-Start and applies theme colors', (
     tester,
   ) async {

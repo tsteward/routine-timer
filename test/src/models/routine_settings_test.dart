@@ -30,5 +30,42 @@ void main() {
       expect(updated.breaksEnabledByDefault, false);
       expect(updated.startTime, 1);
     });
+
+    test('toJson/fromJson roundtrip', () {
+      final settings = RoutineSettingsModel(
+        startTime: DateTime(2024, 3, 15, 9, 30).millisecondsSinceEpoch,
+        breaksEnabledByDefault: false,
+        defaultBreakDuration: 240,
+      );
+      final json = settings.toJson();
+      expect(json, isA<String>());
+
+      final decoded = RoutineSettingsModel.fromJson(json);
+      expect(decoded.startTime, settings.startTime);
+      expect(decoded.breaksEnabledByDefault, false);
+      expect(decoded.defaultBreakDuration, 240);
+    });
+
+    test('copyWith can update individual fields', () {
+      final settings = RoutineSettingsModel(
+        startTime: 1000,
+        breaksEnabledByDefault: true,
+        defaultBreakDuration: 60,
+      );
+
+      final withStartTime = settings.copyWith(startTime: 2000);
+      expect(withStartTime.startTime, 2000);
+      expect(withStartTime.breaksEnabledByDefault, true);
+      expect(withStartTime.defaultBreakDuration, 60);
+
+      final withBreaksEnabled = settings.copyWith(
+        breaksEnabledByDefault: false,
+      );
+      expect(withBreaksEnabled.startTime, 1000);
+      expect(withBreaksEnabled.breaksEnabledByDefault, false);
+
+      final withBreakDuration = settings.copyWith(defaultBreakDuration: 90);
+      expect(withBreakDuration.defaultBreakDuration, 90);
+    });
   });
 }

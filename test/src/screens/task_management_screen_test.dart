@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:routine_timer/src/screens/task_management_screen.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/app_theme.dart';
+import 'package:routine_timer/src/router/app_router.dart';
 
 void main() {
   group('TaskManagementScreen Integration Tests', () {
@@ -182,6 +183,67 @@ void main() {
       expect(find.text('Estimated Duration'), findsOneWidget);
       expect(find.text('Duplicate'), findsOneWidget);
       expect(find.text('Delete'), findsOneWidget);
+
+      bloc.close();
+    });
+
+    testWidgets('navigation FAB opens menu', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+          routes: {
+            AppRoutes.preStart: (_) => const Scaffold(body: Text('Pre-Start')),
+            AppRoutes.main: (_) => const Scaffold(body: Text('Main Routine')),
+            AppRoutes.tasks: (_) => const Scaffold(body: Text('Tasks')),
+          },
+        ),
+      );
+
+      // Tap the navigation FAB
+      await tester.tap(find.byIcon(Icons.navigation));
+      await tester.pumpAndSettle();
+
+      // Menu should be visible with navigation options
+      expect(find.text('Pre-Start'), findsOneWidget);
+      expect(find.text('Main Routine'), findsAtLeastNWidgets(1));
+      expect(find.text('Task Management'), findsAtLeastNWidgets(1));
+
+      bloc.close();
+    });
+
+    testWidgets('navigation FAB can navigate to Main Routine', (tester) async {
+      final bloc = RoutineBloc();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: BlocProvider<RoutineBloc>.value(
+            value: bloc,
+            child: const TaskManagementScreen(),
+          ),
+          routes: {
+            AppRoutes.main: (_) =>
+                const Scaffold(body: Text('Main Routine Page')),
+          },
+        ),
+      );
+
+      // Open navigation menu
+      await tester.tap(find.byIcon(Icons.navigation));
+      await tester.pumpAndSettle();
+
+      // Select Main Routine from menu
+      await tester.tap(find.text('Main Routine'));
+      await tester.pumpAndSettle();
+
+      // Should navigate to Main Routine
+      expect(find.text('Main Routine Page'), findsOneWidget);
 
       bloc.close();
     });

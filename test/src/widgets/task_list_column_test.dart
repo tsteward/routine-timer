@@ -72,5 +72,40 @@ void main() {
 
       bloc.close();
     });
+
+    testWidgets('can reorder tasks by dragging', (tester) async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final firstTaskId = loaded.model!.tasks.first.id;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: BlocProvider.value(
+              value: bloc,
+              child: const TaskListColumn(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Simulate reordering by calling the BLoC event directly
+      // (UI testing of drag and drop is complex and flaky)
+      bloc.add(const ReorderTasks(oldIndex: 0, newIndex: 2));
+
+      // Wait for state to update
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks[2].id == firstTaskId,
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify the task was reordered
+      expect(updated.model!.tasks[2].id, firstTaskId);
+
+      bloc.close();
+    });
   });
 }

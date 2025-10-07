@@ -46,5 +46,36 @@ void main() {
       expect(updated.isRunning, true);
       expect(updated.tasks.length, 1);
     });
+
+    test('toJson/fromJson roundtrip', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: 't1', name: 'Task1', estimatedDuration: 100, order: 0),
+          TaskModel(id: 't2', name: 'Task2', estimatedDuration: 200, order: 1),
+        ],
+        breaks: const [BreakModel(duration: 50, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 5000,
+          breaksEnabledByDefault: false,
+          defaultBreakDuration: 45,
+        ),
+        currentTaskIndex: 1,
+        isRunning: true,
+      );
+
+      final json = state.toJson();
+      expect(json, isA<String>());
+
+      final decoded = RoutineStateModel.fromJson(json);
+      expect(decoded.tasks.length, 2);
+      expect(decoded.tasks[0].name, 'Task1');
+      expect(decoded.tasks[1].name, 'Task2');
+      expect(decoded.breaks!.length, 1);
+      expect(decoded.breaks![0].duration, 50);
+      expect(decoded.settings.startTime, 5000);
+      expect(decoded.settings.defaultBreakDuration, 45);
+      expect(decoded.currentTaskIndex, 1);
+      expect(decoded.isRunning, true);
+    });
   });
 }

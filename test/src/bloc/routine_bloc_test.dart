@@ -4,6 +4,125 @@ import 'package:routine_timer/src/models/routine_settings.dart';
 import 'package:routine_timer/src/models/task.dart';
 
 void main() {
+  group('RoutineEvent equality and props', () {
+    test('LoadSampleRoutine props', () {
+      const event1 = LoadSampleRoutine();
+      const event2 = LoadSampleRoutine();
+      expect(event1.props, event2.props);
+      expect(event1, event2);
+    });
+
+    test('SelectTask props', () {
+      const event1 = SelectTask(1);
+      const event2 = SelectTask(1);
+      const event3 = SelectTask(2);
+      expect(event1.props, [1]);
+      expect(event1, event2);
+      expect(event1, isNot(event3));
+    });
+
+    test('ReorderTasks props', () {
+      const event1 = ReorderTasks(oldIndex: 0, newIndex: 2);
+      const event2 = ReorderTasks(oldIndex: 0, newIndex: 2);
+      const event3 = ReorderTasks(oldIndex: 1, newIndex: 2);
+      expect(event1.props, [0, 2]);
+      expect(event1, event2);
+      expect(event1, isNot(event3));
+    });
+
+    test('ToggleBreakAtIndex props', () {
+      const event1 = ToggleBreakAtIndex(1);
+      const event2 = ToggleBreakAtIndex(1);
+      const event3 = ToggleBreakAtIndex(2);
+      expect(event1.props, [1]);
+      expect(event1, event2);
+      expect(event1, isNot(event3));
+    });
+
+    test('UpdateSettings props', () {
+      const settings1 = RoutineSettingsModel(
+        startTime: 10,
+        breaksEnabledByDefault: true,
+        defaultBreakDuration: 300,
+      );
+      const settings2 = RoutineSettingsModel(
+        startTime: 20,
+        breaksEnabledByDefault: false,
+        defaultBreakDuration: 600,
+      );
+      final event1 = UpdateSettings(settings1);
+      final event2 = UpdateSettings(settings1);
+      final event3 = UpdateSettings(settings2);
+      expect(event1.props, [settings1]);
+      expect(event1, event2);
+      expect(event1, isNot(event3));
+    });
+
+    test('MarkTaskDone props', () {
+      const event1 = MarkTaskDone(actualDuration: 100);
+      const event2 = MarkTaskDone(actualDuration: 100);
+      const event3 = MarkTaskDone(actualDuration: 200);
+      expect(event1.props, [100]);
+      expect(event1, event2);
+      expect(event1, isNot(event3));
+    });
+
+    test('GoToPreviousTask props', () {
+      const event1 = GoToPreviousTask();
+      const event2 = GoToPreviousTask();
+      expect(event1.props, event2.props);
+      expect(event1, event2);
+    });
+
+    test('UpdateTask props', () {
+      const task1 = TaskModel(
+        id: '1',
+        name: 'Task 1',
+        estimatedDuration: 600,
+        order: 0,
+      );
+      const task2 = TaskModel(
+        id: '2',
+        name: 'Task 2',
+        estimatedDuration: 700,
+        order: 1,
+      );
+      const event1 = UpdateTask(index: 0, task: task1);
+      const event2 = UpdateTask(index: 0, task: task1);
+      const event3 = UpdateTask(index: 1, task: task2);
+      expect(event1.props, [0, task1]);
+      expect(event1, event2);
+      expect(event1, isNot(event3));
+    });
+
+    test('DuplicateTask props', () {
+      const event1 = DuplicateTask(1);
+      const event2 = DuplicateTask(1);
+      const event3 = DuplicateTask(2);
+      expect(event1.props, [1]);
+      expect(event1, event2);
+      expect(event1, isNot(event3));
+    });
+
+    test('DeleteTask props', () {
+      const event1 = DeleteTask(1);
+      const event2 = DeleteTask(1);
+      const event3 = DeleteTask(2);
+      expect(event1.props, [1]);
+      expect(event1, event2);
+      expect(event1, isNot(event3));
+    });
+
+    test('AddTask props', () {
+      const event1 = AddTask(name: 'Task A', durationSeconds: 600);
+      const event2 = AddTask(name: 'Task A', durationSeconds: 600);
+      const event3 = AddTask(name: 'Task B', durationSeconds: 700);
+      expect(event1.props, ['Task A', 600]);
+      expect(event1, event2);
+      expect(event1, isNot(event3));
+    });
+  });
+
   group('RoutineBloc', () {
     test('loads sample routine with 4 tasks', () async {
       final bloc = RoutineBloc();
