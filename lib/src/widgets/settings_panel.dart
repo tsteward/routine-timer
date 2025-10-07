@@ -187,10 +187,6 @@ class SettingsPanel extends StatelessWidget {
   }
 
   void _updateBreaksEnabledByDefault(BuildContext context, bool value) {
-    final updatedSettings = model.settings.copyWith(
-      breaksEnabledByDefault: value,
-    );
-
-    context.read<RoutineBloc>().add(UpdateSettings(updatedSettings));
+    context.read<RoutineBloc>().add(ToggleAllBreaks(value));
   }
 }

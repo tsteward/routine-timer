@@ -506,5 +506,108 @@ void main() {
       expect(newTask.isCompleted, false);
       expect(newTask.actualDuration, null);
     });
+
+    test('toggle all breaks enables all breaks', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Set some breaks to disabled first
+      bloc.add(const ToggleBreakAtIndex(0));
+      await bloc.stream.firstWhere(
+        (s) => s.model!.breaks![0].isEnabled == false,
+      );
+      bloc.add(const ToggleBreakAtIndex(2));
+      await bloc.stream.firstWhere(
+        (s) => s.model!.breaks![2].isEnabled == false,
+      );
+
+      // Now toggle all breaks to enabled
+      bloc.add(const ToggleAllBreaks(true));
+      final updated = await bloc.stream.firstWhere(
+        (s) =>
+            s.model!.breaks!.every((b) => b.isEnabled) &&
+            s.model!.settings.breaksEnabledByDefault == true,
+      );
+
+      expect(updated.model!.breaks!.every((b) => b.isEnabled), true);
+      expect(updated.model!.settings.breaksEnabledByDefault, true);
+    });
+
+    test('toggle all breaks disables all breaks', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+      // All breaks should start enabled by default
+      expect(loaded.model!.settings.breaksEnabledByDefault, true);
+
+      // Toggle all breaks to disabled
+      bloc.add(const ToggleAllBreaks(false));
+      final updated = await bloc.stream.firstWhere(
+        (s) =>
+            s.model!.breaks!.every((b) => !b.isEnabled) &&
+            s.model!.settings.breaksEnabledByDefault == false,
+      );
+
+      expect(updated.model!.breaks!.every((b) => !b.isEnabled), true);
+      expect(updated.model!.settings.breaksEnabledByDefault, false);
+    });
+
+    test('toggle all breaks updates settings', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      bloc.add(const ToggleAllBreaks(false));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.settings.breaksEnabledByDefault == false,
+      );
+
+      expect(updated.model!.settings.breaksEnabledByDefault, false);
+      expect(updated.model!.breaks!.every((b) => !b.isEnabled), true);
+    });
+
+    test('toggle all breaks handles multiple toggles correctly', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Disable all
+      bloc.add(const ToggleAllBreaks(false));
+      await bloc.stream.firstWhere(
+        (s) => s.model!.breaks!.every((b) => !b.isEnabled),
+      );
+
+      // Enable all
+      bloc.add(const ToggleAllBreaks(true));
+      await bloc.stream.firstWhere(
+        (s) => s.model!.breaks!.every((b) => b.isEnabled),
+      );
+
+      // Disable all again
+      bloc.add(const ToggleAllBreaks(false));
+      final finalState = await bloc.stream.firstWhere(
+        (s) => s.model!.breaks!.every((b) => !b.isEnabled),
+      );
+
+      expect(finalState.model!.breaks!.every((b) => !b.isEnabled), true);
+      expect(finalState.model!.settings.breaksEnabledByDefault, false);
+    });
+
+    test('toggle all breaks preserves break durations', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalDurations = loaded.model!.breaks!
+          .map((b) => b.duration)
+          .toList();
+
+      bloc.add(const ToggleAllBreaks(false));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.breaks!.every((b) => !b.isEnabled),
+      );
+
+      // Verify durations are preserved
+      final updatedDurations = updated.model!.breaks!
+          .map((b) => b.duration)
+          .toList();
+      expect(updatedDurations, equals(originalDurations));
+    });
   });
 }

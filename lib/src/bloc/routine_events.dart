@@ -89,3 +89,11 @@ class AddTask extends RoutineEvent {
   @override
   List<Object?> get props => [name, durationSeconds];
 }
+
+class ToggleAllBreaks extends RoutineEvent {
+  const ToggleAllBreaks(this.enabled);
+  final bool enabled;
+
+  @override
+  List<Object?> get props => [enabled];
+}
