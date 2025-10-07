@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase configuration files (contain API keys and project IDs)
+# For local development: Download from Firebase Console and place in correct locations
+# For team sharing: Share via secure channel (1Password, LastPass, encrypted email)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Firebase local emulator data
+.firebase/
