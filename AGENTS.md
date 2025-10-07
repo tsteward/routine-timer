@@ -125,7 +125,37 @@ flutter test
 - **Avoid flakiness**: use proper async/waits, pumps, and deterministic inputs
 - **Test location**: Place tests in the `test/` directory, mirroring the structure of `lib/`
 
-### 13.1) Verifying Test Coverage
+### 13.1) Test File Structure
+**MANDATORY**: Test file structure MUST mirror the `lib/` directory structure exactly.
+
+#### File Naming and Organization
+- **One-to-one mapping**: For every file in `lib/`, there MUST be a corresponding test file in `test/`
+- **Mirror directory structure**: The directory hierarchy in `test/` must exactly match `lib/`
+- **Naming convention**: Test files should have the same name as their corresponding lib file with `_test.dart` suffix
+
+#### Examples
+```
+lib/main.dart                              → test/main_test.dart
+lib/src/models/routine.dart                → test/src/models/routine_test.dart
+lib/src/services/timer_service.dart        → test/src/services/timer_service_test.dart
+lib/src/screens/home_screen.dart           → test/src/screens/home_screen_test.dart
+lib/src/widgets/routine_card.dart          → test/src/widgets/routine_card_test.dart
+```
+
+#### Requirements
+- **Complete coverage**: Every `.dart` file in `lib/` must have a corresponding `_test.dart` file in `test/`
+- **Create test files immediately**: When creating a new file in `lib/`, create its test file at the same time
+- **Maintain structure**: When moving or renaming files in `lib/`, move or rename their test files accordingly
+- **No orphaned tests**: Test files should not exist without corresponding lib files
+
+#### Verification
+Before completing any change that adds or modifies lib files:
+```powershell
+# Verify test file exists for each lib file
+# (Manual check or use a script to validate structure alignment)
+```
+
+### 13.2) Verifying Test Coverage
 **MANDATORY**: Always verify that your new code is covered by tests. Do not consider a change complete without coverage verification.
 
 #### Generate Coverage Report
@@ -189,17 +219,18 @@ lcov --list coverage/lcov.info | grep "your_file.dart"
 Before considering a change complete, verify all of the following are green:
 
 1. **Test coverage added**: All new functionality has accompanying tests (see Section 13)
-2. **Coverage verified**: Run `flutter test --coverage` and confirm 100% coverage of new code (see Section 13.1)
-3. Tests pass locally (including edge cases):
+2. **Test file structure aligned**: Test files mirror lib file structure exactly (see Section 13.1)
+3. **Coverage verified**: Run `flutter test --coverage` and confirm 100% coverage of new code (see Section 13.2)
+4. Tests pass locally (including edge cases):
    ```powershell
    flutter test
    ```
-4. Static analysis clean (0 issues):
+5. Static analysis clean (0 issues):
    ```powershell
    dart analyze
    ```
-5. Tests pass via MCP (if using MCP workflow)
-6. Code formatted:
+6. Tests pass via MCP (if using MCP workflow)
+7. Code formatted:
    ```powershell
    dart format .
    ```
