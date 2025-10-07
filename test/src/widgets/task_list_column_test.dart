@@ -4,10 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/widgets/task_list_column.dart';
 
+import '../../helpers/fake_routine_repository.dart';
+
 void main() {
   group('TaskListColumn', () {
     testWidgets('displays task list when routine is loaded', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = RoutineBloc(repository: FakeRoutineRepository())
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(
@@ -52,7 +55,8 @@ void main() {
     });
 
     testWidgets('displays drag handles for tasks', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = RoutineBloc(repository: FakeRoutineRepository())
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(

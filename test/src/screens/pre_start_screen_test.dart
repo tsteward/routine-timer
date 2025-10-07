@@ -4,10 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/screens/pre_start_screen.dart';
 
+import '../../helpers/fake_routine_repository.dart';
+
 void main() {
   group('PreStartScreen', () {
     testWidgets('displays placeholder content', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = RoutineBloc(repository: FakeRoutineRepository());
 
       await tester.pumpWidget(
         MaterialApp(
@@ -22,7 +24,7 @@ void main() {
     });
 
     testWidgets('has navigation menu button', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = RoutineBloc(repository: FakeRoutineRepository());
 
       await tester.pumpWidget(
         MaterialApp(

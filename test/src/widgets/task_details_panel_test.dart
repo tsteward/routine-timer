@@ -4,10 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/widgets/task_details_panel.dart';
 
+import '../../helpers/fake_routine_repository.dart';
+
 void main() {
   group('TaskDetailsPanel', () {
     testWidgets('displays task details when routine is loaded', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = RoutineBloc(repository: FakeRoutineRepository())
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
 
       await tester.pumpWidget(

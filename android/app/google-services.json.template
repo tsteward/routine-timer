@@ -1,0 +1,15 @@
+{
+  "_comment": "This is a TEMPLATE file. Replace this with the actual google-services.json downloaded from Firebase Console.",
+  "_instructions": [
+    "1. Go to https://console.firebase.google.com/",
+    "2. Select your project (or create one)",
+    "3. Go to Project Settings > Your apps > Android app",
+    "4. Download google-services.json",
+    "5. Replace THIS file with the downloaded file",
+    "6. Rename to 'google-services.json' (remove .template)",
+    "7. DO NOT commit the real file to Git"
+  ],
+  "_expected_location": "android/app/google-services.json",
+  "_package_name": "com.example.routine_timer"
+}
+
