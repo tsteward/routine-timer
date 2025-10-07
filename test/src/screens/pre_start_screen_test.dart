@@ -1,10 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:routine_timer/src/bloc/routine_bloc.dart';
-import 'package:routine_timer/src/models/routine_settings.dart';
-import 'package:routine_timer/src/screens/pre_start_screen.dart';
-import 'package:routine_timer/src/router/app_router.dart';
 import 'package:routine_timer/src/utils/time_formatter.dart';
 import '../test_helpers/firebase_test_helper.dart';
 
