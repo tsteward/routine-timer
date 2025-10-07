@@ -30,5 +30,40 @@ void main() {
       expect(updated.breaksEnabledByDefault, false);
       expect(updated.startTime, 1);
     });
+
+    test('toJson/fromJson roundtrip', () {
+      final settings = RoutineSettingsModel(
+        startTime: DateTime(2024, 6, 15, 7, 30).millisecondsSinceEpoch,
+        breaksEnabledByDefault: true,
+        defaultBreakDuration: 180,
+      );
+      final json = settings.toJson();
+      final decoded = RoutineSettingsModel.fromJson(json);
+      expect(decoded.startTime, settings.startTime);
+      expect(decoded.breaksEnabledByDefault, true);
+      expect(decoded.defaultBreakDuration, 180);
+    });
+
+    test('fromMap handles default breaksEnabledByDefault value', () {
+      final map = {'startTime': 1000, 'defaultBreakDuration': 60};
+      final settings = RoutineSettingsModel.fromMap(map);
+      expect(settings.breaksEnabledByDefault, true); // Should default to true
+    });
+
+    test('copyWith can update all fields', () {
+      final settings = RoutineSettingsModel(
+        startTime: 100,
+        breaksEnabledByDefault: false,
+        defaultBreakDuration: 60,
+      );
+      final updated = settings.copyWith(
+        startTime: 200,
+        breaksEnabledByDefault: true,
+        defaultBreakDuration: 120,
+      );
+      expect(updated.startTime, 200);
+      expect(updated.breaksEnabledByDefault, true);
+      expect(updated.defaultBreakDuration, 120);
+    });
   });
 }
