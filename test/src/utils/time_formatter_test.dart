@@ -104,5 +104,44 @@ void main() {
         expect(TimeFormatter.formatDurationHoursMinutes(0), '0m');
       });
     });
+
+    group('formatCountdown', () {
+      test('formats countdown in HH:MM:SS format with padding', () {
+        expect(TimeFormatter.formatCountdown(0), '00:00:00');
+        expect(TimeFormatter.formatCountdown(1), '00:00:01');
+        expect(TimeFormatter.formatCountdown(59), '00:00:59');
+        expect(TimeFormatter.formatCountdown(60), '00:01:00');
+        expect(TimeFormatter.formatCountdown(61), '00:01:01');
+      });
+
+      test('formats minutes correctly in countdown', () {
+        expect(TimeFormatter.formatCountdown(120), '00:02:00');
+        expect(TimeFormatter.formatCountdown(125), '00:02:05');
+        expect(TimeFormatter.formatCountdown(599), '00:09:59');
+        expect(TimeFormatter.formatCountdown(3599), '00:59:59');
+      });
+
+      test('formats hours correctly in countdown', () {
+        expect(TimeFormatter.formatCountdown(3600), '01:00:00');
+        expect(TimeFormatter.formatCountdown(3661), '01:01:01');
+        expect(TimeFormatter.formatCountdown(7200), '02:00:00');
+        expect(TimeFormatter.formatCountdown(7325), '02:02:05');
+      });
+
+      test('formats large durations correctly', () {
+        expect(TimeFormatter.formatCountdown(36000), '10:00:00');
+        expect(TimeFormatter.formatCountdown(86399), '23:59:59');
+        expect(TimeFormatter.formatCountdown(90061), '25:01:01');
+      });
+
+      test('handles typical countdown scenarios', () {
+        // 2 minutes 30 seconds
+        expect(TimeFormatter.formatCountdown(150), '00:02:30');
+        // 1 hour 30 minutes 45 seconds
+        expect(TimeFormatter.formatCountdown(5445), '01:30:45');
+        // 5 hours exactly
+        expect(TimeFormatter.formatCountdown(18000), '05:00:00');
+      });
+    });
   });
 }
