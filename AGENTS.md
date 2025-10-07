@@ -215,6 +215,125 @@ lcov --list coverage/lcov.info | grep "your_file.dart"
 
 **IMPORTANT**: Do not proceed to the quality gate (Section 14) until you have verified 100% coverage of your new code.
 
+### 13.3) Bug Fix Testing & Regression Prevention
+**MANDATORY**: When fixing a bug, you MUST add regression tests that verify the bug is fixed and prevent it from reoccurring in the future.
+
+#### Why Regression Tests Are Critical
+- **Prevent recurrence**: Bugs often reappear when code is refactored or modified later
+- **Document the issue**: Tests serve as living documentation of what the bug was and how it was fixed
+- **Verify the fix**: Ensures the fix actually solves the problem, not just symptoms
+- **Build confidence**: Allows future changes to be made confidently without fear of breaking previously fixed issues
+
+#### Workflow for Bug Fix Testing
+When fixing any bug, follow this mandatory process:
+
+1. **Understand and reproduce the bug**:
+   - Identify the exact conditions that trigger the bug
+   - Document the expected vs. actual behavior
+   - Determine which component(s) are affected
+
+2. **Write a failing test FIRST**:
+   - Create a test that reproduces the bug
+   - The test should FAIL before your fix is applied
+   - This proves the test actually catches the bug
+   - Include descriptive test names like `test('should handle null values without throwing exception')`
+
+3. **Apply the bug fix**:
+   - Make the minimal changes needed to fix the bug
+   - Keep the fix focused and avoid unrelated changes
+
+4. **Verify the test now passes**:
+   - Run the test to confirm it now passes with your fix
+   - If it still fails, your fix is incomplete
+   - Run the full test suite to ensure no regressions elsewhere
+
+5. **Add additional edge case tests**:
+   - Consider related scenarios that might have similar issues
+   - Test boundary conditions around the bug
+   - Test error cases and invalid inputs that might trigger similar bugs
+
+#### Test Documentation Requirements
+Every regression test MUST include clear documentation:
+
+```dart
+test('should not crash when routine has null name (fixes #123)', () {
+  // Bug: App crashed with NullPointerException when routine.name was null
+  // Expected: Should handle null gracefully and show default text
+  
+  final routine = Routine(name: null, duration: 60);
+  
+  expect(() => routine.displayName, returnsNormally);
+  expect(routine.displayName, equals('Unnamed Routine'));
+});
+```
+
+#### Key Elements of a Good Regression Test
+- **Descriptive name**: Test name should explain what bug it prevents
+- **Issue reference**: Link to issue number if available (e.g., "fixes #123")
+- **Bug description**: Comment explaining what the bug was
+- **Expected behavior**: Comment explaining correct behavior
+- **Minimal reproduction**: Test should be as simple as possible while still catching the bug
+- **Clear assertions**: Verify the specific behavior that was broken
+
+#### Examples of Bug Fix Testing Scenarios
+
+**Example 1: Null pointer crash**
+```dart
+test('should handle null routine name without crashing', () {
+  // Bug: App crashed when routine.name was null
+  final routine = Routine(name: null);
+  expect(() => routine.display(), returnsNormally);
+});
+```
+
+**Example 2: Incorrect calculation**
+```dart
+test('should correctly calculate elapsed time across midnight', () {
+  // Bug: Timer showed negative time when crossing midnight
+  final startTime = DateTime(2025, 1, 1, 23, 59, 0);
+  final endTime = DateTime(2025, 1, 2, 0, 1, 0);
+  
+  final elapsed = calculateElapsed(startTime, endTime);
+  
+  expect(elapsed.inMinutes, equals(2)); // Should be 2 minutes, not negative
+});
+```
+
+**Example 3: State management issue**
+```dart
+testWidgets('should maintain timer state after app backgrounding', (tester) async {
+  // Bug: Timer reset to 0 when app was backgrounded and restored
+  
+  await tester.pumpWidget(TimerApp());
+  
+  // Start timer
+  await tester.tap(find.byIcon(Icons.play_arrow));
+  await tester.pump(Duration(seconds: 5));
+  
+  // Simulate app lifecycle change
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  
+  await tester.pump();
+  
+  // Timer should still show elapsed time, not reset to 0
+  expect(find.text('00:05'), findsOneWidget);
+});
+```
+
+#### Verification Checklist for Bug Fixes
+Before completing a bug fix, verify:
+
+- [ ] Regression test written that reproduces the original bug
+- [ ] Test fails before the fix is applied (verified manually or in a separate commit)
+- [ ] Test passes after the fix is applied
+- [ ] Test includes clear documentation of what bug it prevents
+- [ ] Additional edge cases around the bug are also tested
+- [ ] Full test suite still passes (`flutter test`)
+- [ ] Coverage includes the bug fix code (see Section 13.2)
+
+**CRITICAL**: A bug fix without regression tests is incomplete. Do not consider the bug fix done until all tests are in place and passing.
+
 ## 14) Pre-Commit Quality Gate
 Before considering a change complete, verify all of the following are green:
 
