@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/routine_bloc.dart';
+import '../dialogs/duration_picker_dialog.dart';
 import '../models/break.dart';
 import '../models/routine_state.dart';
 import '../utils/time_formatter.dart';
@@ -141,6 +142,9 @@ class TaskListColumn extends StatelessWidget {
                           ToggleBreakAtIndex(index),
                         );
                       },
+                      onLongPress: model.breaks![index].isEnabled
+                          ? () => _editBreakDuration(context, index, model)
+                          : null,
                     ),
                 ],
               );
@@ -171,5 +175,35 @@ class TaskListColumn extends StatelessWidget {
       }
     }
     return results;
+  }
+
+  Future<void> _editBreakDuration(
+    BuildContext context,
+    int breakIndex,
+    RoutineStateModel model,
+  ) async {
+    final currentDuration = model.breaks![breakIndex].duration;
+    final hours = currentDuration ~/ 3600;
+    final minutes = (currentDuration % 3600) ~/ 60;
+
+    final picked = await DurationPickerDialog.show(
+      context: context,
+      initialHours: hours,
+      initialMinutes: minutes,
+      title: 'Break Duration',
+    );
+
+    if (picked != null && context.mounted) {
+      if (picked <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Duration must be greater than 0')),
+        );
+        return;
+      }
+
+      context.read<RoutineBloc>().add(
+        UpdateBreakDuration(index: breakIndex, duration: picked),
+      );
+    }
   }
 }

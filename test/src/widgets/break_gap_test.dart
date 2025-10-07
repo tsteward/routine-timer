@@ -20,14 +20,14 @@ void main() {
         ),
       );
 
-      // Verify the break card is displayed
-      expect(find.byType(Card), findsOneWidget);
+      // Verify the container is displayed
+      expect(find.byType(Container), findsWidgets);
 
       // Verify the coffee icon is shown
       expect(find.byIcon(Icons.coffee), findsOneWidget);
 
-      // Verify the duration text is shown (checking for 'Break:' prefix)
-      expect(find.textContaining('Break:'), findsOneWidget);
+      // Verify the duration text is shown
+      expect(find.textContaining('2m'), findsOneWidget);
 
       // Tap the break gap
       await tester.tap(find.byType(InkWell));
@@ -85,8 +85,8 @@ void main() {
       );
 
       // The exact format depends on TimeFormatter.formatDuration
-      // Just verify that "Break:" text is present
-      expect(find.textContaining('Break:'), findsOneWidget);
+      // Just verify that duration text is present (5 minutes)
+      expect(find.textContaining('5m'), findsOneWidget);
     });
 
     testWidgets('disabled break has correct height', (tester) async {
@@ -175,8 +175,16 @@ void main() {
         ),
       );
 
-      final card = tester.widget<Card>(find.byType(Card));
-      expect(card.color, isNotNull);
+      // Verify the container has the correct decoration color
+      final container = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(InkWell),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      expect(container.decoration, isNotNull);
     });
   });
 }

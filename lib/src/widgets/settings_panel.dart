@@ -71,16 +71,6 @@ class SettingsPanel extends StatelessWidget {
               ),
             ),
             const Divider(),
-            // Enable Breaks by Default
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Enable Breaks by Default'),
-              value: model.settings.breaksEnabledByDefault,
-              onChanged: (value) {
-                _updateBreaksEnabledByDefault(context, value);
-              },
-            ),
-            const Divider(),
             // Break Duration
             InkWell(
               onTap: () => _pickBreakDuration(context),
@@ -184,9 +174,5 @@ class SettingsPanel extends StatelessWidget {
 
       context.read<RoutineBloc>().add(UpdateSettings(updatedSettings));
     }
-  }
-
-  void _updateBreaksEnabledByDefault(BuildContext context, bool value) {
-    context.read<RoutineBloc>().add(ToggleAllBreaks(value));
   }
 }

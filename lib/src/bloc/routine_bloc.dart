@@ -24,7 +24,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<DuplicateTask>(_onDuplicateTask);
     on<DeleteTask>(_onDeleteTask);
     on<AddTask>(_onAddTask);
-    on<ToggleAllBreaks>(_onToggleAllBreaks);
+    on<UpdateBreakDuration>(_onUpdateBreakDuration);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -287,25 +287,19 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     );
   }
 
-  void _onToggleAllBreaks(
-    ToggleAllBreaks event,
+  void _onUpdateBreakDuration(
+    UpdateBreakDuration event,
     Emitter<RoutineBlocState> emit,
   ) {
     final model = state.model;
     if (model == null || model.breaks == null) return;
 
-    final updatedBreaks = model.breaks!
-        .map((b) => b.copyWith(isEnabled: event.enabled))
-        .toList();
+    if (event.index < 0 || event.index >= model.breaks!.length) return;
 
-    final updatedSettings = model.settings.copyWith(
-      breaksEnabledByDefault: event.enabled,
-    );
+    final updated = List<BreakModel>.from(model.breaks!);
+    final target = updated[event.index];
+    updated[event.index] = target.copyWith(duration: event.duration);
 
-    emit(
-      state.copyWith(
-        model: model.copyWith(breaks: updatedBreaks, settings: updatedSettings),
-      ),
-    );
+    emit(state.copyWith(model: model.copyWith(breaks: updated)));
   }
 }

@@ -9,94 +9,75 @@ class BreakGap extends StatelessWidget {
     required this.isEnabled,
     required this.duration,
     required this.onTap,
+    this.onLongPress,
     super.key,
   });
 
   final bool isEnabled;
   final int duration; // in seconds
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (isEnabled) {
-      // Active Break state: colored card with icon and duration
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Card(
-            elevation: 0,
-            color: theme.colorScheme.secondaryContainer,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(
-                color: theme.colorScheme.secondary.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.coffee,
-                    size: 18,
-                    color: theme.colorScheme.onSecondaryContainer,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Break: ${TimeFormatter.formatDuration(duration)}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Container(
+          height: 32,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: isEnabled ? theme.colorScheme.secondaryContainer : null,
+            border: Border.all(
+              color: isEnabled
+                  ? theme.colorScheme.secondary.withValues(alpha: 0.3)
+                  : theme.colorScheme.outline.withValues(alpha: 0.3),
+              width: 1,
             ),
           ),
-        ),
-      );
-    } else {
-      // Disabled Break state: thin placeholder with dashed border
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Container(
-            height: 32,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: theme.colorScheme.outline.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: CustomPaint(
-              painter: _DashedBorderPainter(
-                color: theme.colorScheme.outline.withValues(alpha: 0.5),
-              ),
-              child: Center(
-                child: Text(
-                  'Add Break',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.6,
+          child: isEnabled
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.coffee,
+                      size: 16,
+                      color: theme.colorScheme.onSecondaryContainer,
                     ),
-                    fontStyle: FontStyle.italic,
+                    const SizedBox(width: 8),
+                    Text(
+                      TimeFormatter.formatDuration(duration),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                )
+              : CustomPaint(
+                  painter: _DashedBorderPainter(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Add Break',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
         ),
-      );
-    }
+      ),
+    );
   }
 }
 
