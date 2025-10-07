@@ -70,8 +70,8 @@ jobs:
         awk '
           /^SF:/ { file = substr($0, 4); gsub(/^lib\//, "", file) }
           /^LH:/ { hit = substr($0, 4) }
-          /^LF:/ { 
-            total = substr($0, 4)
+          /^LF:/ { total = substr($0, 4) }
+          /^end_of_record/ { 
             if (total > 0) {
               pct = (hit / total) * 100
               printf "%-50s %6.1f%% (%3d/%3d lines)\n", file, pct, hit, total
