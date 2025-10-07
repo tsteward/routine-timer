@@ -56,4 +56,18 @@ class TimeFormatter {
 
     return '$hh:$mm:$ss';
   }
+
+  /// Formats duration in seconds to MM:SS format (supports negative values)
+  static String formatTimerMMSS(int seconds) {
+    final isNegative = seconds < 0;
+    final absoluteSeconds = seconds.abs();
+    
+    final minutes = absoluteSeconds ~/ 60;
+    final secs = absoluteSeconds % 60;
+
+    final mm = minutes.toString().padLeft(2, '0');
+    final ss = secs.toString().padLeft(2, '0');
+
+    return isNegative ? '-$mm:$ss' : '$mm:$ss';
+  }
 }

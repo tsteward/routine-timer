@@ -165,7 +165,9 @@ void main() {
       await tester.tap(find.text('Main Routine').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Timer & progress placeholder'), findsOneWidget);
+      // Should display the first task name and timer
+      expect(find.text('Morning Workout'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
     });
   });
 }

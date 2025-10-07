@@ -143,5 +143,53 @@ void main() {
         expect(TimeFormatter.formatCountdown(18000), '05:00:00');
       });
     });
+
+    group('formatTimerMMSS', () {
+      test('formats positive time correctly in MM:SS format', () {
+        expect(TimeFormatter.formatTimerMMSS(0), '00:00');
+        expect(TimeFormatter.formatTimerMMSS(1), '00:01');
+        expect(TimeFormatter.formatTimerMMSS(59), '00:59');
+        expect(TimeFormatter.formatTimerMMSS(60), '01:00');
+        expect(TimeFormatter.formatTimerMMSS(61), '01:01');
+      });
+
+      test('formats minutes correctly', () {
+        expect(TimeFormatter.formatTimerMMSS(120), '02:00');
+        expect(TimeFormatter.formatTimerMMSS(125), '02:05');
+        expect(TimeFormatter.formatTimerMMSS(599), '09:59');
+        expect(TimeFormatter.formatTimerMMSS(600), '10:00');
+        expect(TimeFormatter.formatTimerMMSS(1200), '20:00');
+      });
+
+      test('formats negative time correctly with minus sign', () {
+        expect(TimeFormatter.formatTimerMMSS(-1), '-00:01');
+        expect(TimeFormatter.formatTimerMMSS(-59), '-00:59');
+        expect(TimeFormatter.formatTimerMMSS(-60), '-01:00');
+        expect(TimeFormatter.formatTimerMMSS(-61), '-01:01');
+        expect(TimeFormatter.formatTimerMMSS(-120), '-02:00');
+        expect(TimeFormatter.formatTimerMMSS(-125), '-02:05');
+      });
+
+      test('handles typical task timer scenarios', () {
+        // 20 minute task
+        expect(TimeFormatter.formatTimerMMSS(1200), '20:00');
+        // 10 minute task
+        expect(TimeFormatter.formatTimerMMSS(600), '10:00');
+        // 5 minute task
+        expect(TimeFormatter.formatTimerMMSS(300), '05:00');
+        // 30 seconds left
+        expect(TimeFormatter.formatTimerMMSS(30), '00:30');
+        // 1 minute overtime
+        expect(TimeFormatter.formatTimerMMSS(-60), '-01:00');
+        // 5 minutes overtime
+        expect(TimeFormatter.formatTimerMMSS(-300), '-05:00');
+      });
+
+      test('handles large durations correctly', () {
+        expect(TimeFormatter.formatTimerMMSS(3600), '60:00'); // 1 hour
+        expect(TimeFormatter.formatTimerMMSS(5400), '90:00'); // 1.5 hours
+        expect(TimeFormatter.formatTimerMMSS(-3600), '-60:00'); // -1 hour
+      });
+    });
   });
 }
