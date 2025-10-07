@@ -14,8 +14,8 @@ part 'routine_state_bloc.dart';
 /// between tasks with Firebase persistence.
 class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   RoutineBloc({RoutineRepository? repository})
-      : _repository = repository ?? RoutineRepository(),
-        super(RoutineBlocState.initial()) {
+    : _repository = repository ?? RoutineRepository(),
+      super(RoutineBlocState.initial()) {
     on<LoadSampleRoutine>(_onLoadSample);
     on<SelectTask>(_onSelectTask);
     on<ReorderTasks>(_onReorderTasks);
