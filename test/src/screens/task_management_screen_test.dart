@@ -4,11 +4,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:routine_timer/src/screens/task_management_screen.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/app_theme.dart';
+import '../test_helpers/firebase_test_helper.dart';
 
 void main() {
   group('TaskManagementScreen Integration Tests', () {
+    setUpAll(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+    });
+
+    setUp(() {
+      FirebaseTestHelper.reset();
+    });
+
     testWidgets('displays screen structure correctly', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -30,12 +39,10 @@ void main() {
         findsNWidgets(3),
       ); // Main content + left and right columns
       expect(find.byType(FloatingActionButton), findsOneWidget);
-
-      bloc.close();
     });
 
     testWidgets('shows no routine loaded initially', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -49,12 +56,10 @@ void main() {
 
       // Shows "No routine loaded" in both left and right columns
       expect(find.text('No routine loaded'), findsAtLeastNWidgets(1));
-
-      bloc.close();
     });
 
     testWidgets('displays task list after loading data', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -77,12 +82,10 @@ void main() {
       expect(find.text('Shower'), findsAtLeastNWidgets(1));
       expect(find.text('Breakfast'), findsAtLeastNWidgets(1));
       expect(find.text('Review Plan'), findsAtLeastNWidgets(1));
-
-      bloc.close();
     });
 
     testWidgets('displays task durations correctly', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -102,12 +105,10 @@ void main() {
       expect(find.text('10 min'), findsOneWidget); // Shower
       expect(find.text('15 min'), findsOneWidget); // Breakfast
       expect(find.text('5 min'), findsOneWidget); // Review Plan
-
-      bloc.close();
     });
 
     testWidgets('displays drag handles', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -124,12 +125,10 @@ void main() {
 
       // Should have drag handles
       expect(find.byIcon(Icons.drag_handle), findsNWidgets(4));
-
-      bloc.close();
     });
 
     testWidgets('handles task selection', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -150,12 +149,10 @@ void main() {
 
       // Verify selection changed
       expect(bloc.state.model?.currentTaskIndex, 1);
-
-      bloc.close();
     });
 
     testWidgets('displays right column settings and details', (tester) async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -181,8 +178,6 @@ void main() {
       expect(find.text('Estimated Duration'), findsOneWidget);
       expect(find.text('Duplicate'), findsOneWidget);
       expect(find.text('Delete'), findsOneWidget);
-
-      bloc.close();
     });
   });
 }

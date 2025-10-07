@@ -106,3 +106,18 @@ class ResetBreakToDefault extends RoutineEvent {
   @override
   List<Object?> get props => [index];
 }
+
+/// Load routine data from Firebase
+class LoadRoutineFromFirebase extends RoutineEvent {
+  const LoadRoutineFromFirebase();
+}
+
+/// Save current routine data to Firebase
+class SaveRoutineToFirebase extends RoutineEvent {
+  const SaveRoutineToFirebase();
+}
+
+/// Reload routine when user changes (sign in/out)
+class ReloadRoutineForUser extends RoutineEvent {
+  const ReloadRoutineForUser();
+}

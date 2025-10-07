@@ -1,8 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/utils/time_formatter.dart';
+import '../test_helpers/firebase_test_helper.dart';
 
 void main() {
   group('PreStartScreen', () {
+    setUpAll(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+    });
+
+    setUp(() {
+      FirebaseTestHelper.reset();
+    });
+
     // Test the TimeFormatter used by PreStartScreen
     group('TimeFormatter.formatCountdown', () {
       test('formats zero correctly', () {

@@ -2,11 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/models/routine_settings.dart';
 import 'package:routine_timer/src/models/task.dart';
+import '../test_helpers/firebase_test_helper.dart';
 
 void main() {
   group('RoutineBloc', () {
+    setUpAll(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+    });
+
+    setUp(() {
+      FirebaseTestHelper.reset();
+    });
     test('loads sample routine with 4 tasks', () async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
       bloc.add(const LoadSampleRoutine());
 
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
@@ -15,7 +23,7 @@ void main() {
     });
 
     test('loads sample routine with default start time at 6am', () async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
       bloc.add(const LoadSampleRoutine());
 
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
@@ -35,7 +43,8 @@ void main() {
     });
 
     test('toggle break flips enabled state', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final initial = await bloc.stream.firstWhere((s) => s.model != null);
 
       final before = initial.model!.breaks![1].isEnabled;
@@ -47,7 +56,8 @@ void main() {
     });
 
     test('mark task done completes and advances index', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final initial = await bloc.stream.firstWhere((s) => s.model != null);
       expect(initial.model!.currentTaskIndex, 0);
 
@@ -60,7 +70,8 @@ void main() {
     });
 
     test('select task updates currentTaskIndex', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
       bloc.add(const SelectTask(2));
       final updated = await bloc.stream.firstWhere(
@@ -70,7 +81,8 @@ void main() {
     });
 
     test('reorder tasks moves item and reindexes order', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final beforeFirst = loaded.model!.tasks.first.id;
 
@@ -86,7 +98,8 @@ void main() {
     });
 
     test('previous task goes back safely', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
       bloc.add(const SelectTask(1));
       await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 1);
@@ -99,7 +112,8 @@ void main() {
     });
 
     test('update settings replaces settings', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
       final newSettings = RoutineSettingsModel(
         startTime: 42,
@@ -115,7 +129,8 @@ void main() {
     });
 
     test('reorder tasks handles edge cases correctly', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
 
       // Test moving last item to first position
@@ -134,7 +149,8 @@ void main() {
     });
 
     test('reorder tasks handles same position (no-op)', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalTasks = loaded.model!.tasks;
 
@@ -154,7 +170,8 @@ void main() {
     });
 
     test('select task handles out of bounds index safely', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       // Try to select index beyond task list
@@ -166,7 +183,8 @@ void main() {
     });
 
     test('reorder preserves task properties except order', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalTask = loaded.model!.tasks[0];
 
@@ -188,7 +206,8 @@ void main() {
     });
 
     test('multiple reorders maintain consistency', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       // Perform multiple reorders
@@ -213,7 +232,8 @@ void main() {
     });
 
     test('update task modifies task at index', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalTask = loaded.model!.tasks[0];
 
@@ -233,7 +253,8 @@ void main() {
     });
 
     test('update task validates index bounds', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final tasksBefore = loaded.model!.tasks;
 
@@ -254,7 +275,8 @@ void main() {
     });
 
     test('duplicate task creates copy at next index', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalTaskCount = loaded.model!.tasks.length;
       final taskToDuplicate = loaded.model!.tasks[1];
@@ -275,7 +297,8 @@ void main() {
     });
 
     test('duplicate task also duplicates corresponding break', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalBreakCount = loaded.model!.breaks!.length;
       final breakToDuplicate = loaded.model!.breaks![1];
@@ -291,7 +314,8 @@ void main() {
     });
 
     test('duplicate task reindexes all tasks correctly', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       bloc.add(const DuplicateTask(1));
@@ -305,7 +329,8 @@ void main() {
     });
 
     test('delete task removes task at index', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalTaskCount = loaded.model!.tasks.length;
       final taskToDeleteId = loaded.model!.tasks[1].id;
@@ -323,7 +348,8 @@ void main() {
     });
 
     test('delete task removes corresponding break', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalBreakCount = loaded.model!.breaks!.length;
 
@@ -336,7 +362,8 @@ void main() {
     });
 
     test('delete task reindexes remaining tasks', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       bloc.add(const DeleteTask(1));
@@ -350,7 +377,8 @@ void main() {
     });
 
     test('delete task prevents deleting last task', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       // Delete tasks until only one remains
@@ -373,7 +401,8 @@ void main() {
     });
 
     test('delete task adjusts currentTaskIndex when needed', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       // Select last task
@@ -394,7 +423,8 @@ void main() {
     test(
       'delete task adjusts currentTaskIndex when deleting before current',
       () async {
-        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
         await bloc.stream.firstWhere((s) => s.model != null);
 
         // Select task at index 2
@@ -413,7 +443,8 @@ void main() {
     );
 
     test('delete task handles edge case of out of bounds index', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final taskCount = loaded.model!.tasks.length;
 
@@ -426,7 +457,8 @@ void main() {
     });
 
     test('add task appends new task to the end of the list', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final initialCount = loaded.model!.tasks.length;
 
@@ -442,7 +474,8 @@ void main() {
     });
 
     test('add task creates new break when breaks exist', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final initialBreaksCount = loaded.model!.breaks!.length;
 
@@ -461,7 +494,8 @@ void main() {
     });
 
     test('add task assigns unique id to new task', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       bloc.add(const AddTask(name: 'Task 1', durationSeconds: 100));
@@ -481,7 +515,8 @@ void main() {
     });
 
     test('add multiple tasks in sequence', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final initialCount = loaded.model!.tasks.length;
 
@@ -511,7 +546,8 @@ void main() {
     });
 
     test('add task initializes with correct defaults', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       bloc.add(const AddTask(name: 'Test Task', durationSeconds: 500));
@@ -528,7 +564,8 @@ void main() {
     });
 
     test('update break duration changes duration at index', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalDuration = loaded.model!.breaks![0].duration;
 
@@ -542,7 +579,8 @@ void main() {
     });
 
     test('update break duration validates index bounds', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalBreaks = loaded.model!.breaks!;
 
@@ -561,7 +599,8 @@ void main() {
     });
 
     test('update break duration preserves enabled state', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       final originalEnabledState = loaded.model!.breaks![1].isEnabled;
 
@@ -576,7 +615,8 @@ void main() {
     test(
       'update break duration updates multiple breaks independently',
       () async {
-        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
         await bloc.stream.firstWhere((s) => s.model != null);
 
         // Update first break
@@ -597,7 +637,8 @@ void main() {
     );
 
     test('update break duration marks break as customized', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
 
       // Initially should not be customized
@@ -615,7 +656,8 @@ void main() {
     test(
       'updating default break duration updates non-customized breaks',
       () async {
-        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
         await bloc.stream.firstWhere((s) => s.model != null);
 
         // Customize one break
@@ -649,7 +691,8 @@ void main() {
     );
 
     test('updating default break duration preserves customized flag', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       // Update default break duration
@@ -675,7 +718,8 @@ void main() {
     test(
       'updating settings without changing break duration preserves breaks',
       () async {
-        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
         final loaded = await bloc.stream.firstWhere((s) => s.model != null);
         final originalBreaks = loaded.model!.breaks!;
 
@@ -708,7 +752,8 @@ void main() {
     test(
       'reset break to default resets duration and customized flag',
       () async {
-        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
         await bloc.stream.firstWhere((s) => s.model != null);
 
         // Customize a break
@@ -735,7 +780,8 @@ void main() {
     );
 
     test('reset break to default validates index bounds', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
 
       // Try to reset invalid indices
@@ -749,7 +795,8 @@ void main() {
     });
 
     test('reset break to default uses current default duration', () async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
 
       // Customize a break

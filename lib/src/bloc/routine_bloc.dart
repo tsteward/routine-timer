@@ -5,14 +5,17 @@ import '../models/break.dart';
 import '../models/routine_settings.dart';
 import '../models/routine_state.dart';
 import '../models/task.dart';
+import '../repositories/routine_repository.dart';
 
 part 'routine_events.dart';
 part 'routine_state_bloc.dart';
 
 /// RoutineBloc manages the routine configuration and runtime navigation
-/// between tasks. Firebase persistence will be added in a later step.
+/// between tasks with Firebase persistence.
 class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
-  RoutineBloc() : super(RoutineBlocState.initial()) {
+  RoutineBloc({RoutineRepository? repository})
+    : _repository = repository ?? RoutineRepository(),
+      super(RoutineBlocState.initial()) {
     on<LoadSampleRoutine>(_onLoadSample);
     on<SelectTask>(_onSelectTask);
     on<ReorderTasks>(_onReorderTasks);
@@ -26,7 +29,12 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<AddTask>(_onAddTask);
     on<UpdateBreakDuration>(_onUpdateBreakDuration);
     on<ResetBreakToDefault>(_onResetBreakToDefault);
+    on<LoadRoutineFromFirebase>(_onLoadFromFirebase);
+    on<SaveRoutineToFirebase>(_onSaveToFirebase);
+    on<ReloadRoutineForUser>(_onReloadRoutineForUser);
   }
+
+  final RoutineRepository _repository;
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
     emit(state.copyWith(loading: true));
@@ -109,6 +117,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     }
 
     emit(state.copyWith(model: model.copyWith(tasks: reindexed)));
+
+    // Auto-save after reordering
+    add(const SaveRoutineToFirebase());
   }
 
   void _onToggleBreakAtIndex(
@@ -125,6 +136,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     updated[event.index] = target.copyWith(isEnabled: !(target.isEnabled));
 
     emit(state.copyWith(model: model.copyWith(breaks: updated)));
+
+    // Auto-save after toggling break
+    add(const SaveRoutineToFirebase());
   }
 
   void _onUpdateSettings(UpdateSettings event, Emitter<RoutineBlocState> emit) {
@@ -155,6 +169,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     } else {
       emit(state.copyWith(model: model.copyWith(settings: event.settings)));
     }
+
+    // Auto-save after settings update
+    add(const SaveRoutineToFirebase());
   }
 
   void _onMarkTaskDone(MarkTaskDone event, Emitter<RoutineBlocState> emit) {
@@ -201,6 +218,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     updatedTasks[event.index] = event.task;
 
     emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+
+    // Auto-save after task update
+    add(const SaveRoutineToFirebase());
   }
 
   void _onDuplicateTask(DuplicateTask event, Emitter<RoutineBlocState> emit) {
@@ -236,6 +256,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
         model: model.copyWith(tasks: reindexed, breaks: updatedBreaks),
       ),
     );
+
+    // Auto-save after duplication
+    add(const SaveRoutineToFirebase());
   }
 
   void _onDeleteTask(DeleteTask event, Emitter<RoutineBlocState> emit) {
@@ -277,6 +300,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
         ),
       ),
     );
+
+    // Auto-save after deletion
+    add(const SaveRoutineToFirebase());
   }
 
   void _onAddTask(AddTask event, Emitter<RoutineBlocState> emit) {
@@ -314,6 +340,56 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
         model: model.copyWith(tasks: updatedTasks, breaks: updatedBreaks),
       ),
     );
+
+    // Auto-save after adding task
+    add(const SaveRoutineToFirebase());
+  }
+
+  void _onLoadFromFirebase(
+    LoadRoutineFromFirebase event,
+    Emitter<RoutineBlocState> emit,
+  ) async {
+    emit(state.copyWith(loading: true));
+
+    final routine = await _repository.loadRoutine();
+
+    if (routine != null) {
+      emit(state.copyWith(loading: false, model: routine));
+    } else {
+      // No saved routine, load sample data
+      emit(state.copyWith(loading: false));
+      add(const LoadSampleRoutine());
+    }
+  }
+
+  void _onSaveToFirebase(
+    SaveRoutineToFirebase event,
+    Emitter<RoutineBlocState> emit,
+  ) async {
+    final model = state.model;
+    if (model == null) return;
+
+    emit(state.copyWith(saving: true));
+
+    final success = await _repository.saveRoutine(model);
+
+    emit(
+      state.copyWith(
+        saving: false,
+        saveError: success ? null : 'Failed to save routine',
+      ),
+    );
+  }
+
+  void _onReloadRoutineForUser(
+    ReloadRoutineForUser event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    // Clear current state
+    emit(RoutineBlocState.initial());
+
+    // Load data for new user
+    add(const LoadRoutineFromFirebase());
   }
 
   void _onUpdateBreakDuration(
@@ -334,6 +410,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     );
 
     emit(state.copyWith(model: model.copyWith(breaks: updated)));
+
+    // Auto-save after updating break duration
+    add(const SaveRoutineToFirebase());
   }
 
   void _onResetBreakToDefault(
@@ -353,5 +432,8 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     );
 
     emit(state.copyWith(model: model.copyWith(breaks: updated)));
+
+    // Auto-save after resetting break
+    add(const SaveRoutineToFirebase());
   }
 }
