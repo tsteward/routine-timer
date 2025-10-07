@@ -4,19 +4,28 @@ Filename                            |Rate    Num|Rate  Num
 [lib/]
 main.dart                           |64.3%    14|    -   0
 src/app_theme.dart                  |93.3%    15|    -   0
-src/bloc/routine_bloc.dart          | 100%   130|    -   0
-src/bloc/routine_events.dart        |18.8%    32|    -   0
+src/bloc/routine_bloc.dart          | 100%   162|    -   0
+src/bloc/routine_events.dart        |81.6%    38|    -   0
 src/bloc/routine_state_bloc.dart    | 100%     8|    -   0
-src/models/break.dart               |71.4%    14|    -   0
-src/models/routine_settings.dart    |73.7%    19|    -   0
-src/models/routine_state.dart       |90.0%    30|    -   0
-src/models/task.dart                |89.3%    28|    -   0
-src/router/app_router.dart          |80.0%    10|    -   0
-src/screens/main_routine_screen.dart|81.2%    16|    -   0
-src/screens/pre_start_screen.dart   | 100%    13|    -   0
-src/screens/task_...ment_screen.dart|68.7%   515|    -   0
-src/utils/simple_bloc_observer.dart |10.0%    10|    -   0
+src/dialogs/add_task_dialog.dart    |88.1%    59|    -   0
+src/dialogs/durat...cker_dialog.dart|76.9%    65|    -   0
+src/models/break.dart               | 100%    19|    -   0
+src/models/routine_settings.dart    | 100%    19|    -   0
+src/models/routine_state.dart       | 100%    30|    -   0
+src/models/task.dart                | 100%    28|    -   0
+src/router/app_router.dart          |90.0%    10|    -   0
+src/screens/main_routine_screen.dart| 100%    16|    -   0
+src/screens/pre_start_screen.dart   |62.0%    50|    -   0
+src/screens/task_...ment_screen.dart|90.3%    31|    -   0
+src/utils/simple_bloc_observer.dart | 100%    10|    -   0
+src/utils/time_formatter.dart       | 100%    31|    -   0
+src/widgets/break_gap.dart          | 100%    57|    -   0
+src/widgets/settings_panel.dart     |62.0%    71|    -   0
+src/widgets/start_time_pill.dart    | 100%    11|    -   0
+src/widgets/task_details_panel.dart |55.2%   163|    -   0
+src/widgets/task_list_column.dart   |80.2%    91|    -   0
+src/widgets/task_..._bottom_bar.dart| 100%    57|    -   0
 ==========================================================
-                              Total:|74.0%   854|    -   0
+                              Total:|83.3%  1055|    -   0
 Message summary:
   no messages were reported
