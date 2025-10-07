@@ -98,3 +98,11 @@ class UpdateBreakDuration extends RoutineEvent {
   @override
   List<Object?> get props => [index, duration];
 }
+
+class ResetBreakToDefault extends RoutineEvent {
+  const ResetBreakToDefault({required this.index});
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}

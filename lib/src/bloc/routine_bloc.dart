@@ -25,6 +25,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<DeleteTask>(_onDeleteTask);
     on<AddTask>(_onAddTask);
     on<UpdateBreakDuration>(_onUpdateBreakDuration);
+    on<ResetBreakToDefault>(_onResetBreakToDefault);
   }
 
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
@@ -326,6 +327,25 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     updated[event.index] = target.copyWith(
       duration: event.duration,
       isCustomized: true,
+    );
+
+    emit(state.copyWith(model: model.copyWith(breaks: updated)));
+  }
+
+  void _onResetBreakToDefault(
+    ResetBreakToDefault event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null || model.breaks == null) return;
+
+    if (event.index < 0 || event.index >= model.breaks!.length) return;
+
+    final updated = List<BreakModel>.from(model.breaks!);
+    // Reset to default: set duration to default and mark as non-customized
+    updated[event.index] = updated[event.index].copyWith(
+      duration: model.settings.defaultBreakDuration,
+      isCustomized: false,
     );
 
     emit(state.copyWith(model: model.copyWith(breaks: updated)));
