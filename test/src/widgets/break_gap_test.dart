@@ -99,10 +99,12 @@ void main() {
       );
 
       // Find the container with height constraint
-      final containerFinder = find.descendant(
-        of: find.byType(InkWell),
-        matching: find.byType(Container),
-      ).first;
+      final containerFinder = find
+          .descendant(
+            of: find.byType(InkWell),
+            matching: find.byType(Container),
+          )
+          .first;
 
       // The exact height is set in the widget (32)
       final size = tester.getSize(containerFinder);
