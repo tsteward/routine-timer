@@ -11,9 +11,10 @@ void main() {
     await tester.pumpWidget(const RoutineTimerApp());
     await tester.pumpAndSettle();
 
-    // Since sample routine has start time = now, it should navigate to Main Routine
-    // The pre-start screen should auto-navigate when start time is in the past/now
-    expect(find.text('Main Routine'), findsOneWidget);
+    // Since sample routine has start time = 6am (in the past), it should auto-navigate to Main Routine
+    // Verify the main routine screen is displayed
+    expect(find.text('Morning Workout'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
 
     // Theme primary color should match our brand green
     final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
@@ -56,6 +57,9 @@ void main() {
     await tester.tap(find.text('Main Routine').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Timer & progress placeholder'), findsOneWidget);
+    // Verify the main routine screen is displayed with a task and timer
+    expect(find.text('Morning Workout'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
+    expect(find.text('Previous'), findsOneWidget);
   });
 }
