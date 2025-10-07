@@ -58,14 +58,34 @@ jobs:
     - name: Generate detailed coverage list
       id: detailed
       run: |
-        lcov --list coverage/lcov.info > coverage-list.txt 2>&1
+        # Use genhtml to generate proper per-file coverage first
+        genhtml coverage/lcov.info -o coverage/html --quiet
+        # Extract coverage summary from genhtml output for better detail
+        lcov --summary coverage/lcov.info 2>&1 | tee coverage-summary.txt
+        # Parse the lcov.info file directly for per-file statistics
+        echo "Detailed Per-File Coverage:" > coverage-list.txt
+        echo "" >> coverage-list.txt
+        
+        # Parse lcov.info to extract per-file coverage
+        awk '
+          /^SF:/ { file = substr($0, 4); gsub(/^lib\//, "", file) }
+          /^LH:/ { hit = substr($0, 4) }
+          /^LF:/ { 
+            total = substr($0, 4)
+            if (total > 0) {
+              pct = (hit / total) * 100
+              printf "%-50s %6.1f%% (%3d/%3d lines)\n", file, pct, hit, total
+            }
+          }
+        ' coverage/lcov.info | sort -k2 -rn >> coverage-list.txt
+        
         echo "Detailed coverage report generated"
-        head -30 coverage-list.txt
+        cat coverage-list.txt
 
-    - name: Generate HTML coverage report
+    - name: Generate HTML coverage report  
       run: |
-        genhtml coverage/lcov.info -o coverage/html
-        echo "HTML coverage report generated at coverage/html/index.html"
+        # HTML report already generated in previous step
+        echo "HTML coverage report available at coverage/html/index.html"
 
     - name: Upload coverage artifacts
       uses: actions/upload-artifact@v4
