@@ -154,8 +154,9 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('displays no tasks message when tasks list is empty',
-        (tester) async {
+    testWidgets('displays no tasks message when tasks list is empty', (
+      tester,
+    ) async {
       final bloc = RoutineBloc();
 
       await tester.pumpWidget(
@@ -234,15 +235,17 @@ void main() {
       await tester.pump();
 
       // Create a short task for easier testing
-      bloc.add(UpdateTask(
-        index: 0,
-        task: const TaskModel(
-          id: '1',
-          name: 'Short Task',
-          estimatedDuration: 10, // 10 seconds
-          order: 0,
+      bloc.add(
+        UpdateTask(
+          index: 0,
+          task: const TaskModel(
+            id: '1',
+            name: 'Short Task',
+            estimatedDuration: 10, // 10 seconds
+            order: 0,
+          ),
         ),
-      ));
+      );
 
       await tester.pumpAndSettle();
 

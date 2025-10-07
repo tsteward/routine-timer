@@ -87,7 +87,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   void _handleDone(BuildContext context) {
     final bloc = context.read<RoutineBloc>();
     final state = bloc.state;
-    
+
     if (state.model == null) return;
 
     // Mark task as done with actual duration
@@ -98,7 +98,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
       0,
       state.model!.tasks.length - 1,
     );
-    
+
     if (nextIndex < state.model!.tasks.length) {
       final nextTask = state.model!.tasks[nextIndex];
       _resetTimer(nextIndex, nextTask.estimatedDuration);
@@ -108,7 +108,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   void _handlePrevious(BuildContext context) {
     final bloc = context.read<RoutineBloc>();
     final state = bloc.state;
-    
+
     if (state.model == null) return;
 
     bloc.add(const GoToPreviousTask());
@@ -118,7 +118,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
       0,
       state.model!.tasks.length - 1,
     );
-    
+
     if (prevIndex >= 0 && prevIndex < state.model!.tasks.length) {
       final prevTask = state.model!.tasks[prevIndex];
       _resetTimer(prevIndex, prevTask.estimatedDuration);
@@ -167,7 +167,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Spacer(),
-                  
+
                   // Task name at top center
                   Text(
                     currentTask.name,
@@ -178,9 +178,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 60),
-                  
+
                   // Massive countdown timer
                   Text(
                     _formatTime(_remainingSeconds),
@@ -190,14 +190,12 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       fontSize: 120,
                       fontWeight: FontWeight.w300,
                       letterSpacing: 8,
-                      fontFeatures: [
-                        FontFeature.tabularFigures(),
-                      ],
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
+
                   // Progress bar
                   Container(
                     height: 8,
@@ -216,9 +214,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 60),
-                  
+
                   // Buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -230,14 +228,20 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                               ? () => _handlePrevious(context)
                               : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.9),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.9,
+                            ),
                             foregroundColor: _getBackgroundColor(),
                             padding: const EdgeInsets.symmetric(vertical: 20),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            disabledBackgroundColor: Colors.white.withValues(alpha: 0.3),
-                            disabledForegroundColor: Colors.white.withValues(alpha: 0.5),
+                            disabledBackgroundColor: Colors.white.withValues(
+                              alpha: 0.3,
+                            ),
+                            disabledForegroundColor: Colors.white.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                           child: const Text(
                             'Previous',
@@ -248,9 +252,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(width: 20),
-                      
+
                       // Done button
                       Expanded(
                         child: ElevatedButton(
@@ -274,7 +278,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       ),
                     ],
                   ),
-                  
+
                   const Spacer(),
                 ],
               ),
