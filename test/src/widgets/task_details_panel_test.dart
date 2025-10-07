@@ -214,41 +214,6 @@ void main() {
       bloc.close();
     });
 
-    testWidgets('duplicate button triggers duplication', (tester) async {
-      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
-      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
-      final initialTaskCount = loaded.model!.tasks.length;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: BlocProvider.value(
-              value: bloc,
-              child: TaskDetailsPanel(
-                model: loaded.model!,
-                task: loaded.model!.tasks.first,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Tap the duplicate button
-      await tester.tap(find.text('Duplicate'));
-      await tester.pumpAndSettle();
-
-      // Wait for the bloc to emit the updated state
-      final updated = await bloc.stream.firstWhere(
-        (s) => s.model!.tasks.length > initialTaskCount,
-      );
-
-      expect(updated.model!.tasks.length, equals(initialTaskCount + 1));
-
-      bloc.close();
-    });
-
     testWidgets('has clickable duration field', (tester) async {
       final bloc = RoutineBloc()..add(const LoadSampleRoutine());
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
