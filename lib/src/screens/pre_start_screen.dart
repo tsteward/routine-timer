@@ -1,8 +1,91 @@
-import 'package:flutter/material.dart';
-import '../router/app_router.dart';
+import 'dart:async';
 
-class PreStartScreen extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../bloc/routine_bloc.dart';
+import '../router/app_router.dart';
+import '../utils/time_formatter.dart';
+
+class PreStartScreen extends StatefulWidget {
   const PreStartScreen({super.key});
+
+  @override
+  State<PreStartScreen> createState() => _PreStartScreenState();
+}
+
+class _PreStartScreenState extends State<PreStartScreen> {
+  Timer? _countdownTimer;
+  int _remainingSeconds = 0;
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _initializeCountdown();
+    }
+  }
+
+  void _initializeCountdown() {
+    final routineBloc = context.read<RoutineBloc>();
+    final model = routineBloc.state.model;
+
+    if (model == null) {
+      // If no model, navigate to main screen immediately
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateToMainScreen();
+      });
+      return;
+    }
+
+    final startTime = DateTime.fromMillisecondsSinceEpoch(
+      model.settings.startTime,
+    );
+    final now = DateTime.now();
+    final difference = startTime.difference(now);
+
+    if (difference.isNegative || difference.inSeconds <= 0) {
+      // Start time is in the past or now, navigate immediately
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigateToMainScreen();
+      });
+      return;
+    }
+
+    // Start countdown
+    setState(() {
+      _remainingSeconds = difference.inSeconds;
+    });
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _remainingSeconds--;
+        });
+
+        if (_remainingSeconds <= 0) {
+          timer.cancel();
+          _navigateToMainScreen();
+        }
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _navigateToMainScreen() {
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.main);
+    }
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,17 +97,22 @@ class PreStartScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Pre-Start',
+                'Routine Starts In:',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Countdown placeholder',
-                style: TextStyle(color: Colors.white70),
+              const SizedBox(height: 32),
+              Text(
+                TimeFormatter.formatCountdown(_remainingSeconds),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 72,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
               ),
             ],
           ),

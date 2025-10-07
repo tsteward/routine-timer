@@ -67,8 +67,12 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       ),
     ];
 
+    // Set default start time to 6am today
+    final now = DateTime.now();
+    final sixAm = DateTime(now.year, now.month, now.day, 6, 0);
+
     final settings = RoutineSettingsModel(
-      startTime: DateTime.now().millisecondsSinceEpoch,
+      startTime: sixAm.millisecondsSinceEpoch,
       breaksEnabledByDefault: true,
       defaultBreakDuration: 2 * 60,
     );
