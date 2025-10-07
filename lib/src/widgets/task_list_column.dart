@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/routine_bloc.dart';
+import '../dialogs/duration_picker_dialog.dart';
 import '../models/break.dart';
 import '../models/routine_state.dart';
 import '../utils/time_formatter.dart';
+import 'break_gap.dart';
 import 'start_time_pill.dart';
 
 /// A column displaying the reorderable list of tasks with their start times
@@ -39,82 +41,112 @@ class TaskListColumn extends StatelessWidget {
               );
             },
             buildDefaultDragHandles: false,
+            proxyDecorator: (child, index, animation) {
+              return child;
+            },
             itemBuilder: (context, index) {
               final task = model.tasks[index];
               final isSelected = index == model.currentTaskIndex;
               final startTime = startTimes[index];
 
-              return Padding(
+              return Column(
                 key: ValueKey('task-${task.id}'),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () =>
-                      context.read<RoutineBloc>().add(SelectTask(index)),
-                  child: Card(
-                    elevation: isSelected ? 2 : 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.outline.withValues(alpha: 0.2),
-                        width: isSelected ? 2 : 1,
-                      ),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
                     ),
-                    color: isSelected
-                        ? theme.colorScheme.primaryContainer
-                        : theme.colorScheme.surface,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          StartTimePill(
-                            text: TimeFormatter.formatTimeHHmm(startTime),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  task.name,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () =>
+                          context.read<RoutineBloc>().add(SelectTask(index)),
+                      child: Card(
+                        elevation: isSelected ? 2 : 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: isSelected
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outline.withValues(
+                                    alpha: 0.2,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        color: isSelected
+                            ? theme.colorScheme.primaryContainer
+                            : theme.colorScheme.surface,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              StartTimePill(
+                                text: TimeFormatter.formatTimeHHmm(startTime),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      task.name,
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      TimeFormatter.formatDurationMinutes(
+                                        task.estimatedDuration,
+                                      ),
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  TimeFormatter.formatDurationMinutes(
-                                    task.estimatedDuration,
-                                  ),
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
+                              ),
+                              ReorderableDragStartListener(
+                                index: index,
+                                child: Icon(
+                                  Icons.drag_handle,
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          ReorderableDragStartListener(
-                            index: index,
-                            child: Icon(
-                              Icons.drag_handle,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  // Show break gap after this task (if not the last task)
+                  if (index < model.tasks.length - 1 &&
+                      model.breaks != null &&
+                      index < model.breaks!.length)
+                    BreakGap(
+                      isEnabled: model.breaks![index].isEnabled,
+                      duration: model.breaks![index].duration,
+                      onTap: () {
+                        context.read<RoutineBloc>().add(
+                          ToggleBreakAtIndex(index),
+                        );
+                      },
+                      onLongPress: model.breaks![index].isEnabled
+                          ? () => _editBreakDuration(context, index, model)
+                          : null,
+                    ),
+                ],
               );
             },
           ),
@@ -143,5 +175,38 @@ class TaskListColumn extends StatelessWidget {
       }
     }
     return results;
+  }
+
+  Future<void> _editBreakDuration(
+    BuildContext context,
+    int breakIndex,
+    RoutineStateModel model,
+  ) async {
+    final currentBreak = model.breaks![breakIndex];
+    final currentDuration = currentBreak.duration;
+    final hours = currentDuration ~/ 3600;
+    final minutes = (currentDuration % 3600) ~/ 60;
+
+    final picked = await DurationPickerDialog.show(
+      context: context,
+      initialHours: hours,
+      initialMinutes: minutes,
+      title: currentBreak.isCustomized
+          ? 'Break Duration (Customized)'
+          : 'Break Duration (Default)',
+    );
+
+    if (picked != null && context.mounted) {
+      if (picked <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Duration must be greater than 0')),
+        );
+        return;
+      }
+
+      context.read<RoutineBloc>().add(
+        UpdateBreakDuration(index: breakIndex, duration: picked),
+      );
+    }
   }
 }

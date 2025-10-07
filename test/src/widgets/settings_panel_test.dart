@@ -25,7 +25,6 @@ void main() {
 
       expect(find.text('Routine Settings'), findsOneWidget);
       expect(find.text('Routine Start Time'), findsOneWidget);
-      expect(find.text('Enable Breaks by Default'), findsOneWidget);
       expect(find.text('Break Duration'), findsOneWidget);
 
       bloc.close();

@@ -98,6 +98,61 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
               ),
             ),
             const SizedBox(height: 16),
+            // Break After This Task (always show, disable if not available)
+            if (!_isLastTask())
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Opacity(
+                    opacity: _isBreakEnabled() ? 1.0 : 0.5,
+                    child: InkWell(
+                      onTap: _isBreakEnabled()
+                          ? () => _pickBreakDuration(context)
+                          : null,
+                      borderRadius: BorderRadius.circular(8),
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Break After This Task',
+                          border: const OutlineInputBorder(),
+                          suffixIcon: const Icon(Icons.coffee),
+                          helperText: _getBreakHelperText(),
+                          enabled: _isBreakEnabled(),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _isBreakEnabled()
+                                    ? TimeFormatter.formatDuration(
+                                        _getBreakDuration(),
+                                      )
+                                    : 'Break disabled',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: _isBreakEnabled()
+                                      ? null
+                                      : theme.colorScheme.onSurface.withValues(
+                                          alpha: 0.38,
+                                        ),
+                                ),
+                              ),
+                            ),
+                            if (_isBreakEnabled() && _isBreakCustomized())
+                              TextButton.icon(
+                                onPressed: () => _resetBreakToDefault(context),
+                                icon: const Icon(Icons.refresh, size: 16),
+                                label: const Text('Reset'),
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             // Duplicate and Delete buttons side by side
             Row(
               children: [
@@ -127,6 +182,91 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
         ),
       ),
     );
+  }
+
+  bool _isLastTask() {
+    final taskIndex = widget.model.currentTaskIndex;
+    return taskIndex >= widget.model.tasks.length - 1;
+  }
+
+  bool _isBreakEnabled() {
+    final taskIndex = widget.model.currentTaskIndex;
+    return widget.model.breaks != null &&
+        taskIndex < widget.model.breaks!.length &&
+        widget.model.breaks![taskIndex].isEnabled;
+  }
+
+  bool _isBreakCustomized() {
+    final taskIndex = widget.model.currentTaskIndex;
+    return widget.model.breaks != null &&
+        taskIndex < widget.model.breaks!.length &&
+        widget.model.breaks![taskIndex].isCustomized;
+  }
+
+  int _getBreakDuration() {
+    final taskIndex = widget.model.currentTaskIndex;
+    if (widget.model.breaks != null &&
+        taskIndex < widget.model.breaks!.length) {
+      return widget.model.breaks![taskIndex].duration;
+    }
+    return widget.model.settings.defaultBreakDuration;
+  }
+
+  String _getBreakHelperText() {
+    if (!_isBreakEnabled()) {
+      return 'Tap the gap in the task list to enable';
+    }
+    final taskIndex = widget.model.currentTaskIndex;
+    if (widget.model.breaks != null &&
+        taskIndex < widget.model.breaks!.length) {
+      final breakModel = widget.model.breaks![taskIndex];
+      if (breakModel.isCustomized) {
+        return 'Customized duration';
+      }
+    }
+    return 'Using default break duration';
+  }
+
+  void _resetBreakToDefault(BuildContext context) {
+    final taskIndex = widget.model.currentTaskIndex;
+    context.read<RoutineBloc>().add(ResetBreakToDefault(index: taskIndex));
+  }
+
+  Future<void> _pickBreakDuration(BuildContext context) async {
+    final taskIndex = widget.model.currentTaskIndex;
+    if (widget.model.breaks == null ||
+        taskIndex >= widget.model.breaks!.length) {
+      return;
+    }
+
+    final currentBreak = widget.model.breaks![taskIndex];
+    final currentDuration = currentBreak.duration;
+    final hours = currentDuration ~/ 3600;
+    final minutes = (currentDuration % 3600) ~/ 60;
+
+    // Capture BuildContext values before async gap
+    final messenger = ScaffoldMessenger.of(context);
+    final bloc = context.read<RoutineBloc>();
+
+    final picked = await DurationPickerDialog.show(
+      context: context,
+      initialHours: hours,
+      initialMinutes: minutes,
+      title: 'Break Duration',
+    );
+
+    if (picked != null && mounted) {
+      if (picked <= 0) {
+        if (!mounted) return;
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Duration must be greater than 0')),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      bloc.add(UpdateBreakDuration(index: taskIndex, duration: picked));
+    }
   }
 
   void _updateTaskName(BuildContext context, String value) {

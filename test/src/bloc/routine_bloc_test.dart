@@ -506,5 +506,255 @@ void main() {
       expect(newTask.isCompleted, false);
       expect(newTask.actualDuration, null);
     });
+
+    test('update break duration changes duration at index', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalDuration = loaded.model!.breaks![0].duration;
+
+      bloc.add(const UpdateBreakDuration(index: 0, duration: 300));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.breaks![0].duration == 300,
+      );
+
+      expect(updated.model!.breaks![0].duration, 300);
+      expect(updated.model!.breaks![0].duration, isNot(originalDuration));
+    });
+
+    test('update break duration validates index bounds', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalBreaks = loaded.model!.breaks!;
+
+      // Try to update break at invalid index
+      bloc.add(const UpdateBreakDuration(index: 10, duration: 300));
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      // Breaks should remain unchanged
+      expect(bloc.state.model!.breaks!.length, originalBreaks.length);
+      for (var i = 0; i < originalBreaks.length; i++) {
+        expect(
+          bloc.state.model!.breaks![i].duration,
+          originalBreaks[i].duration,
+        );
+      }
+    });
+
+    test('update break duration preserves enabled state', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalEnabledState = loaded.model!.breaks![1].isEnabled;
+
+      bloc.add(const UpdateBreakDuration(index: 1, duration: 420));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.breaks![1].duration == 420,
+      );
+
+      expect(updated.model!.breaks![1].isEnabled, originalEnabledState);
+    });
+
+    test(
+      'update break duration updates multiple breaks independently',
+      () async {
+        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Update first break
+        bloc.add(const UpdateBreakDuration(index: 0, duration: 180));
+        await bloc.stream.firstWhere(
+          (s) => s.model!.breaks![0].duration == 180,
+        );
+
+        // Update second break
+        bloc.add(const UpdateBreakDuration(index: 1, duration: 240));
+        final updated = await bloc.stream.firstWhere(
+          (s) => s.model!.breaks![1].duration == 240,
+        );
+
+        expect(updated.model!.breaks![0].duration, 180);
+        expect(updated.model!.breaks![1].duration, 240);
+      },
+    );
+
+    test('update break duration marks break as customized', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Initially should not be customized
+      expect(loaded.model!.breaks![0].isCustomized, false);
+
+      bloc.add(const UpdateBreakDuration(index: 0, duration: 300));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.breaks![0].duration == 300,
+      );
+
+      // Should now be marked as customized
+      expect(updated.model!.breaks![0].isCustomized, true);
+    });
+
+    test(
+      'updating default break duration updates non-customized breaks',
+      () async {
+        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Customize one break
+        bloc.add(const UpdateBreakDuration(index: 1, duration: 300));
+        await bloc.stream.firstWhere(
+          (s) => s.model!.breaks![1].isCustomized == true,
+        );
+
+        // Update default break duration
+        final newSettings = RoutineSettingsModel(
+          startTime: bloc.state.model!.settings.startTime,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 180, // 3 minutes
+        );
+
+        bloc.add(UpdateSettings(newSettings));
+        final updated = await bloc.stream.firstWhere(
+          (s) => s.model!.settings.defaultBreakDuration == 180,
+        );
+
+        // Non-customized breaks should update to new default
+        expect(updated.model!.breaks![0].duration, 180);
+        expect(updated.model!.breaks![0].isCustomized, false);
+        expect(updated.model!.breaks![2].duration, 180);
+        expect(updated.model!.breaks![2].isCustomized, false);
+
+        // Customized break should remain unchanged
+        expect(updated.model!.breaks![1].duration, 300);
+        expect(updated.model!.breaks![1].isCustomized, true);
+      },
+    );
+
+    test('updating default break duration preserves customized flag', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Update default break duration
+      final newSettings = RoutineSettingsModel(
+        startTime: bloc.state.model!.settings.startTime,
+        breaksEnabledByDefault: true,
+        defaultBreakDuration: 240,
+      );
+
+      bloc.add(UpdateSettings(newSettings));
+      final updated = await bloc.stream.firstWhere(
+        (s) => s.model!.settings.defaultBreakDuration == 240,
+      );
+
+      // All non-customized breaks should still be marked as non-customized
+      for (final breakModel in updated.model!.breaks!) {
+        if (!breakModel.isCustomized) {
+          expect(breakModel.duration, 240);
+        }
+      }
+    });
+
+    test(
+      'updating settings without changing break duration preserves breaks',
+      () async {
+        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+        final originalBreaks = loaded.model!.breaks!;
+
+        // Update start time only (not break duration)
+        final newSettings = RoutineSettingsModel(
+          startTime: 999999,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: loaded.model!.settings.defaultBreakDuration,
+        );
+
+        bloc.add(UpdateSettings(newSettings));
+        final updated = await bloc.stream.firstWhere(
+          (s) => s.model!.settings.startTime == 999999,
+        );
+
+        // Breaks should remain unchanged
+        for (var i = 0; i < originalBreaks.length; i++) {
+          expect(
+            updated.model!.breaks![i].duration,
+            originalBreaks[i].duration,
+          );
+          expect(
+            updated.model!.breaks![i].isCustomized,
+            originalBreaks[i].isCustomized,
+          );
+        }
+      },
+    );
+
+    test(
+      'reset break to default resets duration and customized flag',
+      () async {
+        final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Customize a break
+        bloc.add(const UpdateBreakDuration(index: 0, duration: 300));
+        final customized = await bloc.stream.firstWhere(
+          (s) => s.model!.breaks![0].isCustomized == true,
+        );
+
+        expect(customized.model!.breaks![0].duration, 300);
+        expect(customized.model!.breaks![0].isCustomized, true);
+
+        // Reset to default
+        bloc.add(const ResetBreakToDefault(index: 0));
+        final reset = await bloc.stream.firstWhere(
+          (s) => s.model!.breaks![0].isCustomized == false,
+        );
+
+        expect(
+          reset.model!.breaks![0].duration,
+          reset.model!.settings.defaultBreakDuration,
+        );
+        expect(reset.model!.breaks![0].isCustomized, false);
+      },
+    );
+
+    test('reset break to default validates index bounds', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Try to reset invalid indices
+      bloc.add(const ResetBreakToDefault(index: -1));
+      await Future.delayed(const Duration(milliseconds: 50));
+      expect(bloc.state.model!.breaks, loaded.model!.breaks);
+
+      bloc.add(const ResetBreakToDefault(index: 999));
+      await Future.delayed(const Duration(milliseconds: 50));
+      expect(bloc.state.model!.breaks, loaded.model!.breaks);
+    });
+
+    test('reset break to default uses current default duration', () async {
+      final bloc = RoutineBloc()..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Customize a break
+      bloc.add(const UpdateBreakDuration(index: 1, duration: 500));
+      await bloc.stream.firstWhere((s) => s.model!.breaks![1].duration == 500);
+
+      // Update default duration
+      final newSettings = RoutineSettingsModel(
+        startTime: bloc.state.model!.settings.startTime,
+        breaksEnabledByDefault: true,
+        defaultBreakDuration: 200,
+      );
+      bloc.add(UpdateSettings(newSettings));
+      await bloc.stream.firstWhere(
+        (s) => s.model!.settings.defaultBreakDuration == 200,
+      );
+
+      // Reset customized break - should use new default (200)
+      bloc.add(const ResetBreakToDefault(index: 1));
+      final reset = await bloc.stream.firstWhere(
+        (s) => s.model!.breaks![1].isCustomized == false,
+      );
+
+      expect(reset.model!.breaks![1].duration, 200);
+      expect(reset.model!.breaks![1].isCustomized, false);
+    });
   });
 }
