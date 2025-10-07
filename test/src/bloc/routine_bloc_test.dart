@@ -14,6 +14,26 @@ void main() {
       expect(loaded.model!.currentTaskIndex, 0);
     });
 
+    test('loads sample routine with default start time at 6am', () async {
+      final bloc = RoutineBloc();
+      bloc.add(const LoadSampleRoutine());
+
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Verify start time is set to 6am today
+      final startTime = DateTime.fromMillisecondsSinceEpoch(
+        loaded.model!.settings.startTime,
+      );
+      final now = DateTime.now();
+      final expectedSixAm = DateTime(now.year, now.month, now.day, 6, 0);
+
+      expect(startTime.year, expectedSixAm.year);
+      expect(startTime.month, expectedSixAm.month);
+      expect(startTime.day, expectedSixAm.day);
+      expect(startTime.hour, 6);
+      expect(startTime.minute, 0);
+    });
+
     test('toggle break flips enabled state', () async {
       final bloc = RoutineBloc()..add(const LoadSampleRoutine());
       final initial = await bloc.stream.firstWhere((s) => s.model != null);
