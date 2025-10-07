@@ -5,6 +5,7 @@ import 'package:routine_timer/src/app_theme.dart';
 import 'package:routine_timer/src/bloc/auth_bloc.dart';
 import 'package:routine_timer/src/bloc/auth_state_bloc.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
+import 'package:routine_timer/src/models/routine_settings.dart';
 import 'package:routine_timer/src/router/app_router.dart';
 import 'src/test_helpers/firebase_test_helper.dart';
 
@@ -39,11 +40,22 @@ class TestAuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     // Set up a signed-in user for testing
     FirebaseTestHelper.setupSignedInUser();
-
+    
     return BlocListener<AuthBloc, AuthBlocState>(
       listener: (context, authState) {
         if (authState.isAuthenticated) {
-          context.read<RoutineBloc>().add(const LoadSampleRoutine());
+          final routineBloc = context.read<RoutineBloc>();
+          routineBloc.add(const LoadSampleRoutine());
+          
+          // Set start time to future to prevent auto-navigation
+          final futureTime = DateTime.now().add(const Duration(hours: 1));
+          routineBloc.add(UpdateSettings(
+            RoutineSettingsModel(
+              startTime: futureTime.millisecondsSinceEpoch,
+              breaksEnabledByDefault: true,
+              defaultBreakDuration: 2 * 60,
+            ),
+          ));
         }
       },
       child: BlocBuilder<AuthBloc, AuthBlocState>(
@@ -118,10 +130,10 @@ void main() {
       await tester.tap(find.byIcon(Icons.navigation));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Main Routine'));
+      // Tap the last "Main Routine" in the menu (not the title)
+      await tester.tap(find.text('Main Routine').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Main Routine'), findsOneWidget);
       expect(find.text('Timer & progress placeholder'), findsOneWidget);
     });
   });

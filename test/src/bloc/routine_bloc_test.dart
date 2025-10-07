@@ -23,7 +23,7 @@ void main() {
     });
 
     test('loads sample routine with default start time at 6am', () async {
-      final bloc = RoutineBloc();
+      final bloc = FirebaseTestHelper.routineBloc;
       bloc.add(const LoadSampleRoutine());
 
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
