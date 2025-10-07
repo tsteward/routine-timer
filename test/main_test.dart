@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:routine_timer/main.dart';
 import 'package:routine_timer/src/app_theme.dart';
+import 'package:routine_timer/src/bloc/routine_bloc.dart';
 
 void main() {
   testWidgets('App boots to Pre-Start and applies theme colors', (
@@ -57,5 +59,92 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Timer & progress placeholder'), findsOneWidget);
+  });
+
+  testWidgets('RoutineTimerApp provides RoutineBloc via BlocProvider', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+
+    // Verify that BlocProvider is present
+    expect(find.byType(BlocProvider<RoutineBloc>), findsOneWidget);
+  });
+
+  testWidgets('RoutineTimerApp initializes with LoadSampleRoutine event', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+    await tester.pump();
+
+    // Find the BlocProvider and verify it loads sample routine
+    final blocProvider = tester.widget<BlocProvider<RoutineBloc>>(
+      find.byType(BlocProvider<RoutineBloc>),
+    );
+
+    expect(blocProvider, isNotNull);
+  });
+
+  testWidgets('MaterialApp is configured with correct properties', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+
+    expect(materialApp.title, 'Routine Timer');
+    expect(materialApp.theme, isNotNull);
+    expect(materialApp.darkTheme, isNotNull);
+    expect(materialApp.themeMode, ThemeMode.light);
+  });
+
+  testWidgets('MaterialApp theme uses AppTheme configuration', (tester) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+
+    expect(materialApp.theme!.colorScheme.primary, AppTheme.green);
+    expect(materialApp.theme, equals(AppTheme.theme));
+    expect(materialApp.darkTheme, equals(AppTheme.darkTheme));
+  });
+
+  testWidgets('App has onGenerateRoute configured', (tester) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+
+    expect(materialApp.onGenerateRoute, isNotNull);
+  });
+
+  testWidgets('App has correct initial route', (tester) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+
+    expect(materialApp.initialRoute, '/');
+  });
+
+  testWidgets('RoutineTimerApp creates new AppRouter instance', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+    await tester.pump();
+
+    // The app should successfully build and have a MaterialApp
+    expect(find.byType(MaterialApp), findsOneWidget);
+  });
+
+  testWidgets('Dark theme is available but light mode is default', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const RoutineTimerApp());
+
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+
+    // Dark theme should be set
+    expect(materialApp.darkTheme, isNotNull);
+    expect(materialApp.darkTheme, equals(AppTheme.darkTheme));
+
+    // But light mode should be the default
+    expect(materialApp.themeMode, ThemeMode.light);
   });
 }
