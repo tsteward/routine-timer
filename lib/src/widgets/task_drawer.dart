@@ -24,9 +24,22 @@ class TaskDrawer extends StatelessWidget {
       return []; // No upcoming tasks
     }
 
-    // Return next 2-3 tasks for collapsed state
-    final endIndex = (currentIndex + 4).clamp(0, totalTasks);
-    return routineState.tasks.sublist(currentIndex + 1, endIndex);
+    if (isExpanded) {
+      // Return all upcoming tasks when expanded
+      return routineState.tasks.sublist(currentIndex + 1);
+    } else {
+      // Return next 2-3 tasks for collapsed state
+      final endIndex = (currentIndex + 4).clamp(0, totalTasks);
+      return routineState.tasks.sublist(currentIndex + 1, endIndex);
+    }
+  }
+
+  List<TaskModel> get _completedTasks {
+    final currentIndex = routineState.currentTaskIndex;
+    return routineState.tasks
+        .take(currentIndex)
+        .where((task) => task.isCompleted)
+        .toList();
   }
 
   @override
@@ -34,9 +47,10 @@ class TaskDrawer extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final upcomingTasks = _upcomingTasks;
+    final completedTasks = _completedTasks;
 
-    // Don't show drawer if no upcoming tasks
-    if (upcomingTasks.isEmpty) {
+    // Don't show drawer if no upcoming tasks and no completed tasks
+    if (upcomingTasks.isEmpty && completedTasks.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -44,68 +58,301 @@ class TaskDrawer extends StatelessWidget {
       left: 0,
       right: 0,
       bottom: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 8,
-              offset: const Offset(0, -4),
+      child: GestureDetector(
+        // Allow tapping background to collapse when expanded
+        onTap: isExpanded ? onToggleExpanded : null,
+        behavior: HitTestBehavior.translucent,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          height: isExpanded ? 400 : null, // Fixed height when expanded
+          child: Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, -4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header with "Show More" link
-              GestureDetector(
-                onTap: onToggleExpanded,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Up Next',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      Text(
-                        'Show More',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Horizontal scrollable task cards
-              SizedBox(
-                height: 80,
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: upcomingTasks.length,
-                  itemBuilder: (context, index) {
-                    final task = upcomingTasks[index];
-                    return TaskCard(task: task, width: 140);
-                  },
-                ),
-              ),
-            ],
+            child: SafeArea(
+              top: false,
+              child: isExpanded
+                  ? _buildExpandedContent(context)
+                  : _buildCollapsedContent(context),
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildCollapsedContent(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final upcomingTasks = _upcomingTasks;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Header with "Show More" link
+        GestureDetector(
+          onTap: onToggleExpanded,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Up Next',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  'Show More',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Horizontal scrollable task cards
+        if (upcomingTasks.isNotEmpty)
+          SizedBox(
+            height: 80,
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: upcomingTasks.length,
+              itemBuilder: (context, index) {
+                final task = upcomingTasks[index];
+                return TaskCard(task: task, width: 140);
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildExpandedContent(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final upcomingTasks = _upcomingTasks;
+    final completedTasks = _completedTasks;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Header with "Show Less" link
+        GestureDetector(
+          onTap: onToggleExpanded,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Tasks',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  'Show Less',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Upcoming Tasks Section
+                if (upcomingTasks.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: Text(
+                      'Upcoming Tasks',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 105, // Increased height to prevent overflow
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: upcomingTasks.length,
+                      itemBuilder: (context, index) {
+                        final task = upcomingTasks[index];
+                        return TaskCard(task: task, width: 160);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Completed Tasks Section
+                if (completedTasks.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: Text(
+                      'Completed Tasks',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 105, // Increased height to prevent overflow
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: completedTasks.length,
+                      itemBuilder: (context, index) {
+                        final task = completedTasks[index];
+                        return _CompletedTaskCard(task: task, width: 160);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Empty state if no tasks
+                if (upcomingTasks.isEmpty && completedTasks.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        'No tasks available',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A specialized task card for completed tasks with checkmark and actual time
+class _CompletedTaskCard extends StatelessWidget {
+  const _CompletedTaskCard({required this.task, this.width});
+
+  final TaskModel task;
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final actualDuration = task.actualDuration ?? 0;
+
+    return Container(
+      width: width ?? 160,
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.all(10), // Reduced padding to prevent overflow
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Checkmark icon
+              Icon(Icons.check_circle, size: 16, color: Colors.green),
+              const SizedBox(width: 6),
+              // Task name with strike-through
+              Expanded(
+                child: Text(
+                  task.name,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    decoration: TextDecoration.lineThrough,
+                    decorationColor: colorScheme.onSurface.withValues(
+                      alpha: 0.6,
+                    ),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2), // Reduced spacing
+          // Actual time taken
+          Flexible(
+            child: Text(
+              'Took: ${_formatActualDuration(actualDuration)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.green.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatActualDuration(int seconds) {
+    if (seconds < 60) {
+      return '$seconds sec';
+    }
+
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+
+    if (remainingSeconds == 0) {
+      return '$minutes min';
+    } else {
+      return '$minutes min $remainingSeconds sec';
+    }
   }
 }
