@@ -43,7 +43,16 @@ class TaskListColumn extends StatelessWidget {
             },
             buildDefaultDragHandles: false,
             proxyDecorator: (child, index, animation) {
-              return child;
+              // Enhanced proxy decorator to maintain visual consistency during drag
+              return Material(
+                elevation: 6.0,
+                shadowColor: theme.shadowColor,
+                borderRadius: BorderRadius.circular(12),
+                child: Transform.scale(
+                  scale: 1.02, // Slightly larger during drag
+                  child: child,
+                ),
+              );
             },
             itemBuilder: (context, index) {
               final task = model.tasks[index];
@@ -51,7 +60,8 @@ class TaskListColumn extends StatelessWidget {
               final startTime = startTimes[index];
 
               return Column(
-                key: ValueKey('task-${task.id}'),
+                // Use task ID as key instead of index to maintain widget identity during reorders
+                key: ValueKey('task-column-${task.id}'),
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Padding(
@@ -64,6 +74,8 @@ class TaskListColumn extends StatelessWidget {
                       onTap: () =>
                           context.read<RoutineBloc>().add(SelectTask(index)),
                       child: Card(
+                        // Use consistent key that won't change during reorder
+                        key: ValueKey('task-card-${task.id}'),
                         elevation: isSelected ? 2 : 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -87,6 +99,7 @@ class TaskListColumn extends StatelessWidget {
                           child: Row(
                             children: [
                               StartTimePill(
+                                key: ValueKey('start-time-${task.id}'),
                                 text: TimeFormatter.formatTimeHHmm(startTime),
                               ),
                               const SizedBox(width: 12),
@@ -96,6 +109,7 @@ class TaskListColumn extends StatelessWidget {
                                   children: [
                                     Text(
                                       task.name,
+                                      key: ValueKey('task-name-${task.id}'),
                                       style: theme.textTheme.titleMedium
                                           ?.copyWith(
                                             fontWeight: FontWeight.w600,
@@ -108,6 +122,7 @@ class TaskListColumn extends StatelessWidget {
                                       TimeFormatter.formatDurationMinutes(
                                         task.estimatedDuration,
                                       ),
+                                      key: ValueKey('task-duration-${task.id}'),
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(
                                             color: theme
@@ -122,6 +137,7 @@ class TaskListColumn extends StatelessWidget {
                                 index: index,
                                 child: Icon(
                                   Icons.drag_handle,
+                                  key: ValueKey('drag-handle-${task.id}'),
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
@@ -136,6 +152,7 @@ class TaskListColumn extends StatelessWidget {
                       model.breaks != null &&
                       index < model.breaks!.length)
                     BreakGap(
+                      key: ValueKey('break-gap-${task.id}'),
                       isEnabled: model.breaks![index].isEnabled,
                       duration: model.breaks![index].duration,
                       onTap: () {

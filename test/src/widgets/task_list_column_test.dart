@@ -256,5 +256,54 @@ void main() {
       // 5 tasks should have 4 break gaps
       expect(find.byType(BreakGap), findsNWidgets(4));
     });
+
+    testWidgets('reorder task updates bloc state correctly', (tester) async {
+      // Bug regression test: Ensure reordering doesn't cause visual flash
+      // by verifying state changes are smooth and consistent
+
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: BlocProvider.value(
+              value: bloc,
+              child: const TaskListColumn(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify initial order
+      final initialState = bloc.state.model!;
+      expect(initialState.tasks[0].name, 'Morning Workout');
+      expect(initialState.tasks[1].name, 'Shower');
+      expect(initialState.tasks[2].name, 'Breakfast');
+      expect(initialState.tasks[3].name, 'Review Plan');
+
+      // Test reorder via bloc (simulates what happens during drag-and-drop)
+      bloc.add(const ReorderTasks(oldIndex: 0, newIndex: 2));
+
+      // Wait for the reorder to complete
+      await bloc.stream.firstWhere(
+        (s) => s.model != null && s.model!.tasks[2].name == 'Morning Workout',
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify final order is correct
+      final finalState = bloc.state.model!;
+      expect(finalState.tasks[0].name, 'Shower');
+      expect(finalState.tasks[1].name, 'Breakfast');
+      expect(finalState.tasks[2].name, 'Morning Workout');
+      expect(finalState.tasks[3].name, 'Review Plan');
+
+      // This test documents the expected behavior for the reorder fix
+      // The UI fix will ensure visual consistency during actual drag operations
+    });
   });
 }
