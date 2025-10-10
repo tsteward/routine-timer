@@ -138,17 +138,6 @@ jobs:
           name: web-build
           path: web-build
 
-      - name: Prepare web artifact for Firebase
-        run: |
-          mkdir -p build/web
-          if [ -d "web-build/build/web" ]; then
-            cp -a web-build/build/web/. build/web/
-          elif [ -d "web-build" ]; then
-            cp -a web-build/. build/web/
-          else
-            echo "web-build directory not found"; exit 1
-          fi
-
       - name: Deploy to Firebase Hosting preview channel
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
