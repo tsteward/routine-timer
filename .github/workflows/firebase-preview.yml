@@ -8,10 +8,11 @@ permissions:
   contents: read
   pull-requests: write
   checks: write
+  actions: read
 
 jobs:
   build-and-deploy:
-    name: Build web and deploy preview
+    name: Deploy preview from web build artifact
     runs-on: ubuntu-latest
     concurrency:
       group: firebase-preview-${{ github.event.pull_request.number }}
@@ -21,13 +22,95 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
+      - name: Determine Build workflow run for this PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          WORKFLOW_ID=$(gh api repos/$REPO/actions/workflows/build.yml --jq .id)
+          echo "Build workflow id: $WORKFLOW_ID"
+          RUN_ID=""
+          for i in $(seq 1 60); do
+            RUN_ID=$(gh api repos/$REPO/actions/workflows/$WORKFLOW_ID/runs -f head_sha=$HEAD_SHA -f event=pull_request --jq '.workflow_runs[0].id // empty') || true
+            if [ -n "${RUN_ID:-}" ]; then
+              break
+            fi
+            echo "No Build workflow run found yet for $HEAD_SHA (retry $i/60)";
+            sleep 5
+          done
+          test -n "${RUN_ID:-}" || { echo "Build workflow run not found for head sha $HEAD_SHA" >&2; exit 1; }
+          echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+
+      - name: Wait for Build workflow run to complete
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ env.RUN_ID }}
+        run: |
+          set -euo pipefail
+          echo "Waiting for build run $RUN_ID to complete..."
+          STATUS=""
+          for i in $(seq 1 60); do
+            STATUS=$(gh api repos/$REPO/actions/runs/$RUN_ID --jq .status)
+            if [ "$STATUS" = "completed" ]; then
+              CONCLUSION=$(gh api repos/$REPO/actions/runs/$RUN_ID --jq .conclusion)
+              echo "Build run conclusion: $CONCLUSION"
+              if [ "$CONCLUSION" != "success" ]; then
+                exit 1
+              fi
+              break
+            fi
+            echo "Run status: $STATUS (poll $i/60)"
+            sleep 10
+          done
+          if [ "$STATUS" != "completed" ]; then
+            echo "Build workflow run did not complete in time" >&2
+            exit 1
+          fi
+
+      - name: Download web-build artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "Attempting to download 'web-build' artifact from run $RUN_ID..."
+          for i in $(seq 1 120); do
+            if gh run download "$RUN_ID" -n web-build -D .; then
+              echo "Artifact downloaded."
+              break
+            fi
+            STATUS=$(gh api repos/$REPO/actions/runs/$RUN_ID --jq .status)
+            echo "Artifact not available yet, run status: $STATUS (retry $i/120)"
+            sleep 10
+          done
+          # Normalize location to build/web for firebase.json
+          if [ ! -d build/web ]; then
+            if [ -d web-build/build/web ]; then
+              mkdir -p build && rm -rf build/web && mv web-build/build/web build/web
+            elif [ -d web-build ]; then
+              if [ -f web-build/index.html ]; then
+                mkdir -p build && rm -rf build/web && mv web-build build/web
+              fi
+            fi
+          fi
+          if [ -f build/web/index.html ]; then
+            echo "Using artifact-provided build at build/web."
+          else
+            echo "Artifact not found or incomplete; a local build will be performed as fallback."
+          fi
+
+      - name: Setup Flutter (fallback)
+        if: ${{ hashFiles('build/web/index.html') == '' }}
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      - name: Create firebase_options.dart
+      - name: Create firebase_options.dart (fallback)
+        if: ${{ hashFiles('build/web/index.html') == '' }}
         env:
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_APP_ID_WEB: ${{ secrets.FIREBASE_APP_ID_WEB }}
@@ -44,8 +127,6 @@ jobs:
           import 'package:flutter/foundation.dart' show kIsWeb;
 
           class DefaultFirebaseOptions {
-            // Only web is configured here. Native platforms (Android/iOS) should use
-            // their platform-specific configuration files (e.g., google-services.json).
             static FirebaseOptions get currentPlatform {
               if (kIsWeb) {
                 return web;
@@ -67,10 +148,12 @@ jobs:
           }
           EOF
 
-      - name: Install dependencies
+      - name: Install dependencies (fallback)
+        if: ${{ hashFiles('build/web/index.html') == '' }}
         run: flutter pub get
 
-      - name: Build web
+      - name: Build web (fallback)
+        if: ${{ hashFiles('build/web/index.html') == '' }}
         run: flutter build web --release
 
       - name: Deploy to Firebase Hosting preview channel
