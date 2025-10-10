@@ -78,7 +78,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
     if (state.model == null || state.model!.tasks.isEmpty) return;
 
     final actualDuration = _initialDuration - _remainingSeconds;
-    context.read<RoutineBloc>().add(MarkTaskDone(actualDuration: actualDuration));
+    context.read<RoutineBloc>().add(
+      MarkTaskDone(actualDuration: actualDuration),
+    );
 
     // Reset timer for next task
     if (state.model!.currentTaskIndex < state.model!.tasks.length - 1) {
@@ -102,7 +104,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
     return BlocBuilder<RoutineBloc, RoutineBlocState>(
       builder: (context, state) {
         final model = state.model;
-        
+
         // Show loading or empty state
         if (model == null || model.tasks.isEmpty) {
           return Scaffold(
@@ -124,7 +126,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
         }
 
         final currentTask = model.tasks[model.currentTaskIndex];
-        
+
         // Initialize timer with current task duration
         _loadTaskDuration(currentTask.estimatedDuration);
 
@@ -136,7 +138,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
               child: Column(
                 children: [
                   const Spacer(flex: 2),
-                  
+
                   // Task Name Display
                   Text(
                     currentTask.name,
@@ -148,9 +150,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       letterSpacing: -1.0,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 60),
-                  
+
                   // Massive Countdown Timer
                   Text(
                     TimeFormatter.formatTimerMMSS(_remainingSeconds),
@@ -162,9 +164,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       height: 1.0,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
+
                   // Slim Progress Bar
                   SizedBox(
                     width: double.infinity,
@@ -180,9 +182,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 48),
-                  
+
                   // Previous and Done Buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -195,7 +197,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: _getBackgroundColor(),
-                          disabledBackgroundColor: Colors.white.withValues(alpha: 0.3),
+                          disabledBackgroundColor: Colors.white.withValues(
+                            alpha: 0.3,
+                          ),
                           disabledForegroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 32,
@@ -213,9 +217,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(width: 24),
-                      
+
                       // Done Button
                       ElevatedButton(
                         onPressed: () => _handleDonePressed(context, state),
@@ -240,7 +244,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       ),
                     ],
                   ),
-                  
+
                   const Spacer(flex: 3),
                 ],
               ),

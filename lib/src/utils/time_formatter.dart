@@ -61,7 +61,7 @@ class TimeFormatter {
   static String formatTimerMMSS(int seconds) {
     final isNegative = seconds < 0;
     final absoluteSeconds = seconds.abs();
-    
+
     final minutes = absoluteSeconds ~/ 60;
     final secs = absoluteSeconds % 60;
 

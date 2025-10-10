@@ -34,10 +34,10 @@ void main() {
 
       // Should display the first task name
       expect(find.text('Morning Workout'), findsOneWidget);
-      
+
       // Should display timer in MM:SS format
       expect(find.textContaining(':'), findsAtLeastNWidgets(1));
-      
+
       // Should display Done and Previous buttons
       expect(find.text('Done'), findsOneWidget);
       expect(find.text('Previous'), findsOneWidget);
@@ -102,10 +102,7 @@ void main() {
 
       // Previous button should be disabled on first task
       final previousButton = find.widgetWithText(ElevatedButton, 'Previous');
-      expect(
-        tester.widget<ElevatedButton>(previousButton).onPressed,
-        isNull,
-      );
+      expect(tester.widget<ElevatedButton>(previousButton).onPressed, isNull);
 
       // Advance to second task
       await tester.tap(find.text('Done'));
