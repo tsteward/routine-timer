@@ -823,5 +823,47 @@ void main() {
       expect(reset.model!.breaks![1].duration, 200);
       expect(reset.model!.breaks![1].isCustomized, false);
     });
+
+    test('selected task persists after reordering (fixes selection bug)', () async {
+      // Bug: Selected task loses selection after reorder - selection should follow task ID, not index
+      // Expected: Originally selected task remains selected after reordering
+
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
+      await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Select task at index 1 (remember its ID)
+      bloc.add(const SelectTask(1));
+      final selected = await bloc.stream.firstWhere(
+        (s) => s.model!.currentTaskIndex == 1,
+      );
+      final selectedTaskId = selected.model!.tasks[1].id;
+
+      // Move the selected task from index 1 to index 3 (last position)
+      bloc.add(const ReorderTasks(oldIndex: 1, newIndex: 3));
+      final reordered = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks[3].id == selectedTaskId,
+      );
+
+      // The same task should still be selected, now at index 3
+      final currentlySelectedTaskId =
+          reordered.model!.currentTaskIndex < reordered.model!.tasks.length
+          ? reordered.model!.tasks[reordered.model!.currentTaskIndex].id
+          : null;
+
+      expect(
+        currentlySelectedTaskId,
+        selectedTaskId,
+        reason:
+            'Selected task should persist after reorder. Expected task $selectedTaskId to remain selected, '
+            'but task at currentTaskIndex ${reordered.model!.currentTaskIndex} has ID $currentlySelectedTaskId',
+      );
+      expect(
+        reordered.model!.currentTaskIndex,
+        3,
+        reason:
+            'Selection index should follow the moved task to its new position',
+      );
+    });
   });
 }
