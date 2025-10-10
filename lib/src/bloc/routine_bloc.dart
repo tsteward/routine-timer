@@ -118,8 +118,8 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     emit(state.copyWith(model: model.copyWith(tasks: reindexed)));
 
-    // Auto-save after reordering
-    add(const SaveRoutineToFirebase());
+    // Note: Auto-save is now handled by the TaskListColumn with debouncing
+    // to prevent state thrashing during rapid reorders
   }
 
   void _onToggleBreakAtIndex(

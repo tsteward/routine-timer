@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -11,8 +12,30 @@ import 'break_gap.dart';
 import 'start_time_pill.dart';
 
 /// A column displaying the reorderable list of tasks with their start times
-class TaskListColumn extends StatelessWidget {
+class TaskListColumn extends StatefulWidget {
   const TaskListColumn({super.key});
+
+  @override
+  State<TaskListColumn> createState() => _TaskListColumnState();
+}
+
+class _TaskListColumnState extends State<TaskListColumn> {
+  Timer? _autoSaveTimer;
+
+  @override
+  void dispose() {
+    _autoSaveTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleAutoSave() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        context.read<RoutineBloc>().add(const SaveRoutineToFirebase());
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +60,33 @@ class TaskListColumn extends StatelessWidget {
             onReorder: (oldIndex, newIndex) {
               // Flutter's ReorderableListView reports newIndex after removal; adjust when moving down.
               if (newIndex > oldIndex) newIndex -= 1;
+
+              // Dispatch reorder event to bloc
               context.read<RoutineBloc>().add(
                 ReorderTasks(oldIndex: oldIndex, newIndex: newIndex),
               );
+
+              // Schedule delayed auto-save to prevent state thrashing during reorder
+              _scheduleAutoSave();
             },
             buildDefaultDragHandles: false,
+            // Improved proxy decorator to prevent visual artifacts during drag
             proxyDecorator: (child, index, animation) {
-              return child;
+              return AnimatedBuilder(
+                animation: animation,
+                builder: (BuildContext context, Widget? child) {
+                  final double animValue = Curves.easeInOut.transform(
+                    animation.value,
+                  );
+                  final double elevation = lerpDouble(0.0, 6.0, animValue)!;
+                  return Material(
+                    elevation: elevation,
+                    borderRadius: BorderRadius.circular(12),
+                    child: child,
+                  );
+                },
+                child: child,
+              );
             },
             itemBuilder: (context, index) {
               final task = model.tasks[index];
