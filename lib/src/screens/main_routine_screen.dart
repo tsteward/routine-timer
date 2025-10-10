@@ -16,11 +16,13 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   Timer? _timer;
   int _elapsedSeconds = 0;
   DateTime? _taskStartTime;
+  DateTime? _routineStartTime;
   int? _previousTaskIndex;
 
   @override
   void initState() {
     super.initState();
+    _routineStartTime = DateTime.now();
     _startTimer();
   }
 
@@ -73,6 +75,14 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
         if (currentIndex != null && _previousTaskIndex != currentIndex) {
           _resetTimer();
           _previousTaskIndex = currentIndex;
+        }
+        
+        // Navigate to completion screen when routine is completed
+        if (state.isCompleted && state.completionData != null) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            AppRoutes.completion,
+            (route) => false,
+          );
         }
       },
       builder: (context, state) {
@@ -220,8 +230,12 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                           child: ElevatedButton(
                             onPressed: () {
                               final actualDuration = _calculateActualDuration();
+                              final routineStart = _routineStartTime ?? DateTime.now();
                               context.read<RoutineBloc>().add(
-                                MarkTaskDone(actualDuration: actualDuration),
+                                MarkTaskDone(
+                                  actualDuration: actualDuration,
+                                  routineStartTime: routineStart,
+                                ),
                               );
                             },
                             style: ElevatedButton.styleFrom(
@@ -274,6 +288,10 @@ class _NavFab extends StatelessWidget {
             PopupMenuItem(
               value: AppRoutes.tasks,
               child: Text('Task Management'),
+            ),
+            PopupMenuItem(
+              value: AppRoutes.completion,
+              child: Text('Completion'),
             ),
           ],
         );

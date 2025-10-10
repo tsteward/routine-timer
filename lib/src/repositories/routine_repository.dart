@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/routine_completion.dart';
 import '../models/routine_state.dart';
 import '../services/auth_service.dart';
 
@@ -16,6 +17,9 @@ class RoutineRepository {
 
   /// Collection name for routines in Firestore
   static const String _routinesCollection = 'routines';
+  
+  /// Collection name for completion data in Firestore
+  static const String _completionsCollection = 'completions';
 
   /// Reference to the current user's routine document
   /// Returns null if user is not signed in
@@ -24,6 +28,18 @@ class RoutineRepository {
     if (userId == null) return null;
 
     return _firestore.collection(_routinesCollection).doc(userId);
+  }
+
+  /// Reference to the current user's completions collection
+  /// Returns null if user is not signed in
+  CollectionReference<Map<String, dynamic>>? get _userCompletionsCollection {
+    final userId = _authService.currentUserId;
+    if (userId == null) return null;
+
+    return _firestore
+        .collection(_completionsCollection)
+        .doc(userId)
+        .collection('sessions');
   }
 
   /// Saves the entire routine state to Firestore for current user.
@@ -103,6 +119,98 @@ class RoutineRepository {
       }
 
       await doc.delete();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Saves completion data to Firestore for the current user.
+  /// Creates a new document with timestamp as ID for easy querying.
+  /// Returns true if successful, false otherwise.
+  Future<bool> saveCompletion(RoutineCompletionModel completion) async {
+    try {
+      final collection = _userCompletionsCollection;
+      if (collection == null) {
+        return false;
+      }
+
+      // Use timestamp as document ID for easy chronological ordering
+      final docId = completion.completedAt.millisecondsSinceEpoch.toString();
+      
+      await collection.doc(docId).set(completion.toMap());
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Loads the most recent completion data from Firestore.
+  /// Returns null if no completions exist or on error.
+  Future<RoutineCompletionModel?> loadLatestCompletion() async {
+    try {
+      final collection = _userCompletionsCollection;
+      if (collection == null) {
+        return null;
+      }
+
+      final snapshot = await collection
+          .orderBy('completedAt', descending: true)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        return null;
+      }
+
+      final data = snapshot.docs.first.data();
+      return RoutineCompletionModel.fromMap(data);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Loads completion history from Firestore.
+  /// Returns list ordered by completion date (most recent first).
+  /// [limit] specifies maximum number of completions to return.
+  Future<List<RoutineCompletionModel>> loadCompletionHistory({
+    int limit = 10,
+  }) async {
+    try {
+      final collection = _userCompletionsCollection;
+      if (collection == null) {
+        return [];
+      }
+
+      final snapshot = await collection
+          .orderBy('completedAt', descending: true)
+          .limit(limit)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => RoutineCompletionModel.fromMap(doc.data()))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Deletes all completion data for the current user
+  Future<bool> deleteAllCompletions() async {
+    try {
+      final collection = _userCompletionsCollection;
+      if (collection == null) {
+        return false;
+      }
+
+      final snapshot = await collection.get();
+      final batch = _firestore.batch();
+
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
       return true;
     } catch (e) {
       return false;

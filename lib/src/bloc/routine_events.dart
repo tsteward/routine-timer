@@ -45,11 +45,15 @@ class UpdateSettings extends RoutineEvent {
 }
 
 class MarkTaskDone extends RoutineEvent {
-  const MarkTaskDone({required this.actualDuration});
+  const MarkTaskDone({
+    required this.actualDuration,
+    required this.routineStartTime,
+  });
   final int actualDuration;
+  final DateTime routineStartTime;
 
   @override
-  List<Object?> get props => [actualDuration];
+  List<Object?> get props => [actualDuration, routineStartTime];
 }
 
 class GoToPreviousTask extends RoutineEvent {
@@ -120,4 +124,26 @@ class SaveRoutineToFirebase extends RoutineEvent {
 /// Reload routine when user changes (sign in/out)
 class ReloadRoutineForUser extends RoutineEvent {
   const ReloadRoutineForUser();
+}
+
+/// Complete the entire routine
+class CompleteRoutine extends RoutineEvent {
+  const CompleteRoutine({
+    required this.routineStartTime,
+  });
+
+  final DateTime routineStartTime;
+
+  @override
+  List<Object?> get props => [routineStartTime];
+}
+
+/// Reset the routine to start fresh
+class ResetRoutine extends RoutineEvent {
+  const ResetRoutine();
+}
+
+/// Save completion data to Firebase
+class SaveCompletionToFirebase extends RoutineEvent {
+  const SaveCompletionToFirebase();
 }
