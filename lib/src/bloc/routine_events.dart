@@ -12,11 +12,11 @@ class LoadSampleRoutine extends RoutineEvent {
 }
 
 class SelectTask extends RoutineEvent {
-  const SelectTask(this.index);
-  final int index;
+  const SelectTask(this.taskId);
+  final String taskId;
 
   @override
-  List<Object?> get props => [index];
+  List<Object?> get props => [taskId];
 }
 
 class ReorderTasks extends RoutineEvent {
