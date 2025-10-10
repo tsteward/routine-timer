@@ -106,6 +106,11 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     final model = state.model;
     if (model == null) return;
 
+    // Remember which task was selected before reordering
+    final selectedTaskId = model.currentTaskIndex < model.tasks.length
+        ? model.tasks[model.currentTaskIndex].id
+        : null;
+
     final updatedTasks = List<TaskModel>.from(model.tasks);
     final task = updatedTasks.removeAt(event.oldIndex);
     updatedTasks.insert(event.newIndex, task);
@@ -116,7 +121,25 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       reindexed.add(updatedTasks[i].copyWith(order: i));
     }
 
-    emit(state.copyWith(model: model.copyWith(tasks: reindexed)));
+    // Find the new index of the previously selected task
+    int newCurrentTaskIndex = model.currentTaskIndex;
+    if (selectedTaskId != null) {
+      for (var i = 0; i < reindexed.length; i++) {
+        if (reindexed[i].id == selectedTaskId) {
+          newCurrentTaskIndex = i;
+          break;
+        }
+      }
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: reindexed,
+          currentTaskIndex: newCurrentTaskIndex,
+        ),
+      ),
+    );
 
     // Auto-save after reordering
     add(const SaveRoutineToFirebase());
