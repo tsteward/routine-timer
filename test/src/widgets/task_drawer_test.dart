@@ -118,7 +118,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: BlocProvider.value(value: bloc, child: const TestTaskDrawer()),
+            body: BlocProvider.value(
+              value: bloc,
+              child: const TestTaskDrawer(),
+            ),
           ),
         ),
       );
@@ -138,7 +141,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: BlocProvider.value(value: bloc, child: const TestTaskDrawer()),
+            body: BlocProvider.value(
+              value: bloc,
+              child: const TestTaskDrawer(),
+            ),
           ),
         ),
       );
@@ -148,7 +154,9 @@ void main() {
       expect(find.text('No tasks available'), findsOneWidget);
     });
 
-    testWidgets('displays correct task when last task is selected', (tester) async {
+    testWidgets('displays correct task when last task is selected', (
+      tester,
+    ) async {
       final testTasks = [
         const TaskModel(
           id: '1',
@@ -188,7 +196,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: BlocProvider.value(value: bloc, child: const TestTaskDrawer()),
+            body: BlocProvider.value(
+              value: bloc,
+              child: const TestTaskDrawer(),
+            ),
           ),
         ),
       );
@@ -235,7 +246,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: BlocProvider.value(value: bloc, child: const TestTaskDrawer()),
+            body: BlocProvider.value(
+              value: bloc,
+              child: const TestTaskDrawer(),
+            ),
           ),
         ),
       );
@@ -293,7 +307,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: BlocProvider.value(value: bloc, child: const TestTaskDrawer()),
+            body: BlocProvider.value(
+              value: bloc,
+              child: const TestTaskDrawer(),
+            ),
           ),
         ),
       );
@@ -345,12 +362,14 @@ void main() {
           startTime: 480, // 8:00 AM in minutes
           defaultBreakDuration: 300, // 5 minutes
         ),
-        currentTaskIndex: 0,
+        selectedTaskId: testTasks.first.id,
         isRunning: true,
       );
     });
 
-    testWidgets('should show "Up Next" label in a stack', (WidgetTester tester) async {
+    testWidgets('should show "Up Next" label in a stack', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -371,7 +390,9 @@ void main() {
       expect(find.text('Up Next'), findsOneWidget);
     });
 
-    testWidgets('should show "Show More" link in a stack', (WidgetTester tester) async {
+    testWidgets('should show "Show More" link in a stack', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -392,7 +413,9 @@ void main() {
       expect(find.text('Show More'), findsOneWidget);
     });
 
-    testWidgets('should display upcoming tasks horizontally in a stack', (WidgetTester tester) async {
+    testWidgets('should display upcoming tasks horizontally in a stack', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -419,7 +442,9 @@ void main() {
       expect(find.text('Current Task'), findsNothing);
     });
 
-    testWidgets('should call onToggleExpanded when "Show More" is tapped', (WidgetTester tester) async {
+    testWidgets('should call onToggleExpanded when "Show More" is tapped', (
+      WidgetTester tester,
+    ) async {
       bool wasToggled = false;
 
       await tester.pumpWidget(
@@ -445,10 +470,12 @@ void main() {
       expect(wasToggled, isTrue);
     });
 
-    testWidgets('should not show drawer when no upcoming tasks', (WidgetTester tester) async {
+    testWidgets('should not show drawer when no upcoming tasks', (
+      WidgetTester tester,
+    ) async {
       // Create state with current task being the last task
       final lastTaskState = testRoutineState.copyWith(
-        currentTaskIndex: testTasks.length - 1,
+        selectedTaskId: testTasks.last.id,
       );
 
       await tester.pumpWidget(
@@ -473,7 +500,9 @@ void main() {
       expect(find.text('Show More'), findsNothing);
     });
 
-    testWidgets('should limit display to next 3 tasks in collapsed state', (WidgetTester tester) async {
+    testWidgets('should limit display to next 3 tasks in collapsed state', (
+      WidgetTester tester,
+    ) async {
       // Add more tasks to test limiting
       final manyTasks = List.generate(
         10,
@@ -491,7 +520,7 @@ void main() {
           startTime: 480,
           defaultBreakDuration: 300,
         ),
-        currentTaskIndex: 0,
+        selectedTaskId: manyTasks.first.id,
         isRunning: true,
       );
 
@@ -522,7 +551,9 @@ void main() {
       expect(find.text('Task 6'), findsNothing);
     });
 
-    testWidgets('should support horizontal scrolling', (WidgetTester tester) async {
+    testWidgets('should support horizontal scrolling', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -546,5 +577,3 @@ void main() {
     });
   });
 }
-
-
