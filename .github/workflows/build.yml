@@ -66,7 +66,12 @@ jobs:
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
+            flutter build web --release --base-href "/routine_timer/"
+          else
+            flutter build web --release
+          fi
 
       - name: Upload web build artifacts
         uses: actions/upload-artifact@v4
@@ -147,3 +152,37 @@ jobs:
           channelId: 'pr-${{ github.event.pull_request.number }}'
           expires: 1d
           entryPoint: '.'
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    needs: build-web
+    runs-on: ubuntu-latest
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Download web build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+      - name: Upload artifact to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'build/web'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
