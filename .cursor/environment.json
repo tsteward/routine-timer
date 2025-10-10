@@ -1,3 +1,6 @@
 {
-  "install": "if ! command -v flutter &> /dev/null; then echo 'Installing Flutter...'; git clone https://github.com/flutter/flutter.git -b stable $HOME/flutter; fi && echo 'export PATH=\"$HOME/flutter/bin:$PATH\"' >> $HOME/.bashrc && export PATH=\"$HOME/flutter/bin:$PATH\" && flutter doctor && flutter pub get"
+  "snapshot": "snapshot-20251006-b08dbf64-bc28-486c-a160-f25f1e9c19aa",
+  "install": "flutter pub get",
+  "start": "flutter run -d web-server --web-port=8080 --target=lib/main.dart --print-dtd",
+  "terminals": []
 }
