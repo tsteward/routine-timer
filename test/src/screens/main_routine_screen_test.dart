@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/app_theme.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
+import 'package:routine_timer/src/models/break.dart';
 import 'package:routine_timer/src/models/routine_settings.dart';
 import 'package:routine_timer/src/models/routine_state.dart';
 import 'package:routine_timer/src/models/task.dart';
@@ -889,7 +890,8 @@ void main() {
         await tester.pumpWidget(makeTestableWidget(const MainRoutineScreen()));
         await tester.pump();
 
-        expect(find.byType(FloatingActionButton), findsOneWidget);
+        expect(find.byType(FloatingActionButton), findsNWidgets(2));
+        expect(find.byIcon(Icons.list), findsOneWidget);
         expect(find.text('Navigate'), findsOneWidget);
       });
     });
@@ -987,6 +989,268 @@ void main() {
 
         // Task counter should show 1 of 1
         expect(find.text('Task 1 of 1'), findsOneWidget);
+      });
+    });
+
+    group('Break Functionality', () {
+      testWidgets('displays break screen when on break', (tester) async {
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'First Task',
+            estimatedDuration: 300,
+            order: 0,
+          ),
+          const TaskModel(
+            id: '2',
+            name: 'Second Task',
+            estimatedDuration: 600,
+            order: 1,
+          ),
+        ];
+        final breaks = [
+          const BreakModel(duration: 120, isEnabled: true),
+        ];
+        final settings = RoutineSettingsModel(
+          startTime: DateTime.now().millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+        final model = RoutineStateModel(
+          tasks: tasks,
+          breaks: breaks,
+          settings: settings,
+          currentTaskIndex: 0,
+          isOnBreak: true,
+          currentBreakIndex: 0,
+        );
+        bloc.emit(bloc.state.copyWith(model: model));
+
+        await tester.pumpWidget(makeTestableWidget(const MainRoutineScreen()));
+        await tester.pump();
+
+        // Should display break screen
+        expect(find.text('Break Time!'), findsOneWidget);
+        expect(find.text('Get ready for: Second Task'), findsOneWidget);
+        expect(find.text('Skip Break'), findsOneWidget);
+        expect(find.text('Break 1 of 1'), findsOneWidget);
+        
+        // Should have green background
+        final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+        expect(scaffold.backgroundColor, equals(AppTheme.green));
+      });
+
+      testWidgets('skip break button is displayed', (tester) async {
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'First Task',
+            estimatedDuration: 300,
+            order: 0,
+            isCompleted: true,
+          ),
+          const TaskModel(
+            id: '2',
+            name: 'Second Task',
+            estimatedDuration: 600,
+            order: 1,
+          ),
+        ];
+        final breaks = [
+          const BreakModel(duration: 120, isEnabled: true),
+        ];
+        final settings = RoutineSettingsModel(
+          startTime: DateTime.now().millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+        final model = RoutineStateModel(
+          tasks: tasks,
+          breaks: breaks,
+          settings: settings,
+          currentTaskIndex: 0,
+          isOnBreak: true,
+          currentBreakIndex: 0,
+        );
+        bloc.emit(bloc.state.copyWith(model: model));
+
+        await tester.pumpWidget(makeTestableWidget(const MainRoutineScreen()));
+        await tester.pump();
+
+        // Should display break screen with skip button
+        expect(find.text('Break Time!'), findsOneWidget);
+        expect(find.text('Skip Break'), findsOneWidget);
+      });
+
+      testWidgets('displays drawer button and opens upcoming tasks', (tester) async {
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Current Task',
+            estimatedDuration: 300,
+            order: 0,
+          ),
+          const TaskModel(
+            id: '2',
+            name: 'Next Task',
+            estimatedDuration: 600,
+            order: 1,
+          ),
+          const TaskModel(
+            id: '3',
+            name: 'Final Task',
+            estimatedDuration: 400,
+            order: 2,
+          ),
+        ];
+        final breaks = [
+          const BreakModel(duration: 120, isEnabled: true),
+          const BreakModel(duration: 180, isEnabled: true),
+        ];
+        final settings = RoutineSettingsModel(
+          startTime: DateTime.now().millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+        final model = RoutineStateModel(
+          tasks: tasks,
+          breaks: breaks,
+          settings: settings,
+          currentTaskIndex: 0,
+        );
+        bloc.emit(bloc.state.copyWith(model: model));
+
+        await tester.pumpWidget(makeTestableWidget(const MainRoutineScreen()));
+        await tester.pump();
+
+        // Should have drawer button
+        expect(find.byIcon(Icons.list), findsOneWidget);
+
+        // Tap drawer button
+        await tester.tap(find.byIcon(Icons.list));
+        await tester.pumpAndSettle();
+
+        // Should open drawer with upcoming tasks
+        expect(find.text('Up Next'), findsOneWidget);
+        expect(find.text('Next Task'), findsOneWidget);
+        expect(find.text('Final Task'), findsOneWidget);
+        expect(find.text('Break'), findsNWidgets(2));
+      });
+
+      testWidgets('break timer displays countdown', (tester) async {
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'First Task',
+            estimatedDuration: 300,
+            order: 0,
+            isCompleted: true,
+          ),
+          const TaskModel(
+            id: '2',
+            name: 'Second Task',
+            estimatedDuration: 600,
+            order: 1,
+          ),
+        ];
+        final breaks = [
+          const BreakModel(duration: 120, isEnabled: true), // 2 minute break
+        ];
+        final settings = RoutineSettingsModel(
+          startTime: DateTime.now().millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+        final model = RoutineStateModel(
+          tasks: tasks,
+          breaks: breaks,
+          settings: settings,
+          currentTaskIndex: 0,
+          isOnBreak: true,
+          currentBreakIndex: 0,
+        );
+        bloc.emit(bloc.state.copyWith(model: model));
+
+        await tester.pumpWidget(makeTestableWidget(const MainRoutineScreen()));
+        await tester.pump();
+
+        // Should display break screen with countdown timer
+        expect(find.text('Break Time!'), findsOneWidget);
+        expect(find.text('02:00'), findsOneWidget); // Initial 2 minute countdown
+      });
+
+      testWidgets('shows correct next task name during break', (tester) async {
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Completed Task',
+            estimatedDuration: 300,
+            order: 0,
+            isCompleted: true,
+          ),
+          const TaskModel(
+            id: '2',
+            name: 'Upcoming Special Task',
+            estimatedDuration: 600,
+            order: 1,
+          ),
+        ];
+        final breaks = [
+          const BreakModel(duration: 120, isEnabled: true),
+        ];
+        final settings = RoutineSettingsModel(
+          startTime: DateTime.now().millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+        final model = RoutineStateModel(
+          tasks: tasks,
+          breaks: breaks,
+          settings: settings,
+          currentTaskIndex: 0,
+          isOnBreak: true,
+          currentBreakIndex: 0,
+        );
+        bloc.emit(bloc.state.copyWith(model: model));
+
+        await tester.pumpWidget(makeTestableWidget(const MainRoutineScreen()));
+        await tester.pump();
+
+        expect(find.text('Get ready for: Upcoming Special Task'), findsOneWidget);
+      });
+
+      testWidgets('shows routine complete message when break is after last task', (tester) async {
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Last Task',
+            estimatedDuration: 300,
+            order: 0,
+            isCompleted: true,
+          ),
+        ];
+        final breaks = [
+          const BreakModel(duration: 120, isEnabled: true),
+        ];
+        final settings = RoutineSettingsModel(
+          startTime: DateTime.now().millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+        final model = RoutineStateModel(
+          tasks: tasks,
+          breaks: breaks,
+          settings: settings,
+          currentTaskIndex: 0,
+          isOnBreak: true,
+          currentBreakIndex: 0,
+        );
+        bloc.emit(bloc.state.copyWith(model: model));
+
+        await tester.pumpWidget(makeTestableWidget(const MainRoutineScreen()));
+        await tester.pump();
+
+        expect(find.text('Get ready for: Routine Complete'), findsOneWidget);
       });
     });
   });

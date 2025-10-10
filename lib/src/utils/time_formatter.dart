@@ -9,6 +9,11 @@ class TimeFormatter {
     return '$hh:$mm';
   }
 
+  /// Formats a DateTime as HH:mm (24-hour format) - alias for formatTimeHHmm
+  static String formatTime(DateTime time) {
+    return formatTimeHHmm(time);
+  }
+
   /// Formats a TimeOfDay as HH:mm (24-hour format)
   static String formatTimeOfDay(TimeOfDay time) {
     final hour = time.hour.toString().padLeft(2, '0');
