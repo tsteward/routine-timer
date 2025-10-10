@@ -49,6 +49,7 @@ app.*.map.json
 # For team sharing: Share via secure channel (1Password, LastPass, encrypted email)
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
 
 # Firebase local emulator data
 .firebase/

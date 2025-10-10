@@ -9,7 +9,8 @@ A Flutter app to plan and execute a focused morning routine. Configure tasks the
 - **Schedule tracking**: Ahead/behind indicator and estimated completion time
 - **Breaks between tasks**: Global defaults plus per-gap toggles
 - **BLoC state management**: Clear separation of UI and business logic
-- **Ready for persistence**: Firebase dependencies included (integration planned)
+- **Firebase Authentication**: Google Sign-In, email/password, and anonymous auth on all platforms
+- **Cloud Firestore**: Multi-platform data persistence and sync
 
 ### Screens (mockups)
 ![Task Management](plan/Mockup1.png)
@@ -65,7 +66,7 @@ dart format .
 ### Tech stack
 - **Flutter (Material 3)** UI with a minimal, tablet-friendly design
 - **BLoC** (`flutter_bloc`, `equatable`) for deterministic state transitions
-- **Firebase** (`firebase_core`, `cloud_firestore`, `firebase_auth`) planned for persistence
+- **Firebase** (`firebase_core`, `cloud_firestore`, `firebase_auth`) for authentication and data persistence
 
 ### Code organization
 - **Entry point**: `lib/main.dart`
@@ -95,11 +96,22 @@ npx remotedev --hostname=127.0.0.1 --port=8000
 ```
 2) Launch the app. If the connection fails, the app falls back to a simple observer.
 
-### Firebase (planned)
-Firebase packages are included but not yet configured. To enable persistence later:
-- Add platform config files (Google Services) for Android/iOS/web
-- Initialize Firebase on app startup
-- Implement a repository to `loadRoutine()` and `saveRoutine()`
+### Firebase Setup
+
+Firebase authentication and Firestore are configured for all platforms. 
+
+**For local development:**
+```bash
+# Copy the template and configure with your Firebase credentials
+cp lib/firebase_options.dart.template lib/firebase_options.dart
+# Then edit lib/firebase_options.dart with your values from Firebase Console
+```
+
+**For GitHub Actions:**
+- The workflows automatically generate `firebase_options.dart` from repository secrets
+- See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for detailed setup instructions
+
+**Note:** `lib/firebase_options.dart` is gitignored to protect API keys. See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for complete setup instructions.
 
 ---
 
