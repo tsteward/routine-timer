@@ -136,7 +136,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: web-build
-          path: .
+          path: web-build
 
       - name: Prepare web artifact for Firebase
         run: |
