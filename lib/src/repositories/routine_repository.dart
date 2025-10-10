@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/completion_summary.dart';
 import '../models/routine_state.dart';
 import '../services/auth_service.dart';
 
@@ -16,6 +17,9 @@ class RoutineRepository {
 
   /// Collection name for routines in Firestore
   static const String _routinesCollection = 'routines';
+
+  /// Collection name for completion data in Firestore
+  static const String _completionsCollection = 'completions';
 
   /// Reference to the current user's routine document
   /// Returns null if user is not signed in
@@ -106,6 +110,52 @@ class RoutineRepository {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Saves completion data to Firestore for analytics
+  /// Each completion is stored as a separate document with auto-generated ID
+  Future<bool> saveCompletionData(CompletionSummary summary) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return false;
+      }
+
+      await _firestore.collection(_completionsCollection).add({
+        'userId': userId,
+        ...summary.toMap(),
+      });
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Loads recent completion data for analytics
+  /// Returns list of completions for current user, ordered by completion time
+  Future<List<CompletionSummary>> getRecentCompletions({int limit = 10}) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return [];
+      }
+
+      final snapshot = await _firestore
+          .collection(_completionsCollection)
+          .where('userId', isEqualTo: userId)
+          .orderBy('completedAt', descending: true)
+          .limit(limit)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data.remove('userId'); // Remove userId before parsing
+        return CompletionSummary.fromMap(data);
+      }).toList();
+    } catch (e) {
+      return [];
     }
   }
 }

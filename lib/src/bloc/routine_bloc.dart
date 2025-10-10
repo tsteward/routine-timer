@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/break.dart';
+import '../models/completion_summary.dart';
 import '../models/routine_settings.dart';
 import '../models/routine_state.dart';
 import '../models/task.dart';
@@ -32,6 +33,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<LoadRoutineFromFirebase>(_onLoadFromFirebase);
     on<SaveRoutineToFirebase>(_onSaveToFirebase);
     on<ReloadRoutineForUser>(_onReloadRoutineForUser);
+    on<CompleteRoutine>(_onCompleteRoutine);
+    on<ResetRoutine>(_onResetRoutine);
+    on<ReturnToTaskManagement>(_onReturnToTaskManagement);
   }
 
   final RoutineRepository _repository;
@@ -185,15 +189,40 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       actualDuration: event.actualDuration,
     );
 
-    final nextIndex = (model.currentTaskIndex + 1).clamp(
-      0,
-      updatedTasks.length - 1,
-    );
-    emit(
-      state.copyWith(
-        model: model.copyWith(tasks: updatedTasks, currentTaskIndex: nextIndex),
-      ),
-    );
+    // Check if this was the last task
+    final allTasksCompleted = updatedTasks.every((task) => task.isCompleted);
+    final isLastTask = model.currentTaskIndex == updatedTasks.length - 1;
+
+    if (allTasksCompleted && isLastTask) {
+      // Generate completion summary
+      final completionSummary = _generateCompletionSummary(updatedTasks);
+
+      emit(
+        state.copyWith(
+          model: model.copyWith(tasks: updatedTasks),
+          isCompleted: true,
+          completionSummary: completionSummary,
+        ),
+      );
+
+      // Save completion data to Firebase
+      add(const SaveRoutineToFirebase());
+      _saveCompletionDataToFirebase(completionSummary);
+    } else {
+      // Move to next task if not completed
+      final nextIndex = (model.currentTaskIndex + 1).clamp(
+        0,
+        updatedTasks.length - 1,
+      );
+      emit(
+        state.copyWith(
+          model: model.copyWith(
+            tasks: updatedTasks,
+            currentTaskIndex: nextIndex,
+          ),
+        ),
+      );
+    }
   }
 
   void _onGoToPreviousTask(
@@ -435,5 +464,98 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     // Auto-save after resetting break
     add(const SaveRoutineToFirebase());
+  }
+
+  void _onCompleteRoutine(
+    CompleteRoutine event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Generate completion summary with current task states
+    final completionSummary = _generateCompletionSummary(model.tasks);
+
+    emit(
+      state.copyWith(isCompleted: true, completionSummary: completionSummary),
+    );
+
+    // Save completion data to Firebase
+    _saveCompletionDataToFirebase(completionSummary);
+  }
+
+  void _onResetRoutine(ResetRoutine event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Reset all tasks to not completed and clear actual durations
+    final resetTasks = model.tasks
+        .map((task) => task.copyWith(isCompleted: false, actualDuration: null))
+        .toList();
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(tasks: resetTasks, currentTaskIndex: 0),
+        isCompleted: false,
+        completionSummary: null,
+      ),
+    );
+
+    // Auto-save after reset
+    add(const SaveRoutineToFirebase());
+  }
+
+  void _onReturnToTaskManagement(
+    ReturnToTaskManagement event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    // Simply clear the completion state without affecting the routine data
+    emit(state.copyWith(isCompleted: false, completionSummary: null));
+  }
+
+  /// Generates a completion summary from the current task states
+  CompletionSummary _generateCompletionSummary(List<TaskModel> tasks) {
+    final completedTasks = tasks.where((task) => task.isCompleted).toList();
+
+    final totalEstimated = tasks.fold<int>(
+      0,
+      (sum, task) => sum + task.estimatedDuration,
+    );
+
+    final totalActual = completedTasks.fold<int>(
+      0,
+      (sum, task) => sum + (task.actualDuration ?? 0),
+    );
+
+    final taskSummaries = tasks
+        .map(
+          (task) => CompletedTaskSummary(
+            name: task.name,
+            estimatedDuration: task.estimatedDuration,
+            actualDuration: task.actualDuration ?? 0,
+            wasCompleted: task.isCompleted,
+            order: task.order,
+          ),
+        )
+        .toList();
+
+    return CompletionSummary(
+      completedAt: DateTime.now(),
+      totalTimeSpent: totalActual,
+      totalEstimatedTime: totalEstimated,
+      tasksCompleted: completedTasks.length,
+      totalTasks: tasks.length,
+      tasks: taskSummaries,
+    );
+  }
+
+  /// Saves completion data to Firebase for analytics
+  void _saveCompletionDataToFirebase(CompletionSummary summary) async {
+    try {
+      await _repository.saveCompletionData(summary);
+    } catch (e) {
+      // Log error but don't affect UI state
+      // TODO: Add proper error logging
+    }
   }
 }
