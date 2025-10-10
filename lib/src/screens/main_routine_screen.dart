@@ -74,6 +74,11 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
           _resetTimer();
           _previousTaskIndex = currentIndex;
         }
+
+        // Navigate to completion screen when routine is completed
+        if (state.isCompleted && state.completionSummary != null) {
+          Navigator.of(context).pushReplacementNamed(AppRoutes.completion);
+        }
       },
       builder: (context, state) {
         final model = state.model;
@@ -274,6 +279,10 @@ class _NavFab extends StatelessWidget {
             PopupMenuItem(
               value: AppRoutes.tasks,
               child: Text('Task Management'),
+            ),
+            PopupMenuItem(
+              value: AppRoutes.completion,
+              child: Text('Completion Summary'),
             ),
           ],
         );

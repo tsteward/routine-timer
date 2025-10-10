@@ -121,3 +121,18 @@ class SaveRoutineToFirebase extends RoutineEvent {
 class ReloadRoutineForUser extends RoutineEvent {
   const ReloadRoutineForUser();
 }
+
+/// Mark the entire routine as completed
+class CompleteRoutine extends RoutineEvent {
+  const CompleteRoutine();
+}
+
+/// Reset the routine to start over
+class ResetRoutine extends RoutineEvent {
+  const ResetRoutine();
+}
+
+/// Return to task management from completion screen
+class ReturnToTaskManagement extends RoutineEvent {
+  const ReturnToTaskManagement();
+}
