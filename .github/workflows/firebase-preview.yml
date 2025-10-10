@@ -73,6 +73,49 @@ jobs:
       - name: Build web
         run: flutter build web --release
 
+      - name: Prune old Firebase preview channels
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Ensure jq is available
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          fi
+
+          PROJECT_ID="$FIREBASE_PROJECT_ID"
+          CURRENT_CHANNEL="pr-$PR_NUMBER"
+          NOW_EPOCH=$(date -u +%s)
+
+          # List channels; continue on error to avoid failing the job here
+          CHANNELS_JSON=$(npx --yes firebase-tools@latest hosting:channel:list --project "$PROJECT_ID" --json || echo '{}')
+
+          # Delete channels that:
+          # - start with pr-
+          # - are not the current PR channel
+          # - and are either expired already or older than 24h by createTime (if present)
+          echo "$CHANNELS_JSON" \
+            | jq -r --arg now "$NOW_EPOCH" --arg keep "$CURRENT_CHANNEL" '
+                .result // []
+                | map({
+                    id: (.name | capture("channels/(?<id>[^/]+)$").id),
+                    expire: (.expireTime // null),
+                    create: (.createTime // null)
+                  })
+                | map(select((.id | startswith("pr-")) and (.id != $keep)))
+                | map(select(
+                    ( .expire != null and ((.expire | fromdateiso8601) < ($now|tonumber)) ) or
+                    ( .create != null and ((.create | fromdateiso8601) < (($now|tonumber) - 86400)) )
+                  ))
+                | .[].id
+              ' \
+            | while read -r CH; do
+                echo "Deleting stale preview channel: $CH";
+                npx --yes firebase-tools@latest hosting:channel:delete "$CH" --project "$PROJECT_ID" --force || true;
+              done
+
       - name: Deploy to Firebase Hosting preview channel
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -80,5 +123,5 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ROUTINE_TIMER_403F2 }}'
           projectId: '${{ secrets.FIREBASE_PROJECT_ID }}'
           channelId: 'pr-${{ github.event.pull_request.number }}'
-          expires: 7d
+          expires: 1d
           entryPoint: '.'
