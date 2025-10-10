@@ -165,7 +165,10 @@ void main() {
       await tester.tap(find.text('Main Routine').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Timer & progress placeholder'), findsOneWidget);
+      // New MainRoutineScreen UI should show buttons and progress
+      expect(find.text('Done'), findsOneWidget);
+      expect(find.text('Previous'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
     });
   });
 }

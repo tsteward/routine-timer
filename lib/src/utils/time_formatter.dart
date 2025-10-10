@@ -56,4 +56,20 @@ class TimeFormatter {
 
     return '$hh:$mm:$ss';
   }
+
+  /// Formats a signed countdown in MM:SS format.
+  ///
+  /// - Negative values are prefixed with a '-' (e.g., -01:23)
+  /// - Minutes are computed from total seconds (no hour field)
+  static String formatMinutesSecondsSigned(int seconds) {
+    final isNegative = seconds < 0;
+    final absSeconds = seconds.abs();
+    final minutes = absSeconds ~/ 60;
+    final secs = absSeconds % 60;
+
+    final mm = minutes.toString().padLeft(2, '0');
+    final ss = secs.toString().padLeft(2, '0');
+    final body = '$mm:$ss';
+    return isNegative ? '-$body' : body;
+  }
 }
