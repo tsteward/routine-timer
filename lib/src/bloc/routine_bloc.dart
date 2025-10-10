@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/break.dart';
+import '../models/routine_completion.dart';
 import '../models/routine_settings.dart';
 import '../models/routine_state.dart';
 import '../models/task.dart';
@@ -32,6 +33,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<LoadRoutineFromFirebase>(_onLoadFromFirebase);
     on<SaveRoutineToFirebase>(_onSaveToFirebase);
     on<ReloadRoutineForUser>(_onReloadRoutineForUser);
+    on<CompleteRoutine>(_onCompleteRoutine);
+    on<ResetRoutine>(_onResetRoutine);
+    on<SaveCompletionToFirebase>(_onSaveCompletionToFirebase);
   }
 
   final RoutineRepository _repository;
@@ -185,15 +189,34 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       actualDuration: event.actualDuration,
     );
 
-    final nextIndex = (model.currentTaskIndex + 1).clamp(
-      0,
-      updatedTasks.length - 1,
-    );
-    emit(
-      state.copyWith(
-        model: model.copyWith(tasks: updatedTasks, currentTaskIndex: nextIndex),
-      ),
-    );
+    // Check if this was the last task
+    final isLastTask = model.currentTaskIndex == updatedTasks.length - 1;
+    final allTasksCompleted = updatedTasks.every((task) => task.isCompleted);
+
+    if (isLastTask && allTasksCompleted) {
+      // All tasks are completed, trigger routine completion
+      emit(
+        state.copyWith(
+          model: model.copyWith(tasks: updatedTasks),
+        ),
+      );
+      // Complete the routine with the provided start time
+      add(CompleteRoutine(routineStartTime: event.routineStartTime));
+    } else {
+      // Normal task completion - move to next task
+      final nextIndex = (model.currentTaskIndex + 1).clamp(
+        0,
+        updatedTasks.length - 1,
+      );
+      emit(
+        state.copyWith(
+          model: model.copyWith(
+            tasks: updatedTasks,
+            currentTaskIndex: nextIndex,
+          ),
+        ),
+      );
+    }
   }
 
   void _onGoToPreviousTask(
@@ -435,5 +458,107 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     // Auto-save after resetting break
     add(const SaveRoutineToFirebase());
+  }
+
+  void _onCompleteRoutine(
+    CompleteRoutine event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+
+    final completedAt = DateTime.now();
+    final totalTimeSpent = completedAt.difference(event.routineStartTime).inSeconds;
+    
+    // Calculate completed tasks data
+    final completedTasks = model.tasks.map((task) {
+      return CompletedTaskModel(
+        id: task.id,
+        name: task.name,
+        estimatedDuration: task.estimatedDuration,
+        actualDuration: task.actualDuration ?? task.estimatedDuration,
+        isCompleted: task.isCompleted,
+        order: task.order,
+      );
+    }).toList();
+    
+    // Calculate total estimated vs actual duration
+    final totalEstimatedDuration = model.tasks
+        .fold<int>(0, (sum, task) => sum + task.estimatedDuration);
+    final totalActualDuration = completedTasks
+        .fold<int>(0, (sum, task) => sum + task.actualDuration);
+    
+    final aheadBehindStatus = totalEstimatedDuration - totalActualDuration;
+    final tasksCompleted = model.tasks.where((task) => task.isCompleted).length;
+    
+    final completionData = RoutineCompletionModel(
+      completedAt: completedAt,
+      totalTimeSpent: totalTimeSpent,
+      tasksCompleted: tasksCompleted,
+      totalTasks: model.tasks.length,
+      finalAheadBehindStatus: aheadBehindStatus,
+      tasks: completedTasks,
+      routineStartTime: event.routineStartTime,
+    );
+    
+    emit(
+      state.copyWith(
+        completionData: completionData,
+        isCompleted: true,
+      ),
+    );
+    
+    // Auto-save completion data to Firebase
+    add(const SaveCompletionToFirebase());
+  }
+
+  void _onResetRoutine(
+    ResetRoutine event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Reset all tasks to not completed and clear actual durations
+    final resetTasks = model.tasks.map((task) {
+      return task.copyWith(
+        isCompleted: false,
+        actualDuration: null,
+      );
+    }).toList();
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: resetTasks,
+          currentTaskIndex: 0,
+          isRunning: false,
+        ),
+        isCompleted: false,
+        completionData: null,
+      ),
+    );
+
+    // Save the reset state
+    add(const SaveRoutineToFirebase());
+  }
+
+  void _onSaveCompletionToFirebase(
+    SaveCompletionToFirebase event,
+    Emitter<RoutineBlocState> emit,
+  ) async {
+    final completionData = state.completionData;
+    if (completionData == null) return;
+
+    emit(state.copyWith(saving: true));
+
+    final success = await _repository.saveCompletion(completionData);
+    
+    emit(
+      state.copyWith(
+        saving: false,
+        saveError: success ? null : 'Failed to save completion data',
+      ),
+    );
   }
 }

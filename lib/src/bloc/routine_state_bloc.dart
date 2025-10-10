@@ -7,6 +7,8 @@ class RoutineBlocState extends Equatable {
     this.errorMessage,
     this.saving = false,
     this.saveError,
+    this.completionData,
+    this.isCompleted = false,
   });
 
   final bool loading;
@@ -14,6 +16,8 @@ class RoutineBlocState extends Equatable {
   final String? errorMessage;
   final bool saving;
   final String? saveError;
+  final RoutineCompletionModel? completionData;
+  final bool isCompleted;
 
   factory RoutineBlocState.initial() => const RoutineBlocState(loading: false);
 
@@ -23,6 +27,8 @@ class RoutineBlocState extends Equatable {
     String? errorMessage,
     bool? saving,
     String? saveError,
+    RoutineCompletionModel? completionData,
+    bool? isCompleted,
   }) {
     return RoutineBlocState(
       loading: loading ?? this.loading,
@@ -30,9 +36,19 @@ class RoutineBlocState extends Equatable {
       errorMessage: errorMessage,
       saving: saving ?? this.saving,
       saveError: saveError,
+      completionData: completionData ?? this.completionData,
+      isCompleted: isCompleted ?? this.isCompleted,
     );
   }
 
   @override
-  List<Object?> get props => [loading, model, errorMessage, saving, saveError];
+  List<Object?> get props => [
+        loading,
+        model,
+        errorMessage,
+        saving,
+        saveError,
+        completionData,
+        isCompleted,
+      ];
 }

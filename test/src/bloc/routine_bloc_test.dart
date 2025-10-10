@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
+import 'package:routine_timer/src/models/routine_completion.dart';
 import 'package:routine_timer/src/models/routine_settings.dart';
 import 'package:routine_timer/src/models/task.dart';
 import '../test_helpers/firebase_test_helper.dart';
@@ -822,6 +823,178 @@ void main() {
 
       expect(reset.model!.breaks![1].duration, 200);
       expect(reset.model!.breaks![1].isCustomized, false);
+    });
+
+    group('Completion functionality', () {
+      test('detects completion when last task is finished', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        
+        final initial = await bloc.stream.firstWhere((s) => s.model != null);
+        final routineStartTime = DateTime.now().subtract(const Duration(hours: 1));
+        
+        // Complete all tasks one by one
+        for (int i = 0; i < initial.model!.tasks.length; i++) {
+          bloc.add(MarkTaskDone(
+            actualDuration: 600 + (i * 60), // Different durations
+            routineStartTime: routineStartTime,
+          ));
+        }
+
+        // Wait for completion
+        final completed = await bloc.stream.firstWhere((s) => s.isCompleted);
+        
+        expect(completed.isCompleted, isTrue);
+        expect(completed.completionData, isNotNull);
+        expect(completed.completionData!.tasksCompleted, equals(4));
+        expect(completed.completionData!.totalTasks, equals(4));
+        expect(completed.completionData!.isFullyCompleted, isTrue);
+      });
+
+      test('calculates correct completion statistics', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        
+        final initial = await bloc.stream.firstWhere((s) => s.model != null);
+        final routineStartTime = DateTime.now().subtract(const Duration(hours: 1));
+        
+        // Complete first 3 tasks with known durations
+        for (int i = 0; i < 3; i++) {
+          bloc.add(MarkTaskDone(
+            actualDuration: 600, // 10 minutes each
+            routineStartTime: routineStartTime,
+          ));
+        }
+        
+        // Complete last task
+        bloc.add(MarkTaskDone(
+          actualDuration: 300, // 5 minutes
+          routineStartTime: routineStartTime,
+        ));
+
+        final completed = await bloc.stream.firstWhere((s) => s.isCompleted);
+        final completion = completed.completionData!;
+        
+        expect(completion.tasksCompleted, equals(4));
+        expect(completion.totalTasks, equals(4));
+        expect(completion.routineStartTime, equals(routineStartTime));
+        expect(completion.tasks.length, equals(4));
+        
+        // Check task completion data
+        expect(completion.tasks[0].actualDuration, equals(600));
+        expect(completion.tasks[0].isCompleted, isTrue);
+        expect(completion.tasks[3].actualDuration, equals(300));
+        expect(completion.tasks[3].isCompleted, isTrue);
+      });
+
+      test('handles partial completion correctly', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        
+        await bloc.stream.firstWhere((s) => s.model != null);
+        final routineStartTime = DateTime.now().subtract(const Duration(hours: 1));
+        
+        // Complete only first 2 tasks
+        bloc.add(MarkTaskDone(
+          actualDuration: 600,
+          routineStartTime: routineStartTime,
+        ));
+        
+        // Wait for task completion (not routine completion)
+        final afterFirst = await bloc.stream.firstWhere(
+          (s) => s.model != null && s.model!.tasks[0].isCompleted,
+        );
+        
+        expect(afterFirst.isCompleted, isFalse);
+        expect(afterFirst.completionData, isNull);
+        expect(afterFirst.model!.currentTaskIndex, equals(1));
+      });
+
+      test('resets routine properly', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        
+        final initial = await bloc.stream.firstWhere((s) => s.model != null);
+        final routineStartTime = DateTime.now().subtract(const Duration(hours: 1));
+        
+        // Complete all tasks
+        for (int i = 0; i < initial.model!.tasks.length; i++) {
+          bloc.add(MarkTaskDone(
+            actualDuration: 600,
+            routineStartTime: routineStartTime,
+          ));
+        }
+
+        // Wait for completion
+        await bloc.stream.firstWhere((s) => s.isCompleted);
+        
+        // Reset routine
+        bloc.add(const ResetRoutine());
+        
+        final reset = await bloc.stream.firstWhere((s) => !s.isCompleted);
+        
+        expect(reset.isCompleted, isFalse);
+        expect(reset.completionData, isNull);
+        expect(reset.model!.currentTaskIndex, equals(0));
+        
+        // Check all tasks are reset
+        for (final task in reset.model!.tasks) {
+          expect(task.isCompleted, isFalse);
+          expect(task.actualDuration, isNull);
+        }
+      });
+
+      test('calculates ahead/behind status correctly', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        
+        final initial = await bloc.stream.firstWhere((s) => s.model != null);
+        final routineStartTime = DateTime.now().subtract(const Duration(hours: 1));
+        
+        // Get original estimated durations
+        final tasks = initial.model!.tasks;
+        final totalEstimated = tasks
+            .fold<int>(0, (sum, task) => sum + task.estimatedDuration);
+        
+        // Complete tasks with different actual durations
+        // Task 0: 5 minutes over (1200 + 300 = 1500)
+        // Task 1: on time (600)
+        // Task 2: 2 minutes under (900 - 120 = 780)
+        // Task 3: 1 minute over (300 + 60 = 360)
+        final actualDurations = [1500, 600, 780, 360];
+        
+        for (int i = 0; i < tasks.length; i++) {
+          bloc.add(MarkTaskDone(
+            actualDuration: actualDurations[i],
+            routineStartTime: routineStartTime,
+          ));
+        }
+
+        final completed = await bloc.stream.firstWhere((s) => s.isCompleted);
+        final completion = completed.completionData!;
+        
+        final totalActual = actualDurations.reduce((a, b) => a + b);
+        final expectedAheadBehind = totalEstimated - totalActual;
+        
+        expect(completion.finalAheadBehindStatus, equals(expectedAheadBehind));
+      });
+
+      test('completes routine immediately when CompleteRoutine event is triggered', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        
+        await bloc.stream.firstWhere((s) => s.model != null);
+        final routineStartTime = DateTime.now().subtract(const Duration(hours: 1));
+        
+        // Directly trigger completion without finishing all tasks
+        bloc.add(CompleteRoutine(routineStartTime: routineStartTime));
+        
+        final completed = await bloc.stream.firstWhere((s) => s.isCompleted);
+        
+        expect(completed.isCompleted, isTrue);
+        expect(completed.completionData, isNotNull);
+        expect(completed.completionData!.routineStartTime, equals(routineStartTime));
+      });
     });
   });
 }
