@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../app_theme.dart';
 import '../bloc/routine_bloc.dart';
+import '../models/routine_state.dart';
 import '../router/app_router.dart';
 
 class MainRoutineScreen extends StatefulWidget {
@@ -16,7 +17,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   Timer? _timer;
   int _elapsedSeconds = 0;
   DateTime? _taskStartTime;
-  int? _previousTaskIndex;
+  String? _previousTaskId;
 
   @override
   void initState() {
@@ -68,11 +69,11 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<RoutineBloc, RoutineBlocState>(
       listener: (context, state) {
-        // Reset timer when task index changes
-        final currentIndex = state.model?.currentTaskIndex;
-        if (currentIndex != null && _previousTaskIndex != currentIndex) {
+        // Reset timer when selected task changes
+        final currentTaskId = state.model?.selectedTaskId;
+        if (currentTaskId != null && _previousTaskId != currentTaskId) {
           _resetTimer();
-          _previousTaskIndex = currentIndex;
+          _previousTaskId = currentTaskId;
         }
       },
       builder: (context, state) {
@@ -109,7 +110,12 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
           );
         }
 
-        final currentTask = model.tasks[model.currentTaskIndex];
+        final currentTask = model.selectedTaskId != null
+            ? model.tasks.firstWhere(
+                (task) => task.id == model.selectedTaskId,
+                orElse: () => model.tasks[0],
+              )
+            : model.tasks[0];
         final remainingSeconds =
             currentTask.estimatedDuration - _elapsedSeconds;
         final isNegative = remainingSeconds < 0;
@@ -186,7 +192,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                         child: Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: ElevatedButton(
-                            onPressed: model.currentTaskIndex > 0
+                            onPressed: _canGoToPreviousTask(model)
                                 ? () {
                                     context.read<RoutineBloc>().add(
                                       const GoToPreviousTask(),
@@ -244,7 +250,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
 
                   // Task counter
                   Text(
-                    'Task ${model.currentTaskIndex + 1} of ${model.tasks.length}',
+                    'Task ${_getCurrentTaskNumber(model)} of ${model.tasks.length}',
                     style: const TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                 ],
@@ -255,6 +261,24 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
         );
       },
     );
+  }
+
+  /// Helper method to check if we can go to the previous task
+  bool _canGoToPreviousTask(RoutineStateModel model) {
+    if (model.selectedTaskId == null) return false;
+    final currentIndex = model.tasks.indexWhere(
+      (t) => t.id == model.selectedTaskId,
+    );
+    return currentIndex > 0;
+  }
+
+  /// Helper method to get the current task number (1-based)
+  int _getCurrentTaskNumber(RoutineStateModel model) {
+    if (model.selectedTaskId == null) return 1;
+    final currentIndex = model.tasks.indexWhere(
+      (t) => t.id == model.selectedTaskId,
+    );
+    return currentIndex == -1 ? 1 : currentIndex + 1;
   }
 }
 

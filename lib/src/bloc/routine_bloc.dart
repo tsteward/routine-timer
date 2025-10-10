@@ -87,7 +87,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       tasks: tasks,
       breaks: breaks,
       settings: settings,
-      currentTaskIndex: 0,
+      selectedTaskId: tasks.isNotEmpty ? tasks[0].id : null,
       isRunning: false,
     );
 
@@ -97,7 +97,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   void _onSelectTask(SelectTask event, Emitter<RoutineBlocState> emit) {
     emit(
       state.copyWith(
-        model: state.model?.copyWith(currentTaskIndex: event.index),
+        model: state.model?.copyWith(selectedTaskId: event.taskId),
       ),
     );
   }
@@ -116,6 +116,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       reindexed.add(updatedTasks[i].copyWith(order: i));
     }
 
+    // Selection persists automatically since we track by task ID, not index
     emit(state.copyWith(model: model.copyWith(tasks: reindexed)));
 
     // Auto-save after reordering
@@ -176,22 +177,29 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
   void _onMarkTaskDone(MarkTaskDone event, Emitter<RoutineBlocState> emit) {
     final model = state.model;
-    if (model == null) return;
+    if (model == null || model.selectedTaskId == null) return;
 
     final updatedTasks = List<TaskModel>.from(model.tasks);
-    final current = updatedTasks[model.currentTaskIndex];
-    updatedTasks[model.currentTaskIndex] = current.copyWith(
+    final currentIndex = updatedTasks.indexWhere(
+      (t) => t.id == model.selectedTaskId,
+    );
+    if (currentIndex == -1) return;
+
+    final current = updatedTasks[currentIndex];
+    updatedTasks[currentIndex] = current.copyWith(
       isCompleted: true,
       actualDuration: event.actualDuration,
     );
 
-    final nextIndex = (model.currentTaskIndex + 1).clamp(
-      0,
-      updatedTasks.length - 1,
-    );
+    // Select next task (for routine execution flow)
+    final nextIndex = (currentIndex + 1).clamp(0, updatedTasks.length - 1);
+    final nextTaskId = nextIndex < updatedTasks.length
+        ? updatedTasks[nextIndex].id
+        : null;
+
     emit(
       state.copyWith(
-        model: model.copyWith(tasks: updatedTasks, currentTaskIndex: nextIndex),
+        model: model.copyWith(tasks: updatedTasks, selectedTaskId: nextTaskId),
       ),
     );
   }
@@ -201,12 +209,17 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     Emitter<RoutineBlocState> emit,
   ) {
     final model = state.model;
-    if (model == null) return;
-    final prevIndex = (model.currentTaskIndex - 1).clamp(
-      0,
-      model.tasks.length - 1,
+    if (model == null || model.selectedTaskId == null) return;
+
+    final currentIndex = model.tasks.indexWhere(
+      (t) => t.id == model.selectedTaskId,
     );
-    emit(state.copyWith(model: model.copyWith(currentTaskIndex: prevIndex)));
+    if (currentIndex == -1) return;
+
+    final prevIndex = (currentIndex - 1).clamp(0, model.tasks.length - 1);
+    final prevTaskId = prevIndex >= 0 ? model.tasks[prevIndex].id : null;
+
+    emit(state.copyWith(model: model.copyWith(selectedTaskId: prevTaskId)));
   }
 
   void _onUpdateTask(UpdateTask event, Emitter<RoutineBlocState> emit) {
@@ -268,6 +281,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     if (model.tasks.length <= 1) return; // Don't delete last task
 
     final updatedTasks = List<TaskModel>.from(model.tasks);
+    final deletedTask = updatedTasks[event.index];
     updatedTasks.removeAt(event.index);
 
     // Reassign order values to maintain consistency.
@@ -283,12 +297,19 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       updatedBreaks.removeAt(event.index);
     }
 
-    // Adjust currentTaskIndex if necessary
-    int newCurrentIndex = model.currentTaskIndex;
-    if (newCurrentIndex >= updatedTasks.length) {
-      newCurrentIndex = updatedTasks.length - 1;
-    } else if (newCurrentIndex > event.index) {
-      newCurrentIndex--;
+    // Handle selection when deleting a task
+    String? newSelectedTaskId = model.selectedTaskId;
+    if (model.selectedTaskId == deletedTask.id) {
+      // If deleting the selected task, select a nearby task
+      if (event.index < reindexed.length) {
+        // Select the task that took its place
+        newSelectedTaskId = reindexed[event.index].id;
+      } else if (reindexed.isNotEmpty) {
+        // Select the last task if we deleted the last task
+        newSelectedTaskId = reindexed.last.id;
+      } else {
+        newSelectedTaskId = null;
+      }
     }
 
     emit(
@@ -296,7 +317,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
         model: model.copyWith(
           tasks: reindexed,
           breaks: updatedBreaks,
-          currentTaskIndex: newCurrentIndex,
+          selectedTaskId: newSelectedTaskId,
         ),
       ),
     );

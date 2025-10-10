@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/routine_bloc.dart';
+import '../models/task.dart';
 import '../router/app_router.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/task_details_panel.dart';
@@ -80,9 +81,17 @@ class _SettingsAndDetailsColumn extends StatelessWidget {
           return const Center(child: Text('No routine loaded'));
         }
 
-        final selectedTask = model.currentTaskIndex < model.tasks.length
-            ? model.tasks[model.currentTaskIndex]
-            : null;
+        TaskModel? selectedTask;
+        if (model.selectedTaskId != null) {
+          try {
+            selectedTask = model.tasks.firstWhere(
+              (task) => task.id == model.selectedTaskId,
+            );
+          } catch (e) {
+            // Selected task not found, select first task or null
+            selectedTask = model.tasks.isNotEmpty ? model.tasks[0] : null;
+          }
+        }
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),

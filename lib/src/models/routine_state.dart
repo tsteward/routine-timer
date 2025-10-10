@@ -9,7 +9,7 @@ class RoutineStateModel {
   const RoutineStateModel({
     required this.tasks,
     required this.settings,
-    this.currentTaskIndex = 0,
+    this.selectedTaskId,
     this.isRunning = false,
     this.breaks,
   });
@@ -24,8 +24,8 @@ class RoutineStateModel {
   /// Global routine settings.
   final RoutineSettingsModel settings;
 
-  /// Index of the currently selected/active task.
-  final int currentTaskIndex;
+  /// ID of the currently selected/active task. If null, no task is selected.
+  final String? selectedTaskId;
 
   /// Whether the routine is actively running a timer.
   final bool isRunning;
@@ -34,14 +34,14 @@ class RoutineStateModel {
     List<TaskModel>? tasks,
     List<BreakModel>? breaks,
     RoutineSettingsModel? settings,
-    int? currentTaskIndex,
+    String? selectedTaskId,
     bool? isRunning,
   }) {
     return RoutineStateModel(
       tasks: tasks ?? this.tasks,
       breaks: breaks ?? this.breaks,
       settings: settings ?? this.settings,
-      currentTaskIndex: currentTaskIndex ?? this.currentTaskIndex,
+      selectedTaskId: selectedTaskId ?? this.selectedTaskId,
       isRunning: isRunning ?? this.isRunning,
     );
   }
@@ -51,23 +51,34 @@ class RoutineStateModel {
       'tasks': tasks.map((e) => e.toMap()).toList(),
       'breaks': breaks?.map((e) => e.toMap()).toList(),
       'settings': settings.toMap(),
-      'currentTaskIndex': currentTaskIndex,
+      'selectedTaskId': selectedTaskId,
       'isRunning': isRunning,
     };
   }
 
   factory RoutineStateModel.fromMap(Map<String, dynamic> map) {
+    final tasks = (map['tasks'] as List<dynamic>)
+        .map((e) => TaskModel.fromMap(e as Map<String, dynamic>))
+        .toList();
+
+    // Handle backward compatibility: migrate from currentTaskIndex to selectedTaskId
+    String? selectedTaskId = map['selectedTaskId'] as String?;
+    if (selectedTaskId == null && map.containsKey('currentTaskIndex')) {
+      final index = map['currentTaskIndex'] as int?;
+      if (index != null && index >= 0 && index < tasks.length) {
+        selectedTaskId = tasks[index].id;
+      }
+    }
+
     return RoutineStateModel(
-      tasks: (map['tasks'] as List<dynamic>)
-          .map((e) => TaskModel.fromMap(e as Map<String, dynamic>))
-          .toList(),
+      tasks: tasks,
       breaks: (map['breaks'] as List<dynamic>?)
           ?.map((e) => BreakModel.fromMap(e as Map<String, dynamic>))
           .toList(),
       settings: RoutineSettingsModel.fromMap(
         map['settings'] as Map<String, dynamic>,
       ),
-      currentTaskIndex: map['currentTaskIndex'] as int? ?? 0,
+      selectedTaskId: selectedTaskId,
       isRunning: map['isRunning'] as bool? ?? false,
     );
   }

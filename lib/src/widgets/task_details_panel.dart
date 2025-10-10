@@ -51,6 +51,14 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
     _taskNameController.text = widget.task.name;
   }
 
+  /// Helper method to find the current task index from the selected task ID
+  int? _getCurrentTaskIndex() {
+    if (widget.model.selectedTaskId == null) return null;
+    return widget.model.tasks.indexWhere(
+      (t) => t.id == widget.model.selectedTaskId,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -186,27 +194,31 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
   }
 
   bool _isLastTask() {
-    final taskIndex = widget.model.currentTaskIndex;
+    final taskIndex = _getCurrentTaskIndex();
+    if (taskIndex == null) return false;
     return taskIndex >= widget.model.tasks.length - 1;
   }
 
   bool _isBreakEnabled() {
-    final taskIndex = widget.model.currentTaskIndex;
+    final taskIndex = _getCurrentTaskIndex();
+    if (taskIndex == null) return false;
     return widget.model.breaks != null &&
         taskIndex < widget.model.breaks!.length &&
         widget.model.breaks![taskIndex].isEnabled;
   }
 
   bool _isBreakCustomized() {
-    final taskIndex = widget.model.currentTaskIndex;
+    final taskIndex = _getCurrentTaskIndex();
+    if (taskIndex == null) return false;
     return widget.model.breaks != null &&
         taskIndex < widget.model.breaks!.length &&
         widget.model.breaks![taskIndex].isCustomized;
   }
 
   int _getBreakDuration() {
-    final taskIndex = widget.model.currentTaskIndex;
-    if (widget.model.breaks != null &&
+    final taskIndex = _getCurrentTaskIndex();
+    if (taskIndex != null &&
+        widget.model.breaks != null &&
         taskIndex < widget.model.breaks!.length) {
       return widget.model.breaks![taskIndex].duration;
     }
@@ -217,8 +229,9 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
     if (!_isBreakEnabled()) {
       return 'Tap the gap in the task list to enable';
     }
-    final taskIndex = widget.model.currentTaskIndex;
-    if (widget.model.breaks != null &&
+    final taskIndex = _getCurrentTaskIndex();
+    if (taskIndex != null &&
+        widget.model.breaks != null &&
         taskIndex < widget.model.breaks!.length) {
       final breakModel = widget.model.breaks![taskIndex];
       if (breakModel.isCustomized) {
@@ -229,13 +242,15 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
   }
 
   void _resetBreakToDefault(BuildContext context) {
-    final taskIndex = widget.model.currentTaskIndex;
+    final taskIndex = _getCurrentTaskIndex();
+    if (taskIndex == null) return;
     context.read<RoutineBloc>().add(ResetBreakToDefault(index: taskIndex));
   }
 
   Future<void> _pickBreakDuration(BuildContext context) async {
-    final taskIndex = widget.model.currentTaskIndex;
-    if (widget.model.breaks == null ||
+    final taskIndex = _getCurrentTaskIndex();
+    if (taskIndex == null ||
+        widget.model.breaks == null ||
         taskIndex >= widget.model.breaks!.length) {
       return;
     }
@@ -276,10 +291,13 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
       return; // Don't update with empty name
     }
 
+    final taskIndex = _getCurrentTaskIndex();
+    if (taskIndex == null) return;
+
     final updatedTask = widget.task.copyWith(name: value);
 
     context.read<RoutineBloc>().add(
-      UpdateTask(index: widget.model.currentTaskIndex, task: updatedTask),
+      UpdateTask(index: taskIndex, task: updatedTask),
     );
   }
 
@@ -315,16 +333,18 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
         estimatedDuration: durationInSeconds,
       );
 
-      bloc.add(
-        UpdateTask(index: widget.model.currentTaskIndex, task: updatedTask),
-      );
+      final taskIndex = _getCurrentTaskIndex();
+      if (taskIndex == null) return;
+
+      bloc.add(UpdateTask(index: taskIndex, task: updatedTask));
     }
   }
 
   void _duplicateTask(BuildContext context) {
-    context.read<RoutineBloc>().add(
-      DuplicateTask(widget.model.currentTaskIndex),
-    );
+    final taskIndex = _getCurrentTaskIndex();
+    if (taskIndex == null) return;
+
+    context.read<RoutineBloc>().add(DuplicateTask(taskIndex));
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Task duplicated successfully')),
@@ -363,8 +383,9 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
     );
 
     if (confirmed == true && mounted) {
-      if (!mounted) return;
-      bloc.add(DeleteTask(widget.model.currentTaskIndex));
+      final taskIndex = _getCurrentTaskIndex();
+      if (taskIndex == null || !mounted) return;
+      bloc.add(DeleteTask(taskIndex));
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Task deleted successfully')),
