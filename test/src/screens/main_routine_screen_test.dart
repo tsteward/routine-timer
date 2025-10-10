@@ -74,7 +74,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -113,7 +113,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -146,7 +146,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -157,7 +157,9 @@ void main() {
 
         // Move to next task
         bloc.emit(
-          bloc.state.copyWith(model: model.copyWith(currentTaskIndex: 1)),
+          bloc.state.copyWith(
+            model: model.copyWith(selectedTaskId: tasks[1].id),
+          ),
         );
         await tester.pumpAndSettle();
 
@@ -183,7 +185,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -211,7 +213,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -249,7 +251,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -287,7 +289,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -317,7 +319,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -355,7 +357,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -382,7 +384,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -412,7 +414,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -446,7 +448,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -482,7 +484,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -518,7 +520,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -529,7 +531,9 @@ void main() {
 
         // Directly change task index (simulating Done button effect)
         bloc.emit(
-          bloc.state.copyWith(model: model.copyWith(currentTaskIndex: 1)),
+          bloc.state.copyWith(
+            model: model.copyWith(selectedTaskId: tasks[1].id),
+          ),
         );
         await tester.pumpAndSettle();
 
@@ -562,7 +566,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -601,7 +605,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -650,7 +654,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -662,7 +666,9 @@ void main() {
 
         // Directly change task index via BLoC state (simulating task change)
         bloc.emit(
-          bloc.state.copyWith(model: model.copyWith(currentTaskIndex: 1)),
+          bloc.state.copyWith(
+            model: model.copyWith(selectedTaskId: tasks[1].id),
+          ),
         );
         await tester.pumpAndSettle();
 
@@ -689,7 +695,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -722,7 +728,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -760,7 +766,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 1, // On second task
+          selectedTaskId: tasks[1].id, // On second task
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -799,7 +805,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 1, // Start on second task
+          selectedTaskId: tasks[1].id, // Start on second task
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -843,7 +849,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 1, // Start on second task
+          selectedTaskId: tasks[1].id, // Start on second task
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -855,7 +861,9 @@ void main() {
 
         // Directly change task index back to first task
         bloc.emit(
-          bloc.state.copyWith(model: model.copyWith(currentTaskIndex: 0)),
+          bloc.state.copyWith(
+            model: model.copyWith(selectedTaskId: tasks[0].id),
+          ),
         );
         await tester.pumpAndSettle();
 
@@ -882,7 +890,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -912,7 +920,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -940,7 +948,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 
@@ -972,7 +980,7 @@ void main() {
         final model = RoutineStateModel(
           tasks: tasks,
           settings: settings,
-          currentTaskIndex: 0,
+          selectedTaskId: tasks.first.id,
         );
         bloc.emit(bloc.state.copyWith(model: model));
 

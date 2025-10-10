@@ -85,7 +85,7 @@ class _TaskListColumnState extends State<TaskListColumn> {
             },
             itemBuilder: (context, index) {
               final task = tasksToDisplay[index];
-              final isSelected = index == model.currentTaskIndex;
+              final isSelected = task.id == model.selectedTaskId;
               final startTime = startTimes[index];
 
               return Column(
@@ -100,7 +100,7 @@ class _TaskListColumnState extends State<TaskListColumn> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
                       onTap: () =>
-                          context.read<RoutineBloc>().add(SelectTask(index)),
+                          context.read<RoutineBloc>().add(SelectTask(task.id)),
                       child: Card(
                         elevation: isSelected ? 2 : 0,
                         shape: RoundedRectangleBorder(

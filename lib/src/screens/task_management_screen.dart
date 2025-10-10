@@ -80,9 +80,7 @@ class _SettingsAndDetailsColumn extends StatelessWidget {
           return const Center(child: Text('No routine loaded'));
         }
 
-        final selectedTask = model.currentTaskIndex < model.tasks.length
-            ? model.tasks[model.currentTaskIndex]
-            : null;
+        final selectedTask = model.selectedTask;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
