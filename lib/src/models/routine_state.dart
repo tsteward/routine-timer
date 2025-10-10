@@ -12,6 +12,8 @@ class RoutineStateModel {
     this.currentTaskIndex = 0,
     this.isRunning = false,
     this.breaks,
+    this.isBreakActive = false,
+    this.activeBreakIndex,
   });
 
   /// Ordered list of tasks.
@@ -30,12 +32,21 @@ class RoutineStateModel {
   /// Whether the routine is actively running a timer.
   final bool isRunning;
 
+  /// Whether currently in break mode (between tasks).
+  final bool isBreakActive;
+
+  /// Index of the break currently active (if any).
+  final int? activeBreakIndex;
+
   RoutineStateModel copyWith({
     List<TaskModel>? tasks,
     List<BreakModel>? breaks,
     RoutineSettingsModel? settings,
     int? currentTaskIndex,
     bool? isRunning,
+    bool? isBreakActive,
+    int? activeBreakIndex,
+    bool clearActiveBreakIndex = false,
   }) {
     return RoutineStateModel(
       tasks: tasks ?? this.tasks,
@@ -43,6 +54,10 @@ class RoutineStateModel {
       settings: settings ?? this.settings,
       currentTaskIndex: currentTaskIndex ?? this.currentTaskIndex,
       isRunning: isRunning ?? this.isRunning,
+      isBreakActive: isBreakActive ?? this.isBreakActive,
+      activeBreakIndex: clearActiveBreakIndex
+          ? null
+          : (activeBreakIndex ?? this.activeBreakIndex),
     );
   }
 
@@ -53,6 +68,8 @@ class RoutineStateModel {
       'settings': settings.toMap(),
       'currentTaskIndex': currentTaskIndex,
       'isRunning': isRunning,
+      'isBreakActive': isBreakActive,
+      'activeBreakIndex': activeBreakIndex,
     };
   }
 
@@ -69,6 +86,8 @@ class RoutineStateModel {
       ),
       currentTaskIndex: map['currentTaskIndex'] as int? ?? 0,
       isRunning: map['isRunning'] as bool? ?? false,
+      isBreakActive: map['isBreakActive'] as bool? ?? false,
+      activeBreakIndex: map['activeBreakIndex'] as int?,
     );
   }
 
