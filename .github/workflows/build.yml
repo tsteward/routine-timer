@@ -68,7 +68,7 @@ jobs:
       - name: Build web
         run: |
           if [ "${{ github.ref }}" == "refs/heads/master" ]; then
-            flutter build web --release --base-href "/routine_timer/"
+            flutter build web --release --base-href "/routine-timer/"
           else
             flutter build web --release
           fi
