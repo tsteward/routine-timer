@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'firebase_options.dart';
+import 'src/firebase/firebase_options_non_web.dart'
+    if (dart.library.html) 'firebase_options.dart';
 import 'src/app_theme.dart';
 import 'src/bloc/auth_bloc.dart';
 import 'src/bloc/auth_state_bloc.dart';
