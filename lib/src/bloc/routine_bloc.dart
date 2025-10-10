@@ -32,6 +32,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<LoadRoutineFromFirebase>(_onLoadFromFirebase);
     on<SaveRoutineToFirebase>(_onSaveToFirebase);
     on<ReloadRoutineForUser>(_onReloadRoutineForUser);
+    on<StartBreak>(_onStartBreak);
+    on<CompleteBreak>(_onCompleteBreak);
+    on<SkipBreak>(_onSkipBreak);
   }
 
   final RoutineRepository _repository;
@@ -185,15 +188,51 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       actualDuration: event.actualDuration,
     );
 
-    final nextIndex = (model.currentTaskIndex + 1).clamp(
-      0,
-      updatedTasks.length - 1,
-    );
-    emit(
-      state.copyWith(
-        model: model.copyWith(tasks: updatedTasks, currentTaskIndex: nextIndex),
-      ),
-    );
+    // Check if we're at the last task
+    final isLastTask = model.currentTaskIndex >= model.tasks.length - 1;
+    
+    if (isLastTask) {
+      // If this is the last task, just update the state without moving forward
+      emit(
+        state.copyWith(
+          model: model.copyWith(tasks: updatedTasks),
+        ),
+      );
+      return;
+    }
+
+    // Check if there's a break after this task and if it's enabled
+    final breakIndex = model.currentTaskIndex;
+    final hasEnabledBreak = model.breaks != null &&
+        breakIndex < model.breaks!.length &&
+        model.breaks![breakIndex].isEnabled;
+
+    if (hasEnabledBreak) {
+      // Start a break
+      emit(
+        state.copyWith(
+          model: model.copyWith(
+            tasks: updatedTasks,
+            isOnBreak: true,
+            currentBreakIndex: breakIndex,
+          ),
+        ),
+      );
+    } else {
+      // No break, move directly to next task
+      final nextIndex = (model.currentTaskIndex + 1).clamp(
+        0,
+        updatedTasks.length - 1,
+      );
+      emit(
+        state.copyWith(
+          model: model.copyWith(
+            tasks: updatedTasks,
+            currentTaskIndex: nextIndex,
+          ),
+        ),
+      );
+    }
   }
 
   void _onGoToPreviousTask(
@@ -435,5 +474,61 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     // Auto-save after resetting break
     add(const SaveRoutineToFirebase());
+  }
+
+  void _onStartBreak(StartBreak event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          isOnBreak: true,
+          currentBreakIndex: event.breakIndex,
+        ),
+      ),
+    );
+  }
+
+  void _onCompleteBreak(CompleteBreak event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null || !model.isOnBreak) return;
+
+    // Move to next task
+    final nextIndex = (model.currentTaskIndex + 1).clamp(
+      0,
+      model.tasks.length - 1,
+    );
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          isOnBreak: false,
+          currentBreakIndex: null,
+          currentTaskIndex: nextIndex,
+        ),
+      ),
+    );
+  }
+
+  void _onSkipBreak(SkipBreak event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null || !model.isOnBreak) return;
+
+    // Same as complete break - move to next task
+    final nextIndex = (model.currentTaskIndex + 1).clamp(
+      0,
+      model.tasks.length - 1,
+    );
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          isOnBreak: false,
+          currentBreakIndex: null,
+          currentTaskIndex: nextIndex,
+        ),
+      ),
+    );
   }
 }
