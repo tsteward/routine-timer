@@ -32,6 +32,9 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<LoadRoutineFromFirebase>(_onLoadFromFirebase);
     on<SaveRoutineToFirebase>(_onSaveToFirebase);
     on<ReloadRoutineForUser>(_onReloadRoutineForUser);
+    on<StartBreak>(_onStartBreak);
+    on<CompleteBreak>(_onCompleteBreak);
+    on<SkipBreak>(_onSkipBreak);
   }
 
   final RoutineRepository _repository;
@@ -189,11 +192,38 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       0,
       updatedTasks.length - 1,
     );
-    emit(
-      state.copyWith(
-        model: model.copyWith(tasks: updatedTasks, currentTaskIndex: nextIndex),
-      ),
-    );
+
+    // Check if there's a break after this task and before the next one
+    final breakIndex = model.currentTaskIndex;
+    final hasNextTask = nextIndex < updatedTasks.length;
+    final shouldStartBreak =
+        hasNextTask &&
+        model.breaks != null &&
+        breakIndex < model.breaks!.length &&
+        model.breaks![breakIndex].isEnabled;
+
+    if (shouldStartBreak) {
+      // Start the break
+      emit(
+        state.copyWith(
+          model: model.copyWith(
+            tasks: updatedTasks,
+            isBreakActive: true,
+            activeBreakIndex: breakIndex,
+          ),
+        ),
+      );
+    } else {
+      // Move to next task directly
+      emit(
+        state.copyWith(
+          model: model.copyWith(
+            tasks: updatedTasks,
+            currentTaskIndex: nextIndex,
+          ),
+        ),
+      );
+    }
   }
 
   void _onGoToPreviousTask(
@@ -435,5 +465,61 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     // Auto-save after resetting break
     add(const SaveRoutineToFirebase());
+  }
+
+  void _onStartBreak(StartBreak event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          isBreakActive: true,
+          activeBreakIndex: event.breakIndex,
+        ),
+      ),
+    );
+  }
+
+  void _onCompleteBreak(CompleteBreak event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null || !model.isBreakActive) return;
+
+    // Move to next task
+    final nextIndex = (model.currentTaskIndex + 1).clamp(
+      0,
+      model.tasks.length - 1,
+    );
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          isBreakActive: false,
+          clearActiveBreakIndex: true,
+          currentTaskIndex: nextIndex,
+        ),
+      ),
+    );
+  }
+
+  void _onSkipBreak(SkipBreak event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null || !model.isBreakActive) return;
+
+    // Move to next task directly
+    final nextIndex = (model.currentTaskIndex + 1).clamp(
+      0,
+      model.tasks.length - 1,
+    );
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          isBreakActive: false,
+          clearActiveBreakIndex: true,
+          currentTaskIndex: nextIndex,
+        ),
+      ),
+    );
   }
 }
