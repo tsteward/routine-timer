@@ -44,15 +44,28 @@ class _PreStartScreenState extends State<PreStartScreen> {
       model.settings.startTime,
     );
     final now = DateTime.now();
-    final difference = startTime.difference(now);
 
-    if (difference.isNegative || difference.inSeconds <= 0) {
-      // Start time is in the past or now, navigate immediately
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _navigateToMainScreen();
-      });
-      return;
+    // Extract the time-of-day from the stored startTime
+    final targetHour = startTime.hour;
+    final targetMinute = startTime.minute;
+    final targetSecond = startTime.second;
+
+    // Create target DateTime for today at the target time
+    var targetDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      targetHour,
+      targetMinute,
+      targetSecond,
+    );
+
+    // If target time has already passed today, target tomorrow instead
+    if (targetDateTime.isBefore(now) || targetDateTime.isAtSameMomentAs(now)) {
+      targetDateTime = targetDateTime.add(const Duration(days: 1));
     }
+
+    final difference = targetDateTime.difference(now);
 
     // Start countdown
     setState(() {

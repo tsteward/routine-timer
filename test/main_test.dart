@@ -165,7 +165,11 @@ void main() {
       await tester.tap(find.text('Main Routine').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Timer & progress placeholder'), findsOneWidget);
+      // Should show the task counter (sample routine loads 4 tasks)
+      expect(find.textContaining('Task'), findsWidgets);
+      // Should also show Previous and Done buttons
+      expect(find.text('Previous'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
     });
   });
 }
