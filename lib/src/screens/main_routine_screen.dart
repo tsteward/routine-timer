@@ -151,7 +151,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                         _formatTime(remainingSeconds),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 120,
+                          fontSize: 300,
                           fontWeight: FontWeight.w900,
                           height: 1.0,
                         ),
