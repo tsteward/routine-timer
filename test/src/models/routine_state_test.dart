@@ -141,5 +141,75 @@ void main() {
 
       expect(state.selectedTask?.id, '1'); // Should fall back to first task
     });
+
+    test('toMap/fromMap handles break state fields', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+        ],
+        breaks: const [BreakModel(duration: 30, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 30,
+        ),
+        isInBreak: true,
+        currentBreakIndex: 0,
+      );
+
+      final map = state.toMap();
+      final decoded = RoutineStateModel.fromMap(map);
+
+      expect(decoded.isInBreak, true);
+      expect(decoded.currentBreakIndex, 0);
+    });
+
+    test('copyWith updates break state fields', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'A', estimatedDuration: 60, order: 0),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+        isInBreak: false,
+      );
+
+      final updated = state.copyWith(isInBreak: true, currentBreakIndex: 2);
+
+      expect(updated.isInBreak, true);
+      expect(updated.currentBreakIndex, 2);
+    });
+
+    test('fromMap handles missing break state fields with defaults', () {
+      final map = {
+        'tasks': [
+          {
+            'id': '1',
+            'name': 'Task1',
+            'estimatedDuration': 60,
+            'order': 0,
+            'isCompleted': false,
+          },
+        ],
+        'breaks': [
+          {'duration': 30, 'isEnabled': true, 'isCustomized': false},
+        ],
+        'settings': {
+          'startTime': 0,
+          'breaksEnabledByDefault': true,
+          'defaultBreakDuration': 30,
+        },
+        'isRunning': false,
+        // isInBreak and currentBreakIndex intentionally missing
+      };
+
+      final decoded = RoutineStateModel.fromMap(map);
+
+      expect(decoded.isInBreak, false); // Should default to false
+      expect(decoded.currentBreakIndex, null); // Should default to null
+    });
   });
 }
