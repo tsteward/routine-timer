@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// A dialog for picking duration in hours and minutes
 class DurationPickerDialog extends StatefulWidget {
@@ -40,12 +41,23 @@ class DurationPickerDialog extends StatefulWidget {
 class _DurationPickerDialogState extends State<DurationPickerDialog> {
   late int _hours;
   late int _minutes;
+  late TextEditingController _hoursController;
+  late TextEditingController _minutesController;
 
   @override
   void initState() {
     super.initState();
     _hours = widget.initialHours;
     _minutes = widget.initialMinutes;
+    _hoursController = TextEditingController(text: _hours.toString());
+    _minutesController = TextEditingController(text: _minutes.toString());
+  }
+
+  @override
+  void dispose() {
+    _hoursController.dispose();
+    _minutesController.dispose();
+    super.dispose();
   }
 
   @override
@@ -94,20 +106,44 @@ class _DurationPickerDialogState extends State<DurationPickerDialog> {
           onPressed: () {
             setState(() {
               _hours = (_hours + 1).clamp(0, 23);
+              _hoursController.text = _hours.toString();
             });
           },
         ),
-        Container(
-          width: 60,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).colorScheme.outline),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            _hours.toString().padLeft(2, '0'),
-            style: Theme.of(context).textTheme.headlineMedium,
+        SizedBox(
+          width: 80,
+          child: TextField(
+            controller: _hoursController,
+            keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              _MaxValueFormatter(maxValue: 23),
+            ],
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              isDense: true,
+            ),
+            onChanged: (value) {
+              if (value.isEmpty) {
+                _hours = 0;
+              } else {
+                final parsed = int.tryParse(value);
+                if (parsed != null && parsed >= 0 && parsed <= 23) {
+                  _hours = parsed;
+                }
+              }
+            },
+            onSubmitted: (value) {
+              // Format with leading zero after user submits
+              setState(() {
+                _hoursController.text = _hours.toString().padLeft(2, '0');
+              });
+            },
           ),
         ),
         IconButton(
@@ -115,6 +151,7 @@ class _DurationPickerDialogState extends State<DurationPickerDialog> {
           onPressed: () {
             setState(() {
               _hours = (_hours - 1).clamp(0, 23);
+              _hoursController.text = _hours.toString();
             });
           },
         ),
@@ -131,20 +168,44 @@ class _DurationPickerDialogState extends State<DurationPickerDialog> {
           onPressed: () {
             setState(() {
               _minutes = (_minutes + 1).clamp(0, 59);
+              _minutesController.text = _minutes.toString();
             });
           },
         ),
-        Container(
-          width: 60,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).colorScheme.outline),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            _minutes.toString().padLeft(2, '0'),
-            style: Theme.of(context).textTheme.headlineMedium,
+        SizedBox(
+          width: 80,
+          child: TextField(
+            controller: _minutesController,
+            keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              _MaxValueFormatter(maxValue: 59),
+            ],
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              isDense: true,
+            ),
+            onChanged: (value) {
+              if (value.isEmpty) {
+                _minutes = 0;
+              } else {
+                final parsed = int.tryParse(value);
+                if (parsed != null && parsed >= 0 && parsed <= 59) {
+                  _minutes = parsed;
+                }
+              }
+            },
+            onSubmitted: (value) {
+              // Format with leading zero after user submits
+              setState(() {
+                _minutesController.text = _minutes.toString().padLeft(2, '0');
+              });
+            },
           ),
         ),
         IconButton(
@@ -152,11 +213,40 @@ class _DurationPickerDialogState extends State<DurationPickerDialog> {
           onPressed: () {
             setState(() {
               _minutes = (_minutes - 1).clamp(0, 59);
+              _minutesController.text = _minutes.toString();
             });
           },
         ),
         const Text('minutes'),
       ],
     );
+  }
+}
+
+/// Input formatter that limits the maximum value of the input
+class _MaxValueFormatter extends TextInputFormatter {
+  _MaxValueFormatter({required this.maxValue});
+
+  final int maxValue;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+
+    final value = int.tryParse(newValue.text);
+    if (value == null) {
+      return oldValue;
+    }
+
+    if (value > maxValue) {
+      return oldValue;
+    }
+
+    return newValue;
   }
 }
