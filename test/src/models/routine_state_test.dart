@@ -141,5 +141,71 @@ void main() {
 
       expect(state.selectedTask?.id, '1'); // Should fall back to first task
     });
+
+    test('break state fields serialize correctly', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+          TaskModel(id: '2', name: 'Task2', estimatedDuration: 120, order: 1),
+        ],
+        breaks: const [BreakModel(duration: 30, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 30,
+        ),
+        isOnBreak: true,
+        currentBreakIndex: 0,
+      );
+
+      final map = state.toMap();
+      expect(map['isOnBreak'], true);
+      expect(map['currentBreakIndex'], 0);
+
+      final decoded = RoutineStateModel.fromMap(map);
+      expect(decoded.isOnBreak, true);
+      expect(decoded.currentBreakIndex, 0);
+    });
+
+    test('break state defaults to false when not present', () {
+      final map = {
+        'tasks': [
+          {
+            'id': '1',
+            'name': 'Task1',
+            'estimatedDuration': 60,
+            'order': 0,
+            'isCompleted': false,
+          },
+        ],
+        'settings': {
+          'startTime': 0,
+          'breaksEnabledByDefault': true,
+          'defaultBreakDuration': 30,
+        },
+      };
+
+      final decoded = RoutineStateModel.fromMap(map);
+      expect(decoded.isOnBreak, false);
+      expect(decoded.currentBreakIndex, null);
+    });
+
+    test('copyWith updates break state', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 30,
+        ),
+        isOnBreak: false,
+      );
+
+      final updated = state.copyWith(isOnBreak: true, currentBreakIndex: 0);
+      expect(updated.isOnBreak, true);
+      expect(updated.currentBreakIndex, 0);
+    });
   });
 }

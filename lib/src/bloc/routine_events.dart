@@ -121,3 +121,22 @@ class SaveRoutineToFirebase extends RoutineEvent {
 class ReloadRoutineForUser extends RoutineEvent {
   const ReloadRoutineForUser();
 }
+
+/// Start a break after completing a task
+class StartBreak extends RoutineEvent {
+  const StartBreak({required this.breakIndex});
+  final int breakIndex;
+
+  @override
+  List<Object?> get props => [breakIndex];
+}
+
+/// Complete current break and move to next task
+class CompleteBreak extends RoutineEvent {
+  const CompleteBreak();
+}
+
+/// Skip current break and move directly to next task
+class SkipBreak extends RoutineEvent {
+  const SkipBreak();
+}

@@ -3,6 +3,7 @@ import '../models/task.dart';
 import '../models/routine_state.dart';
 import 'task_card.dart';
 import 'completed_task_card.dart';
+import 'break_card.dart';
 
 /// A bottom drawer showing upcoming tasks in a routine
 class TaskDrawer extends StatelessWidget {
@@ -37,6 +38,74 @@ class TaskDrawer extends StatelessWidget {
 
   List<TaskModel> get _completedTasks {
     return routineState.tasks.where((task) => task.isCompleted).toList();
+  }
+
+  /// Calculate the total number of items (tasks + breaks) to show
+  int _calculateItemCount(List<TaskModel> tasks, {required bool isCollapsed}) {
+    if (tasks.isEmpty) return 0;
+
+    // For each task, we might also show a break before it
+    int count = 0;
+    final currentIndex = routineState.currentTaskIndex;
+
+    for (int i = 0; i < tasks.length; i++) {
+      final taskIndex = routineState.tasks.indexOf(tasks[i]);
+
+      // Add break before this task if it exists and is enabled
+      if (taskIndex > 0 && routineState.breaks != null) {
+        final breakIndex = taskIndex - 1;
+        if (breakIndex < routineState.breaks!.length) {
+          final breakModel = routineState.breaks![breakIndex];
+          // Only show enabled breaks that come after the current task
+          if (breakModel.isEnabled && breakIndex >= currentIndex) {
+            count++; // Count the break
+          }
+        }
+      }
+
+      count++; // Count the task
+    }
+
+    return count;
+  }
+
+  /// Build either a task card or break card at the given index
+  Widget _buildItemAtIndex(
+    List<TaskModel> tasks,
+    int index, {
+    required bool isCollapsed,
+  }) {
+    final currentIndex = routineState.currentTaskIndex;
+    int currentItemIndex = 0;
+
+    for (int i = 0; i < tasks.length; i++) {
+      final task = tasks[i];
+      final taskIndex = routineState.tasks.indexOf(task);
+
+      // Check if we should show a break before this task
+      if (taskIndex > 0 && routineState.breaks != null) {
+        final breakIndex = taskIndex - 1;
+        if (breakIndex < routineState.breaks!.length) {
+          final breakModel = routineState.breaks![breakIndex];
+          if (breakModel.isEnabled && breakIndex >= currentIndex) {
+            if (currentItemIndex == index) {
+              // Return break card
+              return BreakCard(breakModel: breakModel, width: 100);
+            }
+            currentItemIndex++;
+          }
+        }
+      }
+
+      // Check if we should show this task
+      if (currentItemIndex == index) {
+        return TaskCard(task: task, width: 140);
+      }
+      currentItemIndex++;
+    }
+
+    // Fallback (shouldn't happen)
+    return const SizedBox.shrink();
   }
 
   @override
@@ -155,10 +224,9 @@ class TaskDrawer extends StatelessWidget {
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
         scrollDirection: Axis.horizontal,
-        itemCount: upcomingTasks.length,
+        itemCount: _calculateItemCount(upcomingTasks, isCollapsed: true),
         itemBuilder: (context, index) {
-          final task = upcomingTasks[index];
-          return TaskCard(task: task, width: 140);
+          return _buildItemAtIndex(upcomingTasks, index, isCollapsed: true);
         },
       ),
     );
@@ -193,10 +261,16 @@ class TaskDrawer extends StatelessWidget {
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
                 scrollDirection: Axis.horizontal,
-                itemCount: upcomingTasks.length,
+                itemCount: _calculateItemCount(
+                  upcomingTasks,
+                  isCollapsed: false,
+                ),
                 itemBuilder: (context, index) {
-                  final task = upcomingTasks[index];
-                  return TaskCard(task: task, width: 140);
+                  return _buildItemAtIndex(
+                    upcomingTasks,
+                    index,
+                    isCollapsed: false,
+                  );
                 },
               ),
             ),
