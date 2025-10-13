@@ -9,7 +9,7 @@ class RoutineStateModel {
   const RoutineStateModel({
     required this.tasks,
     required this.settings,
-    this.currentTaskIndex = 0,
+    this.selectedTaskId,
     this.isRunning = false,
     this.breaks,
   });
@@ -24,8 +24,8 @@ class RoutineStateModel {
   /// Global routine settings.
   final RoutineSettingsModel settings;
 
-  /// Index of the currently selected/active task.
-  final int currentTaskIndex;
+  /// ID of the currently selected/active task. If null, defaults to the first task.
+  final String? selectedTaskId;
 
   /// Whether the routine is actively running a timer.
   final bool isRunning;
@@ -34,16 +34,52 @@ class RoutineStateModel {
     List<TaskModel>? tasks,
     List<BreakModel>? breaks,
     RoutineSettingsModel? settings,
-    int? currentTaskIndex,
+    String? selectedTaskId,
     bool? isRunning,
   }) {
     return RoutineStateModel(
       tasks: tasks ?? this.tasks,
       breaks: breaks ?? this.breaks,
       settings: settings ?? this.settings,
-      currentTaskIndex: currentTaskIndex ?? this.currentTaskIndex,
+      selectedTaskId: selectedTaskId ?? this.selectedTaskId,
       isRunning: isRunning ?? this.isRunning,
     );
+  }
+
+  /// Gets the currently selected task. If no task is selected or the selected task
+  /// doesn't exist, returns the first task (or null if no tasks).
+  TaskModel? get selectedTask {
+    if (tasks.isEmpty) return null;
+
+    if (selectedTaskId == null) {
+      return tasks.first;
+    }
+
+    try {
+      return tasks.firstWhere((task) => task.id == selectedTaskId);
+    } catch (e) {
+      // If selected task doesn't exist, fall back to first task
+      return tasks.first;
+    }
+  }
+
+  /// Gets the index of the currently selected task. If no task is selected or the
+  /// selected task doesn't exist, returns 0 (or -1 if no tasks).
+  int get currentTaskIndex {
+    if (tasks.isEmpty) return -1;
+
+    if (selectedTaskId == null) {
+      return 0;
+    }
+
+    for (int i = 0; i < tasks.length; i++) {
+      if (tasks[i].id == selectedTaskId) {
+        return i;
+      }
+    }
+
+    // If selected task doesn't exist, fall back to first task
+    return 0;
   }
 
   Map<String, dynamic> toMap() {
@@ -51,23 +87,34 @@ class RoutineStateModel {
       'tasks': tasks.map((e) => e.toMap()).toList(),
       'breaks': breaks?.map((e) => e.toMap()).toList(),
       'settings': settings.toMap(),
-      'currentTaskIndex': currentTaskIndex,
+      'selectedTaskId': selectedTaskId,
       'isRunning': isRunning,
     };
   }
 
   factory RoutineStateModel.fromMap(Map<String, dynamic> map) {
+    final tasks = (map['tasks'] as List<dynamic>)
+        .map((e) => TaskModel.fromMap(e as Map<String, dynamic>))
+        .toList();
+
+    // Handle migration from old currentTaskIndex to new selectedTaskId
+    String? selectedTaskId = map['selectedTaskId'] as String?;
+    if (selectedTaskId == null && map.containsKey('currentTaskIndex')) {
+      final oldIndex = map['currentTaskIndex'] as int? ?? 0;
+      if (tasks.isNotEmpty && oldIndex >= 0 && oldIndex < tasks.length) {
+        selectedTaskId = tasks[oldIndex].id;
+      }
+    }
+
     return RoutineStateModel(
-      tasks: (map['tasks'] as List<dynamic>)
-          .map((e) => TaskModel.fromMap(e as Map<String, dynamic>))
-          .toList(),
+      tasks: tasks,
       breaks: (map['breaks'] as List<dynamic>?)
           ?.map((e) => BreakModel.fromMap(e as Map<String, dynamic>))
           .toList(),
       settings: RoutineSettingsModel.fromMap(
         map['settings'] as Map<String, dynamic>,
       ),
-      currentTaskIndex: map['currentTaskIndex'] as int? ?? 0,
+      selectedTaskId: selectedTaskId,
       isRunning: map['isRunning'] as bool? ?? false,
     );
   }

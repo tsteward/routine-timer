@@ -66,7 +66,12 @@ jobs:
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
+            flutter build web --release --base-href "/routine-timer/"
+          else
+            flutter build web --release
+          fi
 
       - name: Upload web build artifacts
         uses: actions/upload-artifact@v4
@@ -115,3 +120,69 @@ jobs:
           path: |
             build/app/outputs/flutter-apk/
             build/app/outputs/bundle/release/
+
+  deploy-preview:
+    name: Deploy Firebase Hosting preview
+    if: github.event_name == 'pull_request'
+    needs: build-web
+    runs-on: ubuntu-latest
+    concurrency:
+      group: firebase-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download web build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+      - name: Deploy to Firebase Hosting preview channel
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_ROUTINE_TIMER_403F2 }}'
+          projectId: '${{ secrets.FIREBASE_PROJECT_ID }}'
+          channelId: 'pr-${{ github.event.pull_request.number }}'
+          expires: 1d
+          entryPoint: '.'
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    needs: build-web
+    runs-on: ubuntu-latest
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Download web build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+
+      - name: Upload artifact to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'build/web'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

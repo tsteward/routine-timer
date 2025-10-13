@@ -18,7 +18,7 @@ void main() {
           breaksEnabledByDefault: true,
           defaultBreakDuration: 30,
         ),
-        currentTaskIndex: 1,
+        selectedTaskId: '2',
         isRunning: true,
       );
       final map = state.toMap();
@@ -26,7 +26,11 @@ void main() {
       expect(decoded.tasks.length, 2);
       expect(decoded.breaks!.length, 1);
       expect(decoded.settings.defaultBreakDuration, 30);
-      expect(decoded.currentTaskIndex, 1);
+      expect(
+        decoded.currentTaskIndex,
+        1,
+      ); // Should be 1 because task '2' is at index 1
+      expect(decoded.selectedTaskId, '2');
       expect(decoded.isRunning, true);
     });
 
@@ -34,6 +38,7 @@ void main() {
       final state = RoutineStateModel(
         tasks: const [
           TaskModel(id: '1', name: 'A', estimatedDuration: 60, order: 0),
+          TaskModel(id: '2', name: 'B', estimatedDuration: 120, order: 1),
         ],
         settings: RoutineSettingsModel(
           startTime: 0,
@@ -41,10 +46,100 @@ void main() {
           defaultBreakDuration: 60,
         ),
       );
-      final updated = state.copyWith(currentTaskIndex: 2, isRunning: true);
-      expect(updated.currentTaskIndex, 2);
+      final updated = state.copyWith(selectedTaskId: '2', isRunning: true);
+      expect(updated.currentTaskIndex, 1); // Task '2' is at index 1
+      expect(updated.selectedTaskId, '2');
       expect(updated.isRunning, true);
-      expect(updated.tasks.length, 1);
+      expect(updated.tasks.length, 2);
+    });
+
+    test('fromMap handles migration from old currentTaskIndex', () {
+      // Simulate old data format with currentTaskIndex instead of selectedTaskId
+      final oldFormatMap = {
+        'tasks': [
+          {
+            'id': '1',
+            'name': 'Task1',
+            'estimatedDuration': 60,
+            'order': 0,
+            'isCompleted': false,
+          },
+          {
+            'id': '2',
+            'name': 'Task2',
+            'estimatedDuration': 120,
+            'order': 1,
+            'isCompleted': false,
+          },
+        ],
+        'breaks': [
+          {'duration': 30, 'isEnabled': true, 'isCustomized': false},
+        ],
+        'settings': {
+          'startTime': 2,
+          'breaksEnabledByDefault': true,
+          'defaultBreakDuration': 30,
+        },
+        'currentTaskIndex': 1, // Old format
+        'isRunning': true,
+      };
+
+      final decoded = RoutineStateModel.fromMap(oldFormatMap);
+      expect(
+        decoded.selectedTaskId,
+        '2',
+      ); // Should migrate to task ID at index 1
+      expect(decoded.currentTaskIndex, 1); // Should still work
+    });
+
+    test('selectedTask getter returns correct task', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'First', estimatedDuration: 60, order: 0),
+          TaskModel(id: '2', name: 'Second', estimatedDuration: 120, order: 1),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+        selectedTaskId: '2',
+      );
+
+      expect(state.selectedTask?.id, '2');
+      expect(state.selectedTask?.name, 'Second');
+    });
+
+    test('selectedTask getter handles null selection', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'First', estimatedDuration: 60, order: 0),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+        selectedTaskId: null,
+      );
+
+      expect(state.selectedTask?.id, '1'); // Should default to first task
+    });
+
+    test('selectedTask getter handles non-existent selection', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'First', estimatedDuration: 60, order: 0),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+        selectedTaskId: 'non-existent',
+      );
+
+      expect(state.selectedTask?.id, '1'); // Should fall back to first task
     });
   });
 }

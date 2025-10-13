@@ -6,18 +6,39 @@ import '../bloc/routine_bloc.dart';
 import '../dialogs/duration_picker_dialog.dart';
 import '../models/break.dart';
 import '../models/routine_state.dart';
+import '../models/task.dart';
 import '../utils/time_formatter.dart';
 import 'break_gap.dart';
 import 'start_time_pill.dart';
 
 /// A column displaying the reorderable list of tasks with their start times
-class TaskListColumn extends StatelessWidget {
+class TaskListColumn extends StatefulWidget {
   const TaskListColumn({super.key});
+
+  @override
+  State<TaskListColumn> createState() => _TaskListColumnState();
+}
+
+class _TaskListColumnState extends State<TaskListColumn> {
+  List<TaskModel>? _optimisticTasks;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return BlocBuilder<RoutineBloc, RoutineBlocState>(
+    return BlocConsumer<RoutineBloc, RoutineBlocState>(
+      listener: (context, state) {
+        // Clear optimistic state when bloc state updates
+        if (_optimisticTasks != null) {
+          // Small delay to prevent flash during state transition
+          Future.delayed(const Duration(milliseconds: 50), () {
+            if (mounted) {
+              setState(() {
+                _optimisticTasks = null;
+              });
+            }
+          });
+        }
+      },
       builder: (context, state) {
         if (state.loading) {
           return const Center(child: CircularProgressIndicator());
@@ -27,16 +48,33 @@ class TaskListColumn extends StatelessWidget {
           return const Center(child: Text('No routine loaded'));
         }
 
-        final startTimes = _computeTaskStartTimes(model);
+        // Use optimistic tasks if available, otherwise use model tasks
+        final tasksToDisplay = _optimisticTasks ?? model.tasks;
+        final startTimes = _computeTaskStartTimes(
+          model.copyWith(tasks: tasksToDisplay),
+        );
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: ReorderableListView.builder(
             padding: const EdgeInsets.only(bottom: 24),
-            itemCount: model.tasks.length,
+            itemCount: tasksToDisplay.length,
             onReorder: (oldIndex, newIndex) {
+              // Create optimistic update
+              final updatedTasks = List<TaskModel>.from(tasksToDisplay);
+
               // Flutter's ReorderableListView reports newIndex after removal; adjust when moving down.
               if (newIndex > oldIndex) newIndex -= 1;
+
+              final task = updatedTasks.removeAt(oldIndex);
+              updatedTasks.insert(newIndex, task);
+
+              // Update UI immediately with optimistic state
+              setState(() {
+                _optimisticTasks = updatedTasks;
+              });
+
+              // Dispatch the reorder event to update the bloc
               context.read<RoutineBloc>().add(
                 ReorderTasks(oldIndex: oldIndex, newIndex: newIndex),
               );
@@ -46,8 +84,8 @@ class TaskListColumn extends StatelessWidget {
               return child;
             },
             itemBuilder: (context, index) {
-              final task = model.tasks[index];
-              final isSelected = index == model.currentTaskIndex;
+              final task = tasksToDisplay[index];
+              final isSelected = task.id == model.selectedTaskId;
               final startTime = startTimes[index];
 
               return Column(
@@ -62,7 +100,7 @@ class TaskListColumn extends StatelessWidget {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
                       onTap: () =>
-                          context.read<RoutineBloc>().add(SelectTask(index)),
+                          context.read<RoutineBloc>().add(SelectTask(task.id)),
                       child: Card(
                         elevation: isSelected ? 2 : 0,
                         shape: RoundedRectangleBorder(
@@ -132,7 +170,7 @@ class TaskListColumn extends StatelessWidget {
                     ),
                   ),
                   // Show break gap after this task (if not the last task)
-                  if (index < model.tasks.length - 1 &&
+                  if (index < tasksToDisplay.length - 1 &&
                       model.breaks != null &&
                       index < model.breaks!.length)
                     BreakGap(

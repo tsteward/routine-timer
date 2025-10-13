@@ -19,7 +19,11 @@ void main() {
 
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
       expect(loaded.model!.tasks.length, 4);
-      expect(loaded.model!.currentTaskIndex, 0);
+      expect(loaded.model!.currentTaskIndex, 0); // Should still work via getter
+      expect(
+        loaded.model!.selectedTaskId,
+        loaded.model!.tasks.first.id,
+      ); // First task selected by default
     });
 
     test('loads sample routine with default start time at 6am', () async {
@@ -69,15 +73,18 @@ void main() {
       expect(updated.model!.tasks.first.actualDuration, 30);
     });
 
-    test('select task updates currentTaskIndex', () async {
+    test('select task updates selection by ID', () async {
       final bloc = FirebaseTestHelper.routineBloc
         ..add(const LoadSampleRoutine());
-      await bloc.stream.firstWhere((s) => s.model != null);
-      bloc.add(const SelectTask(2));
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final taskToSelect = loaded.model!.tasks[2];
+
+      bloc.add(SelectTask(taskToSelect.id));
       final updated = await bloc.stream.firstWhere(
-        (s) => s.model!.currentTaskIndex == 2,
+        (s) => s.model!.selectedTaskId == taskToSelect.id,
       );
       expect(updated.model!.currentTaskIndex, 2);
+      expect(updated.model!.selectedTask?.id, taskToSelect.id);
     });
 
     test('reorder tasks moves item and reindexes order', () async {
@@ -100,8 +107,10 @@ void main() {
     test('previous task goes back safely', () async {
       final bloc = FirebaseTestHelper.routineBloc
         ..add(const LoadSampleRoutine());
-      await bloc.stream.firstWhere((s) => s.model != null);
-      bloc.add(const SelectTask(1));
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final taskAtIndex1 = loaded.model!.tasks[1];
+
+      bloc.add(SelectTask(taskAtIndex1.id));
       await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 1);
 
       bloc.add(const GoToPreviousTask());
@@ -169,17 +178,18 @@ void main() {
       }
     });
 
-    test('select task handles out of bounds index safely', () async {
+    test('select task handles non-existent task ID safely', () async {
       final bloc = FirebaseTestHelper.routineBloc
         ..add(const LoadSampleRoutine());
-      await bloc.stream.firstWhere((s) => s.model != null);
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+      final originalSelectedId = loaded.model!.selectedTaskId;
 
-      // Try to select index beyond task list
-      bloc.add(const SelectTask(10));
+      // Try to select task with non-existent ID
+      bloc.add(const SelectTask('non-existent-task-id'));
       await Future.delayed(const Duration(milliseconds: 10));
 
-      // Should update to the invalid index (bloc doesn't validate bounds)
-      expect(bloc.state.model!.currentTaskIndex, 10);
+      // Selection should remain unchanged since task doesn't exist
+      expect(bloc.state.model!.selectedTaskId, originalSelectedId);
     });
 
     test('reorder preserves task properties except order', () async {
@@ -400,13 +410,14 @@ void main() {
       expect(bloc.state.model!.tasks[0].id, oneTaskLeft.model!.tasks[0].id);
     });
 
-    test('delete task adjusts currentTaskIndex when needed', () async {
+    test('delete task adjusts selection when selected task is deleted', () async {
       final bloc = FirebaseTestHelper.routineBloc
         ..add(const LoadSampleRoutine());
-      await bloc.stream.firstWhere((s) => s.model != null);
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
 
       // Select last task
-      bloc.add(const SelectTask(3));
+      final lastTask = loaded.model!.tasks[3];
+      bloc.add(SelectTask(lastTask.id));
       await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 3);
 
       // Delete the last task
@@ -415,9 +426,13 @@ void main() {
         (s) => s.model!.currentTaskIndex == 2,
       );
 
-      // Current index should adjust to remain valid
+      // Current index should adjust to remain valid, and a different task should be selected
       expect(updated.model!.currentTaskIndex, 2);
       expect(updated.model!.tasks.length, 3);
+      expect(
+        updated.model!.selectedTaskId,
+        isNot(lastTask.id),
+      ); // Different task selected
     });
 
     test(
@@ -425,10 +440,11 @@ void main() {
       () async {
         final bloc = FirebaseTestHelper.routineBloc
           ..add(const LoadSampleRoutine());
-        await bloc.stream.firstWhere((s) => s.model != null);
+        final loaded = await bloc.stream.firstWhere((s) => s.model != null);
 
         // Select task at index 2
-        bloc.add(const SelectTask(2));
+        final taskAtIndex2 = loaded.model!.tasks[2];
+        bloc.add(SelectTask(taskAtIndex2.id));
         await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 2);
 
         // Delete task at index 0 (before current)
@@ -437,8 +453,9 @@ void main() {
           (s) => s.model!.currentTaskIndex == 1,
         );
 
-        // Current index should decrement
+        // Current index should decrement (same task, but now at index 1)
         expect(updated.model!.currentTaskIndex, 1);
+        expect(updated.model!.selectedTaskId, taskAtIndex2.id);
       },
     );
 
@@ -822,6 +839,125 @@ void main() {
 
       expect(reset.model!.breaks![1].duration, 200);
       expect(reset.model!.breaks![1].isCustomized, false);
+    });
+
+    // REGRESSION TEST FOR BUG FIX: Selected task loses selection after reorder
+    test(
+      'selected task persists after reordering (fixes selection bug)',
+      () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Get the task we want to select and reorder
+        final taskToSelect = loaded.model!.tasks[1]; // Select second task
+        final selectedTaskId = taskToSelect.id;
+        final selectedTaskName = taskToSelect.name;
+
+        // Select task at index 1
+        bloc.add(SelectTask(selectedTaskId));
+        final selected = await bloc.stream.firstWhere(
+          (s) => s.model!.selectedTaskId == selectedTaskId,
+        );
+
+        // Verify task is selected
+        expect(selected.model!.selectedTask?.id, selectedTaskId);
+        expect(selected.model!.selectedTask?.name, selectedTaskName);
+        expect(selected.model!.currentTaskIndex, 1);
+
+        // Reorder: move selected task from index 1 to index 3 (last position)
+        bloc.add(const ReorderTasks(oldIndex: 1, newIndex: 3));
+        final reordered = await bloc.stream.firstWhere(
+          (s) => s.model!.tasks[3].id == selectedTaskId,
+        );
+
+        // CRITICAL: The same task should still be selected even though it moved
+        expect(reordered.model!.selectedTask?.id, selectedTaskId);
+        expect(reordered.model!.selectedTask?.name, selectedTaskName);
+        expect(reordered.model!.currentTaskIndex, 3); // New index after reorder
+        expect(
+          reordered.model!.selectedTaskId,
+          selectedTaskId,
+        ); // Selection by ID persists
+      },
+    );
+
+    test('selected task persists through multiple reorders', () async {
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Select task at index 0
+      final selectedTaskId = loaded.model!.tasks[0].id;
+      bloc.add(SelectTask(selectedTaskId));
+      await bloc.stream.firstWhere(
+        (s) => s.model!.selectedTaskId == selectedTaskId,
+      );
+
+      // First reorder: move from index 0 to index 2
+      bloc.add(const ReorderTasks(oldIndex: 0, newIndex: 2));
+      final firstReorder = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks[2].id == selectedTaskId,
+      );
+      expect(firstReorder.model!.selectedTask?.id, selectedTaskId);
+      expect(firstReorder.model!.currentTaskIndex, 2);
+
+      // Second reorder: move from index 2 to index 1
+      bloc.add(const ReorderTasks(oldIndex: 2, newIndex: 1));
+      final secondReorder = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks[1].id == selectedTaskId,
+      );
+      expect(secondReorder.model!.selectedTask?.id, selectedTaskId);
+      expect(secondReorder.model!.currentTaskIndex, 1);
+
+      // Third reorder: move from index 1 back to index 0
+      bloc.add(const ReorderTasks(oldIndex: 1, newIndex: 0));
+      final thirdReorder = await bloc.stream.firstWhere(
+        (s) => s.model!.tasks[0].id == selectedTaskId,
+      );
+      expect(thirdReorder.model!.selectedTask?.id, selectedTaskId);
+      expect(thirdReorder.model!.currentTaskIndex, 0);
+    });
+
+    test('selection by task ID works correctly', () async {
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+      // Select task by ID (not index)
+      final taskAtIndex2 = loaded.model!.tasks[2];
+      bloc.add(SelectTask(taskAtIndex2.id));
+      final selected = await bloc.stream.firstWhere(
+        (s) => s.model!.selectedTaskId == taskAtIndex2.id,
+      );
+
+      expect(selected.model!.selectedTask?.id, taskAtIndex2.id);
+      expect(selected.model!.currentTaskIndex, 2);
+
+      // Select different task by ID
+      final taskAtIndex0 = loaded.model!.tasks[0];
+      bloc.add(SelectTask(taskAtIndex0.id));
+      final reselected = await bloc.stream.firstWhere(
+        (s) => s.model!.selectedTaskId == taskAtIndex0.id,
+      );
+
+      expect(reselected.model!.selectedTask?.id, taskAtIndex0.id);
+      expect(reselected.model!.currentTaskIndex, 0);
+    });
+
+    test('selection handles non-existent task ID gracefully', () async {
+      final bloc = FirebaseTestHelper.routineBloc
+        ..add(const LoadSampleRoutine());
+      final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+      final originalSelectedId = loaded.model!.selectedTaskId;
+
+      // Try to select a task with non-existent ID
+      bloc.add(const SelectTask('non-existent-id'));
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      // Selection should remain unchanged
+      expect(bloc.state.model!.selectedTaskId, originalSelectedId);
     });
   });
 }
