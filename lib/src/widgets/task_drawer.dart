@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../models/routine_state.dart';
+import '../models/break.dart';
 import 'task_card.dart';
 import 'completed_task_card.dart';
+import 'break_card.dart';
 
 /// A bottom drawer showing upcoming tasks in a routine
 class TaskDrawer extends StatelessWidget {
@@ -17,22 +19,54 @@ class TaskDrawer extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggleExpanded;
 
-  List<TaskModel> get _upcomingTasks {
+  /// Returns a list of upcoming items (tasks and breaks) as a mixed list.
+  /// Each item is either a TaskModel or a BreakModel.
+  List<dynamic> get _upcomingItems {
     final currentIndex = routineState.currentTaskIndex;
     final totalTasks = routineState.tasks.length;
+    final breaks = routineState.breaks;
 
-    if (currentIndex >= totalTasks - 1) {
-      return []; // No upcoming tasks
+    // If we're on a break, start from the current task
+    // Otherwise, start from the next task
+    final startIndex = routineState.isOnBreak ? currentIndex : currentIndex + 1;
+
+    if (startIndex >= totalTasks) {
+      return []; // No upcoming items
     }
 
-    if (isExpanded) {
-      // Return all upcoming tasks when expanded
-      return routineState.tasks.sublist(currentIndex + 1);
-    } else {
-      // Return next 2-3 tasks for collapsed state
-      final endIndex = (currentIndex + 4).clamp(0, totalTasks);
-      return routineState.tasks.sublist(currentIndex + 1, endIndex);
+    final items = <dynamic>[];
+    final maxItems = isExpanded
+        ? totalTasks
+        : 6; // Show up to 6 items when collapsed
+
+    for (int i = startIndex; i < totalTasks && items.length < maxItems; i++) {
+      // If we're on a break and this is the current task, add the break first
+      if (routineState.isOnBreak && i == currentIndex && breaks != null) {
+        if (routineState.currentBreakIndex != null &&
+            routineState.currentBreakIndex! < breaks.length) {
+          final breakModel = breaks[routineState.currentBreakIndex!];
+          if (breakModel.isEnabled) {
+            items.add(breakModel);
+          }
+        }
+      }
+
+      // Add the task
+      items.add(routineState.tasks[i]);
+
+      // Add break after this task if it exists and is enabled
+      if (breaks != null && i < breaks.length) {
+        final breakModel = breaks[i];
+        if (breakModel.isEnabled && i < totalTasks - 1) {
+          // Don't show break if we're currently on it
+          if (!routineState.isOnBreak || routineState.currentBreakIndex != i) {
+            items.add(breakModel);
+          }
+        }
+      }
     }
+
+    return items;
   }
 
   List<TaskModel> get _completedTasks {
@@ -43,11 +77,11 @@ class TaskDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final upcomingTasks = _upcomingTasks;
+    final upcomingItems = _upcomingItems;
     final completedTasks = _completedTasks;
 
-    // Don't show drawer if no upcoming tasks and not expanded
-    if (upcomingTasks.isEmpty && !isExpanded) {
+    // Don't show drawer if no upcoming items and not expanded
+    if (upcomingItems.isEmpty && !isExpanded) {
       return const SizedBox.shrink();
     }
 
@@ -104,12 +138,12 @@ class TaskDrawer extends StatelessWidget {
                         child: _buildExpandedContent(
                           theme,
                           colorScheme,
-                          upcomingTasks,
+                          upcomingItems,
                           completedTasks,
                         ),
                       )
                     else
-                      _buildCollapsedContent(upcomingTasks),
+                      _buildCollapsedContent(upcomingItems),
                   ],
                 ),
               ),
@@ -149,16 +183,21 @@ class TaskDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildCollapsedContent(List<TaskModel> upcomingTasks) {
+  Widget _buildCollapsedContent(List<dynamic> upcomingItems) {
     return SizedBox(
       height: 80,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
         scrollDirection: Axis.horizontal,
-        itemCount: upcomingTasks.length,
+        itemCount: upcomingItems.length,
         itemBuilder: (context, index) {
-          final task = upcomingTasks[index];
-          return TaskCard(task: task, width: 140);
+          final item = upcomingItems[index];
+          if (item is TaskModel) {
+            return TaskCard(task: item, width: 140);
+          } else if (item is BreakModel) {
+            return BreakCard(breakModel: item, width: 140);
+          }
+          return const SizedBox.shrink();
         },
       ),
     );
@@ -167,7 +206,7 @@ class TaskDrawer extends StatelessWidget {
   Widget _buildExpandedContent(
     ThemeData theme,
     ColorScheme colorScheme,
-    List<TaskModel> upcomingTasks,
+    List<dynamic> upcomingItems,
     List<TaskModel> completedTasks,
   ) {
     return SingleChildScrollView(
@@ -176,12 +215,12 @@ class TaskDrawer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Upcoming Tasks Section
-          if (upcomingTasks.isNotEmpty) ...[
+          // Upcoming Items Section (Tasks and Breaks)
+          if (upcomingItems.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Text(
-                'Upcoming Tasks',
+                'Up Next',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurface,
@@ -193,10 +232,15 @@ class TaskDrawer extends StatelessWidget {
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
                 scrollDirection: Axis.horizontal,
-                itemCount: upcomingTasks.length,
+                itemCount: upcomingItems.length,
                 itemBuilder: (context, index) {
-                  final task = upcomingTasks[index];
-                  return TaskCard(task: task, width: 140);
+                  final item = upcomingItems[index];
+                  if (item is TaskModel) {
+                    return TaskCard(task: item, width: 140);
+                  } else if (item is BreakModel) {
+                    return BreakCard(breakModel: item, width: 140);
+                  }
+                  return const SizedBox.shrink();
                 },
               ),
             ),

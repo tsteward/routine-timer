@@ -141,5 +141,93 @@ void main() {
 
       expect(state.selectedTask?.id, '1'); // Should fall back to first task
     });
+
+    test('isOnBreak defaults to false', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+      );
+
+      expect(state.isOnBreak, false);
+      expect(state.currentBreakIndex, null);
+    });
+
+    test('copyWith updates break state fields', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+          TaskModel(id: '2', name: 'Task2', estimatedDuration: 120, order: 1),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+      );
+
+      final updated = state.copyWith(isOnBreak: true, currentBreakIndex: 0);
+
+      expect(updated.isOnBreak, true);
+      expect(updated.currentBreakIndex, 0);
+    });
+
+    test('toMap/fromMap preserves break state fields', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+          TaskModel(id: '2', name: 'Task2', estimatedDuration: 120, order: 1),
+        ],
+        breaks: const [BreakModel(duration: 120, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+        selectedTaskId: '1',
+        isRunning: true,
+        isOnBreak: true,
+        currentBreakIndex: 0,
+      );
+
+      final map = state.toMap();
+      final decoded = RoutineStateModel.fromMap(map);
+
+      expect(decoded.isOnBreak, true);
+      expect(decoded.currentBreakIndex, 0);
+    });
+
+    test('fromMap handles missing break state fields', () {
+      // Simulate old data format without break state fields
+      final oldFormatMap = {
+        'tasks': [
+          {
+            'id': '1',
+            'name': 'Task1',
+            'estimatedDuration': 60,
+            'order': 0,
+            'isCompleted': false,
+          },
+        ],
+        'settings': {
+          'startTime': 0,
+          'breaksEnabledByDefault': true,
+          'defaultBreakDuration': 60,
+        },
+        'isRunning': false,
+        // isOnBreak and currentBreakIndex are missing
+      };
+
+      final decoded = RoutineStateModel.fromMap(oldFormatMap);
+
+      // Should default to false and null
+      expect(decoded.isOnBreak, false);
+      expect(decoded.currentBreakIndex, null);
+    });
   });
 }

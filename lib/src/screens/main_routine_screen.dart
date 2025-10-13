@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../app_theme.dart';
 import '../bloc/routine_bloc.dart';
+import '../models/routine_state.dart';
 import '../router/app_router.dart';
 import '../widgets/task_drawer.dart';
 
@@ -19,6 +20,8 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   DateTime? _taskStartTime;
   int? _previousTaskIndex;
   bool _isDrawerExpanded = false;
+  bool? _previousIsOnBreak;
+  int _breakRemainingSeconds = 0;
 
   @override
   void initState() {
@@ -52,6 +55,29 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
     });
   }
 
+  void _startBreakTimer(RoutineStateModel model) {
+    if (model.breaks == null || model.currentBreakIndex == null) return;
+    if (model.currentBreakIndex! >= model.breaks!.length) return;
+
+    final breakDuration = model.breaks![model.currentBreakIndex!].duration;
+    _breakRemainingSeconds = breakDuration;
+
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _breakRemainingSeconds--;
+        });
+
+        if (_breakRemainingSeconds <= 0) {
+          timer.cancel();
+          // Automatically complete the break
+          context.read<RoutineBloc>().add(const CompleteBreak());
+        }
+      }
+    });
+  }
+
   int _calculateActualDuration() {
     if (_taskStartTime == null) return _elapsedSeconds;
     return DateTime.now().difference(_taskStartTime!).inSeconds;
@@ -76,11 +102,23 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<RoutineBloc, RoutineBlocState>(
       listener: (context, state) {
+        final model = state.model;
+        if (model == null) return;
+
         // Reset timer when task index changes
-        final currentIndex = state.model?.currentTaskIndex;
-        if (currentIndex != null && _previousTaskIndex != currentIndex) {
+        final currentIndex = model.currentTaskIndex;
+        if (currentIndex != _previousTaskIndex) {
           _resetTimer();
           _previousTaskIndex = currentIndex;
+        }
+
+        // Handle break state changes
+        if (model.isOnBreak != _previousIsOnBreak) {
+          _previousIsOnBreak = model.isOnBreak;
+          if (model.isOnBreak) {
+            // Start break timer
+            _startBreakTimer(model);
+          }
         }
       },
       builder: (context, state) {
@@ -115,6 +153,11 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
             ),
             floatingActionButton: const _NavFab(),
           );
+        }
+
+        // Check if we're on a break
+        if (model.isOnBreak) {
+          return _buildBreakScreen(context, model);
         }
 
         final currentTask = model.tasks[model.currentTaskIndex];
@@ -286,6 +329,139 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
           floatingActionButton: const _NavFab(),
         );
       },
+    );
+  }
+
+  Widget _buildBreakScreen(BuildContext context, RoutineStateModel model) {
+    if (model.breaks == null || model.currentBreakIndex == null) {
+      return const SizedBox.shrink();
+    }
+
+    final currentBreak = model.breaks![model.currentBreakIndex!];
+    final breakDuration = currentBreak.duration;
+
+    // Calculate progress (0.0 to 1.0, clamped)
+    final progress = breakDuration > 0
+        ? ((_breakRemainingSeconds / breakDuration).clamp(0.0, 1.0))
+        : 1.0;
+
+    return Scaffold(
+      backgroundColor: AppTheme.green,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  // "Break Time" at top center
+                  Expanded(
+                    flex: 2,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.coffee,
+                            color: Colors.white,
+                            size: 80,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Break Time',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Massive countdown timer
+                  Expanded(
+                    flex: 3,
+                    child: Center(
+                      child: Text(
+                        _formatTime(_breakRemainingSeconds),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 300,
+                          fontWeight: FontWeight.w900,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Slim progress bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: Colors.white.withValues(alpha: 0.3),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.white,
+                        ),
+                        minHeight: 8,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Skip Break button
+                  SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          context.read<RoutineBloc>().add(const SkipBreak());
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          textStyle: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppTheme.green,
+                        ),
+                        child: const Text('Skip Break'),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Break info text
+                  Text(
+                    'Enjoy your break!',
+                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+
+                  // Add some bottom padding to make room for drawer
+                  const SizedBox(height: 120),
+                ],
+              ),
+            ),
+          ),
+
+          // Task drawer overlay
+          TaskDrawer(
+            routineState: model,
+            isExpanded: _isDrawerExpanded,
+            onToggleExpanded: _toggleDrawer,
+          ),
+        ],
+      ),
+      floatingActionButton: const _NavFab(),
     );
   }
 }
