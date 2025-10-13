@@ -56,4 +56,20 @@ class TimeFormatter {
 
     return '$hh:$mm:$ss';
   }
+
+  /// Formats actual duration in seconds to "X min Y sec" format
+  /// If duration is less than a minute, shows only seconds
+  /// If duration is exactly on the minute, omits seconds
+  static String formatActualDuration(int seconds) {
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
+
+    if (minutes == 0) {
+      return '$secs sec';
+    } else if (secs == 0) {
+      return '$minutes min';
+    } else {
+      return '$minutes min $secs sec';
+    }
+  }
 }

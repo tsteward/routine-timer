@@ -143,5 +143,41 @@ void main() {
         expect(TimeFormatter.formatCountdown(18000), '05:00:00');
       });
     });
+
+    group('formatActualDuration', () {
+      test('formats duration less than a minute in seconds only', () {
+        expect(TimeFormatter.formatActualDuration(0), '0 sec');
+        expect(TimeFormatter.formatActualDuration(1), '1 sec');
+        expect(TimeFormatter.formatActualDuration(30), '30 sec');
+        expect(TimeFormatter.formatActualDuration(59), '59 sec');
+      });
+
+      test('formats duration exactly on the minute without seconds', () {
+        expect(TimeFormatter.formatActualDuration(60), '1 min');
+        expect(TimeFormatter.formatActualDuration(120), '2 min');
+        expect(TimeFormatter.formatActualDuration(300), '5 min');
+        expect(TimeFormatter.formatActualDuration(600), '10 min');
+        expect(TimeFormatter.formatActualDuration(3600), '60 min');
+      });
+
+      test('formats duration with both minutes and seconds', () {
+        expect(TimeFormatter.formatActualDuration(61), '1 min 1 sec');
+        expect(TimeFormatter.formatActualDuration(90), '1 min 30 sec');
+        expect(TimeFormatter.formatActualDuration(125), '2 min 5 sec');
+        expect(TimeFormatter.formatActualDuration(1350), '22 min 30 sec');
+        expect(TimeFormatter.formatActualDuration(3665), '61 min 5 sec');
+      });
+
+      test('handles typical task completion scenarios', () {
+        // Quick task - 15 seconds
+        expect(TimeFormatter.formatActualDuration(15), '15 sec');
+        // Fast task - exactly 2 minutes
+        expect(TimeFormatter.formatActualDuration(120), '2 min');
+        // Normal task - 5 minutes 45 seconds
+        expect(TimeFormatter.formatActualDuration(345), '5 min 45 sec');
+        // Long task - 22 minutes 30 seconds
+        expect(TimeFormatter.formatActualDuration(1350), '22 min 30 sec');
+      });
+    });
   });
 }
