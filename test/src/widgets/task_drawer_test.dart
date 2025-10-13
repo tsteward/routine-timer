@@ -470,12 +470,18 @@ void main() {
       expect(wasToggled, isTrue);
     });
 
-    testWidgets('should not show drawer when no upcoming tasks', (
+    testWidgets('should not show drawer when no upcoming or completed tasks', (
       WidgetTester tester,
     ) async {
-      // Create state with current task being the last task
-      final lastTaskState = testRoutineState.copyWith(
-        selectedTaskId: testTasks.last.id,
+      // Create state with only one task
+      final singleTaskState = RoutineStateModel(
+        tasks: [testTasks.first],
+        settings: const RoutineSettingsModel(
+          startTime: 480,
+          defaultBreakDuration: 300,
+        ),
+        selectedTaskId: testTasks.first.id,
+        isRunning: true,
       );
 
       await tester.pumpWidget(
@@ -485,7 +491,7 @@ void main() {
               children: [
                 const Center(child: Text('Main Content')),
                 TaskDrawer(
-                  routineState: lastTaskState,
+                  routineState: singleTaskState,
                   isExpanded: false,
                   onToggleExpanded: () {},
                 ),
@@ -574,6 +580,524 @@ void main() {
       // Check that ListView has horizontal scroll direction
       final listView = tester.widget<ListView>(find.byType(ListView));
       expect(listView.scrollDirection, equals(Axis.horizontal));
+    });
+  });
+
+  group('TaskDrawer Expanded State Tests', () {
+    late RoutineStateModel testRoutineState;
+    late List<TaskModel> testTasks;
+
+    setUp(() {
+      testTasks = [
+        const TaskModel(
+          id: 'task-1',
+          name: 'Completed Task 1',
+          estimatedDuration: 300,
+          actualDuration: 320,
+          isCompleted: true,
+          order: 1,
+        ),
+        const TaskModel(
+          id: 'task-2',
+          name: 'Completed Task 2',
+          estimatedDuration: 600,
+          actualDuration: 580,
+          isCompleted: true,
+          order: 2,
+        ),
+        const TaskModel(
+          id: 'task-3',
+          name: 'Current Task',
+          estimatedDuration: 450,
+          order: 3,
+        ),
+        const TaskModel(
+          id: 'task-4',
+          name: 'Upcoming Task 1',
+          estimatedDuration: 900,
+          order: 4,
+        ),
+        const TaskModel(
+          id: 'task-5',
+          name: 'Upcoming Task 2',
+          estimatedDuration: 720,
+          order: 5,
+        ),
+      ];
+
+      testRoutineState = RoutineStateModel(
+        tasks: testTasks,
+        settings: const RoutineSettingsModel(
+          startTime: 480,
+          defaultBreakDuration: 300,
+        ),
+        selectedTaskId: testTasks[2].id, // Current Task
+        isRunning: true,
+      );
+    });
+
+    testWidgets('should show "Show Less" when expanded', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Show Less'), findsOneWidget);
+      expect(find.text('Show More'), findsNothing);
+    });
+
+    testWidgets('should show background overlay when expanded', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Find the GestureDetector for the overlay
+      final overlayFinder = find.descendant(
+        of: find.byType(TaskDrawer),
+        matching: find.byType(GestureDetector),
+      );
+
+      expect(overlayFinder, findsWidgets);
+    });
+
+    testWidgets('should call onToggleExpanded when background is tapped', (
+      WidgetTester tester,
+    ) async {
+      bool wasToggled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {
+                    wasToggled = true;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Tap on the overlay background (not the drawer content)
+      await tester.tapAt(const Offset(50, 50));
+      expect(wasToggled, isTrue);
+    });
+
+    testWidgets('should show "Upcoming Tasks" section when expanded', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Upcoming Tasks'), findsOneWidget);
+    });
+
+    testWidgets('should show "Completed Tasks" section when expanded', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Completed Tasks'), findsOneWidget);
+    });
+
+    testWidgets('should show all upcoming tasks when expanded', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Upcoming Task 1'), findsOneWidget);
+      expect(find.text('Upcoming Task 2'), findsOneWidget);
+    });
+
+    testWidgets('should show all completed tasks when expanded', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Completed Task 1'), findsOneWidget);
+      expect(find.text('Completed Task 2'), findsOneWidget);
+    });
+
+    testWidgets('completed tasks should show actual time taken', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // 320 seconds = 5 min 20 sec
+      expect(find.text('Took: 5 min 20 sec'), findsOneWidget);
+      // 580 seconds = 9 min 40 sec
+      expect(find.text('Took: 9 min 40 sec'), findsOneWidget);
+    });
+
+    testWidgets('completed tasks should show checkmark icon', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Should find checkmark icons for completed tasks
+      expect(find.byIcon(Icons.check_circle), findsAtLeastNWidgets(2));
+    });
+
+    testWidgets('should not show completed section when no completed tasks', (
+      WidgetTester tester,
+    ) async {
+      final stateWithNoCompleted = RoutineStateModel(
+        tasks: testTasks.sublist(2), // Only current and upcoming tasks
+        settings: const RoutineSettingsModel(
+          startTime: 480,
+          defaultBreakDuration: 300,
+        ),
+        selectedTaskId: testTasks[2].id,
+        isRunning: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: stateWithNoCompleted,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Completed Tasks'), findsNothing);
+      expect(find.text('Upcoming Tasks'), findsOneWidget);
+    });
+
+    testWidgets('should format actual time correctly - minutes only', (
+      WidgetTester tester,
+    ) async {
+      final taskWithMinutesOnly = [
+        const TaskModel(
+          id: 'task-1',
+          name: 'Task With Minutes',
+          estimatedDuration: 300,
+          actualDuration: 120, // 2 minutes exactly
+          isCompleted: true,
+          order: 1,
+        ),
+        const TaskModel(
+          id: 'task-2',
+          name: 'Current',
+          estimatedDuration: 300,
+          order: 2,
+        ),
+      ];
+
+      final state = RoutineStateModel(
+        tasks: taskWithMinutesOnly,
+        settings: const RoutineSettingsModel(
+          startTime: 480,
+          defaultBreakDuration: 300,
+        ),
+        selectedTaskId: taskWithMinutesOnly[1].id,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: state,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Took: 2 min'), findsOneWidget);
+    });
+
+    testWidgets('should format actual time correctly - seconds only', (
+      WidgetTester tester,
+    ) async {
+      final taskWithSecondsOnly = [
+        const TaskModel(
+          id: 'task-1',
+          name: 'Task With Seconds',
+          estimatedDuration: 300,
+          actualDuration: 45, // 45 seconds
+          isCompleted: true,
+          order: 1,
+        ),
+        const TaskModel(
+          id: 'task-2',
+          name: 'Current',
+          estimatedDuration: 300,
+          order: 2,
+        ),
+      ];
+
+      final state = RoutineStateModel(
+        tasks: taskWithSecondsOnly,
+        settings: const RoutineSettingsModel(
+          startTime: 480,
+          defaultBreakDuration: 300,
+        ),
+        selectedTaskId: taskWithSecondsOnly[1].id,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: state,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Took: 45 sec'), findsOneWidget);
+    });
+
+    testWidgets('should handle missing actualDuration gracefully', (
+      WidgetTester tester,
+    ) async {
+      final taskWithoutActualDuration = [
+        const TaskModel(
+          id: 'task-1',
+          name: 'Task Without Actual',
+          estimatedDuration: 300,
+          actualDuration: null, // No actual duration
+          isCompleted: true,
+          order: 1,
+        ),
+        const TaskModel(
+          id: 'task-2',
+          name: 'Current',
+          estimatedDuration: 300,
+          order: 2,
+        ),
+      ];
+
+      final state = RoutineStateModel(
+        tasks: taskWithoutActualDuration,
+        settings: const RoutineSettingsModel(
+          startTime: 480,
+          defaultBreakDuration: 300,
+        ),
+        selectedTaskId: taskWithoutActualDuration[1].id,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: state,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Should fallback to estimatedDuration (300 seconds = 5 min)
+      expect(find.text('Took: 5 min'), findsOneWidget);
+    });
+
+    testWidgets('should animate height change when expanding', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: false,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Get initial height
+      final collapsedContainer = tester.widget<AnimatedContainer>(
+        find.byType(AnimatedContainer),
+      );
+      expect(collapsedContainer.constraints?.maxHeight, 160);
+
+      // Now test expanded state
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: true,
+                  onToggleExpanded: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump(); // Start animation
+      await tester.pumpAndSettle(); // Complete animation
+
+      final expandedContainer = tester.widget<AnimatedContainer>(
+        find.byType(AnimatedContainer),
+      );
+      // Expanded height should be 60% of screen height
+      final screenHeight =
+          tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      expect(expandedContainer.constraints?.maxHeight, screenHeight * 0.6);
     });
   });
 }
