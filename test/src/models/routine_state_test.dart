@@ -141,5 +141,122 @@ void main() {
 
       expect(state.selectedTask?.id, '1'); // Should fall back to first task
     });
+
+    test('break state fields serialize correctly', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+          TaskModel(id: '2', name: 'Task2', estimatedDuration: 120, order: 1),
+        ],
+        breaks: const [BreakModel(duration: 30, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 2,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 30,
+        ),
+        selectedTaskId: '1',
+        isRunning: true,
+        isInBreak: true,
+        currentBreakIndex: 0,
+      );
+
+      final map = state.toMap();
+      final decoded = RoutineStateModel.fromMap(map);
+
+      expect(decoded.isInBreak, true);
+      expect(decoded.currentBreakIndex, 0);
+    });
+
+    test('break state defaults to false when not specified', () {
+      final map = {
+        'tasks': [
+          {
+            'id': '1',
+            'name': 'Task1',
+            'estimatedDuration': 60,
+            'order': 0,
+            'isCompleted': false,
+          },
+        ],
+        'settings': {
+          'startTime': 0,
+          'breaksEnabledByDefault': true,
+          'defaultBreakDuration': 30,
+        },
+        'isRunning': false,
+        // isInBreak and currentBreakIndex not specified
+      };
+
+      final decoded = RoutineStateModel.fromMap(map);
+      expect(decoded.isInBreak, false);
+      expect(decoded.currentBreakIndex, null);
+    });
+
+    test('copyWith updates break state fields', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 30,
+        ),
+        isInBreak: false,
+        currentBreakIndex: null,
+      );
+
+      final updated = state.copyWith(isInBreak: true, currentBreakIndex: 0);
+
+      expect(updated.isInBreak, true);
+      expect(updated.currentBreakIndex, 0);
+      expect(updated.tasks, state.tasks); // Other fields unchanged
+    });
+
+    test('copyWith can clear break state', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 30,
+        ),
+        isInBreak: true,
+        currentBreakIndex: 0,
+      );
+
+      final updated = state.copyWith(isInBreak: false);
+
+      expect(updated.isInBreak, false);
+      // Note: copyWith doesn't clear currentBreakIndex when not explicitly provided
+      // This is standard Dart copyWith behavior - fields retain their value unless overridden
+      expect(updated.currentBreakIndex, 0);
+    });
+
+    test('toJson/fromJson roundtrip with break state', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+        ],
+        breaks: const [BreakModel(duration: 120, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 30,
+        ),
+        isInBreak: true,
+        currentBreakIndex: 0,
+      );
+
+      final json = state.toJson();
+      final decoded = RoutineStateModel.fromJson(json);
+
+      expect(decoded.isInBreak, true);
+      expect(decoded.currentBreakIndex, 0);
+      expect(decoded.tasks.length, 1);
+      expect(decoded.breaks!.length, 1);
+    });
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../models/routine_state.dart';
+import '../utils/time_formatter.dart';
 import 'task_card.dart';
 import 'completed_task_card.dart';
 
@@ -155,11 +156,112 @@ class TaskDrawer extends StatelessWidget {
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
         scrollDirection: Axis.horizontal,
-        itemCount: upcomingTasks.length,
+        itemCount: _calculateItemCount(upcomingTasks),
         itemBuilder: (context, index) {
-          final task = upcomingTasks[index];
-          return TaskCard(task: task, width: 140);
+          return _buildUpcomingItem(context, upcomingTasks, index, 140);
         },
+      ),
+    );
+  }
+
+  /// Calculate the total number of items (tasks + breaks) to display
+  int _calculateItemCount(List<TaskModel> upcomingTasks) {
+    if (upcomingTasks.isEmpty) return 0;
+
+    final breaks = routineState.breaks;
+    if (breaks == null) return upcomingTasks.length;
+
+    int count = 0;
+    final currentIndex = routineState.currentTaskIndex;
+
+    for (int i = 0; i < upcomingTasks.length; i++) {
+      count++; // Count the task
+
+      // Check if there's a break after this task
+      final taskIndex = currentIndex + 1 + i;
+      if (taskIndex < breaks.length && breaks[taskIndex].isEnabled) {
+        count++; // Count the break
+      }
+    }
+
+    return count;
+  }
+
+  /// Build an item (task or break) for the upcoming tasks list
+  Widget _buildUpcomingItem(
+    BuildContext context,
+    List<TaskModel> upcomingTasks,
+    int displayIndex,
+    double width,
+  ) {
+    final breaks = routineState.breaks;
+    final currentIndex = routineState.currentTaskIndex;
+
+    int itemsSeen = 0;
+
+    // Iterate through tasks and breaks to find which item to display
+    for (int i = 0; i < upcomingTasks.length; i++) {
+      // Check if this is the item we want to display
+      if (itemsSeen == displayIndex) {
+        return TaskCard(task: upcomingTasks[i], width: width);
+      }
+      itemsSeen++;
+
+      // Check if there's a break after this task
+      final taskIndex = currentIndex + 1 + i;
+      if (breaks != null &&
+          taskIndex < breaks.length &&
+          breaks[taskIndex].isEnabled) {
+        if (itemsSeen == displayIndex) {
+          return _buildBreakCard(breaks[taskIndex], width);
+        }
+        itemsSeen++;
+      }
+    }
+
+    // Fallback: should not happen
+    return const SizedBox.shrink();
+  }
+
+  /// Build a card displaying a break
+  Widget _buildBreakCard(dynamic breakModel, double width) {
+    final duration = breakModel.duration as int;
+    return Container(
+      width: width,
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade400, width: 1),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.coffee, size: 16, color: Colors.grey.shade700),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Break',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            TimeFormatter.formatDuration(duration),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+        ],
       ),
     );
   }
@@ -193,10 +295,9 @@ class TaskDrawer extends StatelessWidget {
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
                 scrollDirection: Axis.horizontal,
-                itemCount: upcomingTasks.length,
+                itemCount: _calculateItemCount(upcomingTasks),
                 itemBuilder: (context, index) {
-                  final task = upcomingTasks[index];
-                  return TaskCard(task: task, width: 140);
+                  return _buildUpcomingItem(context, upcomingTasks, index, 140);
                 },
               ),
             ),
