@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
+import '../models/break.dart';
 import '../models/routine_state.dart';
 import 'task_card.dart';
 import 'completed_task_card.dart';
@@ -17,7 +18,9 @@ class TaskDrawer extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggleExpanded;
 
-  List<TaskModel> get _upcomingTasks {
+  /// Gets the upcoming items (tasks and breaks) after the current position.
+  /// Returns a list of objects that are either TaskModel or BreakModel.
+  List<dynamic> get _upcomingItems {
     final currentIndex = routineState.currentTaskIndex;
     final totalTasks = routineState.tasks.length;
 
@@ -25,14 +28,29 @@ class TaskDrawer extends StatelessWidget {
       return []; // No upcoming tasks
     }
 
-    if (isExpanded) {
-      // Return all upcoming tasks when expanded
-      return routineState.tasks.sublist(currentIndex + 1);
-    } else {
-      // Return next 2-3 tasks for collapsed state
-      final endIndex = (currentIndex + 4).clamp(0, totalTasks);
-      return routineState.tasks.sublist(currentIndex + 1, endIndex);
+    final items = <dynamic>[];
+    final startIndex = currentIndex + 1;
+    final endIndex = isExpanded
+        ? totalTasks
+        : (currentIndex + 4).clamp(0, totalTasks);
+
+    for (int i = startIndex; i < endIndex; i++) {
+      // Add break before this task if exists and is enabled
+      final breakIndex = i - 1;
+      if (routineState.breaks != null &&
+          breakIndex >= 0 &&
+          breakIndex < routineState.breaks!.length) {
+        final breakModel = routineState.breaks![breakIndex];
+        if (breakModel.isEnabled) {
+          items.add(breakModel);
+        }
+      }
+
+      // Add the task
+      items.add(routineState.tasks[i]);
     }
+
+    return items;
   }
 
   List<TaskModel> get _completedTasks {
@@ -43,11 +61,11 @@ class TaskDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final upcomingTasks = _upcomingTasks;
+    final upcomingItems = _upcomingItems;
     final completedTasks = _completedTasks;
 
-    // Don't show drawer if no upcoming tasks and not expanded
-    if (upcomingTasks.isEmpty && !isExpanded) {
+    // Don't show drawer if no upcoming items and not expanded
+    if (upcomingItems.isEmpty && !isExpanded) {
       return const SizedBox.shrink();
     }
 
@@ -104,12 +122,12 @@ class TaskDrawer extends StatelessWidget {
                         child: _buildExpandedContent(
                           theme,
                           colorScheme,
-                          upcomingTasks,
+                          upcomingItems,
                           completedTasks,
                         ),
                       )
                     else
-                      _buildCollapsedContent(upcomingTasks),
+                      _buildCollapsedContent(upcomingItems),
                   ],
                 ),
               ),
@@ -149,16 +167,21 @@ class TaskDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildCollapsedContent(List<TaskModel> upcomingTasks) {
+  Widget _buildCollapsedContent(List<dynamic> upcomingItems) {
     return SizedBox(
       height: 80,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
         scrollDirection: Axis.horizontal,
-        itemCount: upcomingTasks.length,
+        itemCount: upcomingItems.length,
         itemBuilder: (context, index) {
-          final task = upcomingTasks[index];
-          return TaskCard(task: task, width: 140);
+          final item = upcomingItems[index];
+          if (item is TaskModel) {
+            return TaskCard(task: item, width: 140);
+          } else if (item is BreakModel) {
+            return _BreakCard(breakModel: item, width: 100);
+          }
+          return const SizedBox.shrink();
         },
       ),
     );
@@ -167,7 +190,7 @@ class TaskDrawer extends StatelessWidget {
   Widget _buildExpandedContent(
     ThemeData theme,
     ColorScheme colorScheme,
-    List<TaskModel> upcomingTasks,
+    List<dynamic> upcomingItems,
     List<TaskModel> completedTasks,
   ) {
     return SingleChildScrollView(
@@ -176,12 +199,12 @@ class TaskDrawer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Upcoming Tasks Section
-          if (upcomingTasks.isNotEmpty) ...[
+          // Upcoming Items Section (tasks and breaks)
+          if (upcomingItems.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Text(
-                'Upcoming Tasks',
+                'Up Next',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurface,
@@ -193,10 +216,15 @@ class TaskDrawer extends StatelessWidget {
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
                 scrollDirection: Axis.horizontal,
-                itemCount: upcomingTasks.length,
+                itemCount: upcomingItems.length,
                 itemBuilder: (context, index) {
-                  final task = upcomingTasks[index];
-                  return TaskCard(task: task, width: 140);
+                  final item = upcomingItems[index];
+                  if (item is TaskModel) {
+                    return TaskCard(task: item, width: 140);
+                  } else if (item is BreakModel) {
+                    return _BreakCard(breakModel: item, width: 100);
+                  }
+                  return const SizedBox.shrink();
                 },
               ),
             ),
@@ -227,6 +255,75 @@ class TaskDrawer extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A card displaying a break between tasks
+class _BreakCard extends StatelessWidget {
+  const _BreakCard({required this.breakModel, required this.width});
+
+  final BreakModel breakModel;
+  final double width;
+
+  String _formatDuration(int seconds) {
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
+    if (minutes > 0) {
+      return '${minutes}m';
+    }
+    return '${secs}s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      width: width,
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.coffee, color: colorScheme.primary, size: 18),
+          const SizedBox(height: 2),
+          Flexible(
+            child: Text(
+              'Break',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w500,
+                fontSize: 10,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Flexible(
+            child: Text(
+              _formatDuration(breakModel.duration),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                fontSize: 9,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );

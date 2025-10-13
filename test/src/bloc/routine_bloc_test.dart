@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/models/routine_settings.dart';
+import 'package:routine_timer/src/models/routine_state.dart';
 import 'package:routine_timer/src/models/task.dart';
 import '../test_helpers/firebase_test_helper.dart';
 
@@ -64,6 +65,10 @@ void main() {
         ..add(const LoadSampleRoutine());
       final initial = await bloc.stream.firstWhere((s) => s.model != null);
       expect(initial.model!.currentTaskIndex, 0);
+
+      // Disable break to advance directly to next task
+      bloc.add(const ToggleBreakAtIndex(0));
+      await bloc.stream.firstWhere((s) => !s.model!.breaks![0].isEnabled);
 
       bloc.add(const MarkTaskDone(actualDuration: 30));
       final updated = await bloc.stream.firstWhere(
@@ -958,6 +963,197 @@ void main() {
 
       // Selection should remain unchanged
       expect(bloc.state.model!.selectedTaskId, originalSelectedId);
+    });
+
+    group('Break handling during task execution', () {
+      test(
+        'mark task done transitions to break when break is enabled',
+        () async {
+          final bloc = FirebaseTestHelper.routineBloc
+            ..add(const LoadSampleRoutine());
+          final initial = await bloc.stream.firstWhere((s) => s.model != null);
+
+          // Ensure break is enabled after first task
+          expect(initial.model!.breaks![0].isEnabled, true);
+          expect(initial.model!.currentTaskIndex, 0);
+
+          // Complete first task
+          bloc.add(const MarkTaskDone(actualDuration: 30));
+          final updated = await bloc.stream.firstWhere(
+            (s) => s.model!.tasks.first.isCompleted,
+          );
+
+          // Should transition to break, not next task
+          expect(updated.model!.isOnBreak, true);
+          expect(updated.model!.currentBreakIndex, 0);
+          expect(updated.model!.currentTaskIndex, 0); // Still on first task
+          expect(updated.model!.tasks.first.isCompleted, true);
+        },
+      );
+
+      test('mark task done skips break when break is disabled', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Disable break after first task
+        bloc.add(const ToggleBreakAtIndex(0));
+        await bloc.stream.firstWhere((s) => !s.model!.breaks![0].isEnabled);
+
+        // Complete first task
+        bloc.add(const MarkTaskDone(actualDuration: 30));
+        final updated = await bloc.stream.firstWhere(
+          (s) => s.model!.tasks.first.isCompleted,
+        );
+
+        // Should advance directly to next task
+        expect(updated.model!.isOnBreak, false);
+        expect(updated.model!.currentBreakIndex, null);
+        expect(updated.model!.currentTaskIndex, 1);
+      });
+
+      test('mark task done does not break when completing last task', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Select last task
+        final lastTaskId = loaded.model!.tasks.last.id;
+        bloc.add(SelectTask(lastTaskId));
+        await bloc.stream.firstWhere(
+          (s) => s.model!.selectedTaskId == lastTaskId,
+        );
+
+        // Complete last task
+        bloc.add(const MarkTaskDone(actualDuration: 30));
+        final updated = await bloc.stream.firstWhere(
+          (s) => s.model!.tasks.last.isCompleted,
+        );
+
+        // Should not transition to break (no task after last task)
+        expect(updated.model!.isOnBreak, false);
+        expect(updated.model!.currentBreakIndex, null);
+      });
+
+      test('complete break advances to next task', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete first task to enter break
+        bloc.add(const MarkTaskDone(actualDuration: 30));
+        await bloc.stream.firstWhere((s) => s.model!.isOnBreak);
+
+        // Complete the break
+        bloc.add(const CompleteBreak());
+        final updated = await bloc.stream.firstWhere(
+          (s) => !s.model!.isOnBreak,
+        );
+
+        // Should advance to next task
+        expect(updated.model!.isOnBreak, false);
+        expect(updated.model!.currentBreakIndex, null);
+        expect(updated.model!.currentTaskIndex, 1);
+      });
+
+      test('skip break advances to next task immediately', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete first task to enter break
+        bloc.add(const MarkTaskDone(actualDuration: 30));
+        await bloc.stream.firstWhere((s) => s.model!.isOnBreak);
+
+        // Skip the break
+        bloc.add(const SkipBreak());
+        final updated = await bloc.stream.firstWhere(
+          (s) => !s.model!.isOnBreak,
+        );
+
+        // Should advance to next task
+        expect(updated.model!.isOnBreak, false);
+        expect(updated.model!.currentBreakIndex, null);
+        expect(updated.model!.currentTaskIndex, 1);
+      });
+
+      test('complete break does nothing when not on break', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        final loaded = await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Not on break
+        expect(loaded.model!.isOnBreak, false);
+
+        // Try to complete break when not on break
+        bloc.add(const CompleteBreak());
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        // Should remain unchanged
+        expect(bloc.state.model!.isOnBreak, false);
+        expect(bloc.state.model!.currentTaskIndex, 0);
+      });
+
+      test('break handling works across multiple task transitions', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete task 1 -> break
+        bloc.add(const MarkTaskDone(actualDuration: 30));
+        final afterTask1 = await bloc.stream.firstWhere(
+          (s) => s.model!.isOnBreak && s.model!.currentBreakIndex == 0,
+        );
+        expect(afterTask1.model!.currentTaskIndex, 0);
+
+        // Complete break -> task 2
+        bloc.add(const CompleteBreak());
+        final task2 = await bloc.stream.firstWhere(
+          (s) => !s.model!.isOnBreak && s.model!.currentTaskIndex == 1,
+        );
+        expect(task2.model!.currentTaskIndex, 1);
+
+        // Complete task 2 -> no break (disabled)
+        bloc.add(const MarkTaskDone(actualDuration: 35));
+        final afterTask2 = await bloc.stream.firstWhere(
+          (s) => s.model!.tasks[1].isCompleted,
+        );
+        expect(afterTask2.model!.isOnBreak, false);
+        expect(afterTask2.model!.currentTaskIndex, 2);
+
+        // Complete task 3 -> break
+        bloc.add(const MarkTaskDone(actualDuration: 40));
+        final afterTask3 = await bloc.stream.firstWhere(
+          (s) => s.model!.isOnBreak && s.model!.currentBreakIndex == 2,
+        );
+        expect(afterTask3.model!.currentTaskIndex, 2);
+
+        // Skip break -> task 4
+        bloc.add(const SkipBreak());
+        final task4 = await bloc.stream.firstWhere(
+          (s) => !s.model!.isOnBreak && s.model!.currentTaskIndex == 3,
+        );
+        expect(task4.model!.currentTaskIndex, 3);
+      });
+
+      test('break state persists through serialization', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete first task to enter break
+        bloc.add(const MarkTaskDone(actualDuration: 30));
+        final onBreak = await bloc.stream.firstWhere((s) => s.model!.isOnBreak);
+
+        // Serialize and deserialize
+        final map = onBreak.model!.toMap();
+        final deserialized = RoutineStateModel.fromMap(map);
+
+        // Break state should be preserved
+        expect(deserialized.isOnBreak, true);
+        expect(deserialized.currentBreakIndex, 0);
+        expect(deserialized.currentBreak?.duration, greaterThan(0));
+      });
     });
   });
 }

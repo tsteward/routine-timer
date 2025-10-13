@@ -141,5 +141,125 @@ void main() {
 
       expect(state.selectedTask?.id, '1'); // Should fall back to first task
     });
+
+    test('isOnBreak and currentBreakIndex default to false and null', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'First', estimatedDuration: 60, order: 0),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+      );
+
+      expect(state.isOnBreak, false);
+      expect(state.currentBreakIndex, null);
+    });
+
+    test('copyWith updates isOnBreak and currentBreakIndex', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'A', estimatedDuration: 60, order: 0),
+          TaskModel(id: '2', name: 'B', estimatedDuration: 120, order: 1),
+        ],
+        breaks: const [BreakModel(duration: 120, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+      );
+
+      final updated = state.copyWith(isOnBreak: true, currentBreakIndex: 0);
+
+      expect(updated.isOnBreak, true);
+      expect(updated.currentBreakIndex, 0);
+      expect(updated.tasks.length, 2);
+    });
+
+    test('currentBreak getter returns correct break when on break', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'First', estimatedDuration: 60, order: 0),
+          TaskModel(id: '2', name: 'Second', estimatedDuration: 120, order: 1),
+        ],
+        breaks: const [
+          BreakModel(duration: 120, isEnabled: true),
+          BreakModel(duration: 180, isEnabled: false),
+        ],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+        isOnBreak: true,
+        currentBreakIndex: 1,
+      );
+
+      expect(state.currentBreak?.duration, 180);
+      expect(state.currentBreak?.isEnabled, false);
+    });
+
+    test('currentBreak getter returns null when not on break', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'First', estimatedDuration: 60, order: 0),
+        ],
+        breaks: const [BreakModel(duration: 120, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+        isOnBreak: false,
+      );
+
+      expect(state.currentBreak, null);
+    });
+
+    test('currentBreak getter returns null for invalid break index', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'First', estimatedDuration: 60, order: 0),
+        ],
+        breaks: const [BreakModel(duration: 120, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 0,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 60,
+        ),
+        isOnBreak: true,
+        currentBreakIndex: 99,
+      );
+
+      expect(state.currentBreak, null);
+    });
+
+    test('toMap/fromMap roundtrip includes break state', () {
+      final state = RoutineStateModel(
+        tasks: const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 60, order: 0),
+        ],
+        breaks: const [BreakModel(duration: 30, isEnabled: true)],
+        settings: RoutineSettingsModel(
+          startTime: 2,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 30,
+        ),
+        selectedTaskId: '1',
+        isRunning: true,
+        isOnBreak: true,
+        currentBreakIndex: 0,
+      );
+
+      final map = state.toMap();
+      final decoded = RoutineStateModel.fromMap(map);
+
+      expect(decoded.isOnBreak, true);
+      expect(decoded.currentBreakIndex, 0);
+      expect(decoded.currentBreak?.duration, 30);
+    });
   });
 }

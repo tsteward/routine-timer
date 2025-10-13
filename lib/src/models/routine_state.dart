@@ -12,6 +12,8 @@ class RoutineStateModel {
     this.selectedTaskId,
     this.isRunning = false,
     this.breaks,
+    this.isOnBreak = false,
+    this.currentBreakIndex,
   });
 
   /// Ordered list of tasks.
@@ -30,12 +32,21 @@ class RoutineStateModel {
   /// Whether the routine is actively running a timer.
   final bool isRunning;
 
+  /// Whether currently on a break between tasks.
+  final bool isOnBreak;
+
+  /// Index of the current break (if isOnBreak is true).
+  final int? currentBreakIndex;
+
   RoutineStateModel copyWith({
     List<TaskModel>? tasks,
     List<BreakModel>? breaks,
     RoutineSettingsModel? settings,
     String? selectedTaskId,
     bool? isRunning,
+    bool? isOnBreak,
+    int? currentBreakIndex,
+    bool clearCurrentBreakIndex = false,
   }) {
     return RoutineStateModel(
       tasks: tasks ?? this.tasks,
@@ -43,6 +54,10 @@ class RoutineStateModel {
       settings: settings ?? this.settings,
       selectedTaskId: selectedTaskId ?? this.selectedTaskId,
       isRunning: isRunning ?? this.isRunning,
+      isOnBreak: isOnBreak ?? this.isOnBreak,
+      currentBreakIndex: clearCurrentBreakIndex
+          ? null
+          : (currentBreakIndex ?? this.currentBreakIndex),
     );
   }
 
@@ -82,6 +97,19 @@ class RoutineStateModel {
     return 0;
   }
 
+  /// Gets the currently active break. Returns null if not on a break or break doesn't exist.
+  BreakModel? get currentBreak {
+    if (!isOnBreak || currentBreakIndex == null || breaks == null) {
+      return null;
+    }
+
+    if (currentBreakIndex! < 0 || currentBreakIndex! >= breaks!.length) {
+      return null;
+    }
+
+    return breaks![currentBreakIndex!];
+  }
+
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'tasks': tasks.map((e) => e.toMap()).toList(),
@@ -89,6 +117,8 @@ class RoutineStateModel {
       'settings': settings.toMap(),
       'selectedTaskId': selectedTaskId,
       'isRunning': isRunning,
+      'isOnBreak': isOnBreak,
+      'currentBreakIndex': currentBreakIndex,
     };
   }
 
@@ -116,6 +146,8 @@ class RoutineStateModel {
       ),
       selectedTaskId: selectedTaskId,
       isRunning: map['isRunning'] as bool? ?? false,
+      isOnBreak: map['isOnBreak'] as bool? ?? false,
+      currentBreakIndex: map['currentBreakIndex'] as int?,
     );
   }
 
