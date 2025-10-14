@@ -1,6 +1,7 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:routine_timer/src/models/routine_completion.dart';
 import 'package:routine_timer/src/models/routine_settings.dart';
 import 'package:routine_timer/src/models/routine_state.dart';
 import 'package:routine_timer/src/models/task.dart';
@@ -178,6 +179,209 @@ void main() {
       expect(loaded2!.tasks[0].name, 'User 2 Task');
       expect(loaded1.tasks[0].estimatedDuration, 300);
       expect(loaded2.tasks[0].estimatedDuration, 600);
+    });
+
+    group('Completion Tracking', () {
+      test('saveCompletion stores completion data in Firestore', () async {
+        final completion = RoutineCompletion(
+          completionId: 'test-completion-1',
+          completedAt: DateTime(2025, 10, 14, 10, 30, 0),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleVariance: 120,
+          routineStartTime: DateTime(2025, 10, 14, 6, 0, 0),
+        );
+
+        final result = await repository.saveCompletion(completion);
+
+        expect(result, isTrue);
+      });
+
+      test('loadCompletions retrieves saved completion data', () async {
+        final completion1 = RoutineCompletion(
+          completionId: 'completion-1',
+          completedAt: DateTime(2025, 10, 14, 10, 30, 0),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleVariance: 120,
+          routineStartTime: DateTime(2025, 10, 14, 6, 0, 0),
+        );
+
+        final completion2 = RoutineCompletion(
+          completionId: 'completion-2',
+          completedAt: DateTime(2025, 10, 15, 10, 30, 0),
+          totalTimeSpent: 3800,
+          tasksCompleted: 6,
+          scheduleVariance: -60,
+          routineStartTime: DateTime(2025, 10, 15, 6, 0, 0),
+        );
+
+        await repository.saveCompletion(completion1);
+        await repository.saveCompletion(completion2);
+
+        final completions = await repository.loadCompletions();
+
+        expect(completions.length, 2);
+        // Should be sorted by date descending (newest first)
+        expect(completions[0].completionId, 'completion-2');
+        expect(completions[1].completionId, 'completion-1');
+      });
+
+      test(
+        'loadCompletions returns empty list when no completions exist',
+        () async {
+          final completions = await repository.loadCompletions();
+
+          expect(completions, isEmpty);
+        },
+      );
+
+      test('loadCompletions respects limit parameter', () async {
+        // Add 5 completions
+        for (int i = 0; i < 5; i++) {
+          final completion = RoutineCompletion(
+            completionId: 'completion-$i',
+            completedAt: DateTime(2025, 10, 14 + i, 10, 30, 0),
+            totalTimeSpent: 3600 + i * 100,
+            tasksCompleted: 5,
+            scheduleVariance: 0,
+            routineStartTime: DateTime(2025, 10, 14 + i, 6, 0, 0),
+          );
+          await repository.saveCompletion(completion);
+        }
+
+        final completions = await repository.loadCompletions(limit: 3);
+
+        expect(completions.length, 3);
+      });
+
+      test('saveCompletion returns false when user is not signed in', () async {
+        final unauthRepo = RoutineRepository(
+          firestore: fakeFirestore,
+          authService: AuthService(auth: MockFirebaseAuth(signedIn: false)),
+        );
+
+        final completion = RoutineCompletion(
+          completedAt: DateTime.now(),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleVariance: 0,
+          routineStartTime: DateTime.now(),
+        );
+
+        final result = await unauthRepo.saveCompletion(completion);
+
+        expect(result, isFalse);
+      });
+
+      test(
+        'loadCompletions returns empty list when user is not signed in',
+        () async {
+          final unauthRepo = RoutineRepository(
+            firestore: fakeFirestore,
+            authService: AuthService(auth: MockFirebaseAuth(signedIn: false)),
+          );
+
+          final completions = await unauthRepo.loadCompletions();
+
+          expect(completions, isEmpty);
+        },
+      );
+
+      test('completions are user-specific', () async {
+        // Create two repositories for different users
+        final mockAuth1 = MockFirebaseAuth(
+          signedIn: true,
+          mockUser: MockUser(uid: 'user-1'),
+        );
+        final mockAuth2 = MockFirebaseAuth(
+          signedIn: true,
+          mockUser: MockUser(uid: 'user-2'),
+        );
+
+        final repo1 = RoutineRepository(
+          firestore: fakeFirestore,
+          authService: AuthService(auth: mockAuth1),
+        );
+        final repo2 = RoutineRepository(
+          firestore: fakeFirestore,
+          authService: AuthService(auth: mockAuth2),
+        );
+
+        // Save completions for each user
+        final completion1 = RoutineCompletion(
+          completionId: 'user1-completion',
+          completedAt: DateTime.now(),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleVariance: 120,
+          routineStartTime: DateTime.now(),
+        );
+
+        final completion2 = RoutineCompletion(
+          completionId: 'user2-completion',
+          completedAt: DateTime.now(),
+          totalTimeSpent: 4200,
+          tasksCompleted: 7,
+          scheduleVariance: -60,
+          routineStartTime: DateTime.now(),
+        );
+
+        await repo1.saveCompletion(completion1);
+        await repo2.saveCompletion(completion2);
+
+        // Load completions for each user and verify separation
+        final loaded1 = await repo1.loadCompletions();
+        final loaded2 = await repo2.loadCompletions();
+
+        expect(loaded1.length, 1);
+        expect(loaded2.length, 1);
+        expect(loaded1[0].completionId, 'user1-completion');
+        expect(loaded2[0].completionId, 'user2-completion');
+      });
+
+      test('saveCompletion generates completionId if not provided', () async {
+        final completion = RoutineCompletion(
+          completedAt: DateTime.now(),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleVariance: 0,
+          routineStartTime: DateTime.now(),
+          // No completionId provided
+        );
+
+        final result = await repository.saveCompletion(completion);
+
+        expect(result, isTrue);
+
+        final completions = await repository.loadCompletions();
+        expect(completions.length, 1);
+        expect(completions[0].completionId, isNotNull);
+      });
+
+      test('completion data round-trips correctly', () async {
+        final original = RoutineCompletion(
+          completionId: 'test-round-trip',
+          completedAt: DateTime(2025, 10, 14, 10, 30, 45),
+          totalTimeSpent: 3661,
+          tasksCompleted: 8,
+          scheduleVariance: -125,
+          routineStartTime: DateTime(2025, 10, 14, 6, 0, 0),
+        );
+
+        await repository.saveCompletion(original);
+        final completions = await repository.loadCompletions();
+
+        expect(completions.length, 1);
+        final loaded = completions[0];
+
+        expect(loaded.completionId, original.completionId);
+        expect(loaded.completedAt, original.completedAt);
+        expect(loaded.totalTimeSpent, original.totalTimeSpent);
+        expect(loaded.tasksCompleted, original.tasksCompleted);
+        expect(loaded.scheduleVariance, original.scheduleVariance);
+        expect(loaded.routineStartTime, original.routineStartTime);
+      });
     });
   });
 }

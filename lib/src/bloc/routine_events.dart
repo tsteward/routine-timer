@@ -131,3 +131,28 @@ class CompleteBreak extends RoutineEvent {
 class SkipBreak extends RoutineEvent {
   const SkipBreak();
 }
+
+/// Complete the routine and show completion screen
+class CompleteRoutine extends RoutineEvent {
+  const CompleteRoutine({
+    required this.totalTimeSpent,
+    required this.scheduleVariance,
+    required this.routineStartTime,
+  });
+
+  final int totalTimeSpent;
+  final int scheduleVariance;
+  final DateTime routineStartTime;
+
+  @override
+  List<Object?> get props => [
+    totalTimeSpent,
+    scheduleVariance,
+    routineStartTime,
+  ];
+}
+
+/// Reset the routine to start a new session
+class ResetRoutine extends RoutineEvent {
+  const ResetRoutine();
+}

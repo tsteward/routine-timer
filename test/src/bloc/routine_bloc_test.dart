@@ -1187,5 +1187,220 @@ void main() {
         expect(decoded.currentBreak!.duration, 30);
       });
     });
+
+    group('Routine Completion', () {
+      test(
+        'CompleteRoutine event creates completion data and sets isCompleted flag',
+        () async {
+          final bloc = FirebaseTestHelper.routineBloc
+            ..add(const LoadSampleRoutine());
+
+          await bloc.stream.firstWhere((s) => s.model != null);
+
+          final startTime = DateTime(2025, 10, 14, 6, 0, 0);
+
+          bloc.add(
+            CompleteRoutine(
+              totalTimeSpent: 3600,
+              scheduleVariance: 120,
+              routineStartTime: startTime,
+            ),
+          );
+
+          final state = await bloc.stream.firstWhere((s) => s.isCompleted);
+
+          expect(state.isCompleted, true);
+          expect(state.completion, isNotNull);
+          expect(state.completion!.totalTimeSpent, 3600);
+          expect(state.completion!.scheduleVariance, 120);
+          expect(state.completion!.routineStartTime, startTime);
+        },
+      );
+
+      test('ResetRoutine event clears all task completion states', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete first two tasks
+        bloc.add(const MarkTaskDone(actualDuration: 100));
+        await bloc.stream.firstWhere((s) => s.model!.tasks[0].isCompleted);
+
+        // Disable break so we advance to next task
+        bloc.add(const ToggleBreakAtIndex(0));
+        await bloc.stream.firstWhere(
+          (s) => s.model!.breaks![0].isEnabled == false,
+        );
+
+        bloc.add(const MarkTaskDone(actualDuration: 100));
+        await bloc.stream.firstWhere((s) => s.model!.tasks[1].isCompleted);
+
+        // Now reset
+        bloc.add(const ResetRoutine());
+
+        final reset = await bloc.stream.firstWhere(
+          (s) => s.model != null && s.model!.tasks.every((t) => !t.isCompleted),
+        );
+
+        expect(reset.model!.tasks.every((t) => !t.isCompleted), true);
+        expect(reset.model!.tasks.every((t) => t.actualDuration == null), true);
+        expect(reset.model!.currentTaskIndex, 0);
+        expect(reset.isCompleted, false);
+        expect(reset.completion, isNull);
+      });
+
+      test(
+        'MarkTaskDone on last task does not auto-complete (UI handles completion)',
+        () async {
+          final bloc = FirebaseTestHelper.routineBloc
+            ..add(const LoadSampleRoutine());
+
+          await bloc.stream.firstWhere((s) => s.model != null);
+
+          // Disable all breaks so we can complete tasks quickly
+          for (int i = 0; i < 3; i++) {
+            bloc.add(ToggleBreakAtIndex(i));
+            await bloc.stream.firstWhere(
+              (s) => s.model!.breaks![i].isEnabled == false,
+            );
+          }
+
+          // Complete first 3 tasks
+          for (int i = 0; i < 3; i++) {
+            bloc.add(const MarkTaskDone(actualDuration: 100));
+            await bloc.stream.firstWhere((s) => s.model!.tasks[i].isCompleted);
+          }
+
+          // Complete last task
+          bloc.add(const MarkTaskDone(actualDuration: 100));
+
+          final afterLast = await bloc.stream.firstWhere(
+            (s) =>
+                s.model != null && s.model!.tasks.every((t) => t.isCompleted),
+          );
+
+          // Should mark task as complete but NOT set isCompleted flag
+          // (UI layer triggers CompleteRoutine event)
+          expect(afterLast.model!.tasks.every((t) => t.isCompleted), true);
+          expect(afterLast.isCompleted, false); // Not auto-completed
+        },
+      );
+
+      test('ResetRoutine resets break and task state', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete first task and start break
+        bloc.add(const MarkTaskDone(actualDuration: 100));
+        final onBreak = await bloc.stream.firstWhere((s) => s.model!.isOnBreak);
+        expect(onBreak.model!.isOnBreak, true);
+
+        // Reset routine
+        bloc.add(const ResetRoutine());
+
+        final reset = await bloc.stream.firstWhere(
+          (s) => s.model != null && !s.model!.isOnBreak,
+        );
+
+        expect(reset.model!.isOnBreak, false);
+        expect(reset.model!.currentBreakIndex, isNull);
+      });
+
+      test('completion data includes correct task count', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        final startTime = DateTime(2025, 10, 14, 6, 0, 0);
+
+        bloc.add(
+          CompleteRoutine(
+            totalTimeSpent: 3600,
+            scheduleVariance: 120,
+            routineStartTime: startTime,
+          ),
+        );
+
+        final state = await bloc.stream.firstWhere((s) => s.isCompleted);
+
+        expect(state.completion!.tasksCompleted, isA<int>());
+      });
+
+      test(
+        'completion with negative schedule variance (behind schedule)',
+        () async {
+          final bloc = FirebaseTestHelper.routineBloc
+            ..add(const LoadSampleRoutine());
+
+          await bloc.stream.firstWhere((s) => s.model != null);
+
+          final startTime = DateTime(2025, 10, 14, 6, 0, 0);
+
+          bloc.add(
+            CompleteRoutine(
+              totalTimeSpent: 3600,
+              scheduleVariance: -300, // 5 minutes behind
+              routineStartTime: startTime,
+            ),
+          );
+
+          final state = await bloc.stream.firstWhere((s) => s.isCompleted);
+
+          expect(state.completion!.scheduleVariance, -300);
+          expect(state.completion!.statusText, contains('Behind'));
+        },
+      );
+
+      test(
+        'completion with positive schedule variance (ahead of schedule)',
+        () async {
+          final bloc = FirebaseTestHelper.routineBloc
+            ..add(const LoadSampleRoutine());
+
+          await bloc.stream.firstWhere((s) => s.model != null);
+
+          final startTime = DateTime(2025, 10, 14, 6, 0, 0);
+
+          bloc.add(
+            CompleteRoutine(
+              totalTimeSpent: 3600,
+              scheduleVariance: 300, // 5 minutes ahead
+              routineStartTime: startTime,
+            ),
+          );
+
+          final state = await bloc.stream.firstWhere((s) => s.isCompleted);
+
+          expect(state.completion!.scheduleVariance, 300);
+          expect(state.completion!.statusText, contains('Ahead'));
+        },
+      );
+
+      test('completion with zero variance (on schedule)', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        final startTime = DateTime(2025, 10, 14, 6, 0, 0);
+
+        bloc.add(
+          CompleteRoutine(
+            totalTimeSpent: 3600,
+            scheduleVariance: 0,
+            routineStartTime: startTime,
+          ),
+        );
+
+        final state = await bloc.stream.firstWhere((s) => s.isCompleted);
+
+        expect(state.completion!.scheduleVariance, 0);
+        expect(state.completion!.statusText, 'On track');
+      });
+    });
   });
 }

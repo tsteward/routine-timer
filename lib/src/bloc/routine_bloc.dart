@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/break.dart';
+import '../models/routine_completion.dart';
 import '../models/routine_settings.dart';
 import '../models/routine_state.dart';
 import '../models/task.dart';
@@ -34,6 +35,8 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<ReloadRoutineForUser>(_onReloadRoutineForUser);
     on<CompleteBreak>(_onCompleteBreak);
     on<SkipBreak>(_onSkipBreak);
+    on<CompleteRoutine>(_onCompleteRoutine);
+    on<ResetRoutine>(_onResetRoutine);
   }
 
   final RoutineRepository _repository;
@@ -192,6 +195,16 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       isCompleted: true,
       actualDuration: event.actualDuration,
     );
+
+    // Check if this was the last task
+    final allTasksCompleted = updatedTasks.every((task) => task.isCompleted);
+
+    if (allTasksCompleted) {
+      // All tasks are done - don't trigger completion yet, just update state
+      // The UI layer will trigger CompleteRoutine event with timing data
+      emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+      return;
+    }
 
     // Check if there's a break after this task
     final hasBreakAfter =
@@ -503,5 +516,59 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   void _onSkipBreak(SkipBreak event, Emitter<RoutineBlocState> emit) {
     // Skip break is the same as completing it - just move to next task
     _onCompleteBreak(const CompleteBreak(), emit);
+  }
+
+  void _onCompleteRoutine(
+    CompleteRoutine event,
+    Emitter<RoutineBlocState> emit,
+  ) async {
+    final model = state.model;
+    if (model == null) return;
+
+    // Calculate completion statistics
+    final completedTasks = model.tasks.where((task) => task.isCompleted).length;
+
+    final completion = RoutineCompletion(
+      completedAt: DateTime.now(),
+      totalTimeSpent: event.totalTimeSpent,
+      tasksCompleted: completedTasks,
+      scheduleVariance: event.scheduleVariance,
+      routineStartTime: event.routineStartTime,
+      completionId: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    // Save completion data to Firebase
+    await _repository.saveCompletion(completion);
+
+    emit(state.copyWith(completion: completion, isCompleted: true));
+  }
+
+  void _onResetRoutine(ResetRoutine event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Reset all tasks to incomplete and clear actual durations
+    final resetTasks = model.tasks.map((task) {
+      return task.copyWith(isCompleted: false, actualDuration: null);
+    }).toList();
+
+    // Reset to first task
+    final firstTaskId = resetTasks.isNotEmpty ? resetTasks.first.id : null;
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: resetTasks,
+          selectedTaskId: firstTaskId,
+          isOnBreak: false,
+          currentBreakIndex: null,
+        ),
+        completion: null,
+        isCompleted: false,
+      ),
+    );
+
+    // Auto-save after reset
+    add(const SaveRoutineToFirebase());
   }
 }

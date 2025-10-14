@@ -91,6 +91,13 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
           _previousTaskIndex = currentIndex;
           _previousBreakState = isOnBreak;
         }
+
+        // Check if routine is completed and navigate to completion screen
+        if (state.isCompleted && state.completion != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.of(context).pushReplacementNamed(AppRoutes.completion);
+          });
+        }
       },
       builder: (context, state) {
         final model = state.model;
@@ -262,6 +269,58 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                                       actualDuration: actualDuration,
                                     ),
                                   );
+
+                                  // Check if all tasks will be completed after this one
+                                  final bloc = context.read<RoutineBloc>();
+                                  final state = bloc.state;
+                                  if (state.model != null) {
+                                    final tasks = state.model!.tasks;
+                                    final currentIdx =
+                                        state.model!.currentTaskIndex;
+
+                                    // Check if this is the last incomplete task
+                                    final incompleteTasks = tasks
+                                        .where((task) => !task.isCompleted)
+                                        .toList();
+
+                                    if (incompleteTasks.length == 1 &&
+                                        incompleteTasks.first.id ==
+                                            tasks[currentIdx].id) {
+                                      // This is the last task - calculate completion stats
+                                      final totalActualTime =
+                                          tasks
+                                              .map((t) => t.actualDuration ?? 0)
+                                              .fold(0, (a, b) => a + b) +
+                                          actualDuration;
+
+                                      final totalEstimatedTime = tasks
+                                          .map((t) => t.estimatedDuration)
+                                          .fold(0, (a, b) => a + b);
+
+                                      // Add enabled break durations
+                                      if (state.model!.breaks != null) {
+                                        final breakTime = state.model!.breaks!
+                                            .where((b) => b.isEnabled)
+                                            .map((b) => b.duration)
+                                            .fold(0, (a, b) => a + b);
+                                        totalActualTime + breakTime;
+                                      }
+
+                                      final scheduleVariance =
+                                          totalEstimatedTime - totalActualTime;
+
+                                      // Trigger completion
+                                      bloc.add(
+                                        CompleteRoutine(
+                                          totalTimeSpent: totalActualTime,
+                                          scheduleVariance: scheduleVariance,
+                                          routineStartTime:
+                                              _routineStartTime ??
+                                              DateTime.now(),
+                                        ),
+                                      );
+                                    }
+                                  }
                                 },
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
