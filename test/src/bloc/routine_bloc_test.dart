@@ -61,11 +61,17 @@ void main() {
       expect(after.model!.breaks![1].isEnabled, !before);
     });
 
-    test('mark task done completes and advances index', () async {
+    test('mark task done advances when first break is disabled', () async {
       final bloc = FirebaseTestHelper.routineBloc
         ..add(const LoadSampleRoutine());
       final initial = await bloc.stream.firstWhere((s) => s.model != null);
       expect(initial.model!.currentTaskIndex, 0);
+
+      // Disable the first break so completion advances to the next task
+      bloc.add(const ToggleBreakAtIndex(0));
+      await bloc.stream.firstWhere(
+        (s) => s.model!.breaks![0].isEnabled == false,
+      );
 
       bloc.add(const MarkTaskDone(actualDuration: 30));
       final updated = await bloc.stream.firstWhere(

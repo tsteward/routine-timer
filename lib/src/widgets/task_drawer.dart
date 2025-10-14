@@ -32,21 +32,25 @@ class TaskDrawer extends StatelessWidget {
       return []; // No upcoming items
     }
 
-    // Determine how many items to show
-    final maxItems = isExpanded ? totalTasks - startIndex : 4;
-
-    for (int i = startIndex; i < totalTasks && items.length < maxItems; i++) {
-      // Add task
-      items.add(_UpcomingItem.task(routineState.tasks[i]));
-
-      // Add break after task if applicable
-      if (i < totalTasks - 1 &&
-          routineState.breaks != null &&
-          i < routineState.breaks!.length) {
-        final breakItem = routineState.breaks![i];
-        if (breakItem.isEnabled) {
-          items.add(_UpcomingItem.breakItem(breakItem));
+    if (isExpanded) {
+      // Expanded: show all remaining tasks and interleave enabled breaks
+      for (int i = startIndex; i < totalTasks; i++) {
+        items.add(_UpcomingItem.task(routineState.tasks[i]));
+        if (i < totalTasks - 1 &&
+            routineState.breaks != null &&
+            i < routineState.breaks!.length) {
+          final breakItem = routineState.breaks![i];
+          if (breakItem.isEnabled) {
+            items.add(_UpcomingItem.breakItem(breakItem));
+          }
         }
+      }
+    } else {
+      // Collapsed: show only the next 3 tasks (no breaks)
+      int shown = 0;
+      for (int i = startIndex; i < totalTasks && shown < 3; i++) {
+        items.add(_UpcomingItem.task(routineState.tasks[i]));
+        shown++;
       }
     }
 
@@ -114,7 +118,11 @@ class TaskDrawer extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Header with toggle link
-                    _buildHeader(theme, colorScheme),
+                    _buildHeader(
+                      theme,
+                      colorScheme,
+                      showLabel: isExpanded || _completedTasks.isEmpty,
+                    ),
 
                     // Content based on state
                     if (isExpanded)
@@ -138,7 +146,11 @@ class TaskDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildHeader(
+    ThemeData theme,
+    ColorScheme colorScheme, {
+    required bool showLabel,
+  }) {
     return GestureDetector(
       onTap: onToggleExpanded,
       child: Container(
@@ -147,13 +159,15 @@ class TaskDrawer extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Up Next',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
-              ),
-            ),
+            showLabel
+                ? Text(
+                    'Up Next',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  )
+                : const SizedBox.shrink(),
             Text(
               isExpanded ? 'Show Less' : 'Show More',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -199,16 +213,6 @@ class TaskDrawer extends StatelessWidget {
         children: [
           // Upcoming Items Section (tasks + breaks)
           if (upcomingItems.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Text(
-                'Up Next',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-            ),
             SizedBox(
               height: 80,
               child: ListView.builder(
@@ -270,30 +274,36 @@ class TaskDrawer extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.coffee, size: 16, color: Colors.green.shade700),
-              const SizedBox(width: 4),
-              Text(
-                'Break',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green.shade700,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.coffee, size: 16, color: Colors.green.shade700),
+                const SizedBox(width: 4),
+                Text(
+                  'Break',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green.shade700,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            TimeFormatter.formatDuration(breakModel.duration),
-            style: TextStyle(fontSize: 12, color: Colors.green.shade600),
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              TimeFormatter.formatDuration(breakModel.duration),
+              style: TextStyle(fontSize: 12, color: Colors.green.shade600),
+            ),
+          ],
+        ),
       ),
     );
   }
