@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/routine_completion.dart';
 import '../models/routine_state.dart';
 import '../services/auth_service.dart';
 
@@ -16,6 +17,9 @@ class RoutineRepository {
 
   /// Collection name for routines in Firestore
   static const String _routinesCollection = 'routines';
+
+  /// Collection name for routine completions (history)
+  static const String _completionsCollection = 'completions';
 
   /// Reference to the current user's routine document
   /// Returns null if user is not signed in
@@ -107,5 +111,80 @@ class RoutineRepository {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Saves a routine completion to the user's completion history.
+  /// Each completion is stored as a separate document in a subcollection.
+  /// Returns true if successful, false otherwise.
+  Future<bool> saveCompletion(RoutineCompletion completion) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return false;
+      }
+
+      // Store in user's completions subcollection with timestamp as doc ID
+      final completionId = completion.completedAt.toString();
+      await _firestore
+          .collection(_routinesCollection)
+          .doc(userId)
+          .collection(_completionsCollection)
+          .doc(completionId)
+          .set(completion.toMap());
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Loads the most recent routine completions for the current user.
+  /// Returns a list of completions ordered by most recent first.
+  /// [limit] specifies the maximum number of completions to retrieve.
+  Future<List<RoutineCompletion>> loadRecentCompletions({
+    int limit = 10,
+  }) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return [];
+      }
+
+      final snapshot = await _firestore
+          .collection(_routinesCollection)
+          .doc(userId)
+          .collection(_completionsCollection)
+          .orderBy('completedAt', descending: true)
+          .limit(limit)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => RoutineCompletion.fromMap(doc.data()))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Stream of recent routine completions for real-time updates.
+  /// [limit] specifies the maximum number of completions to retrieve.
+  Stream<List<RoutineCompletion>> watchRecentCompletions({int limit = 10}) {
+    final userId = _authService.currentUserId;
+    if (userId == null) {
+      return Stream.value([]);
+    }
+
+    return _firestore
+        .collection(_routinesCollection)
+        .doc(userId)
+        .collection(_completionsCollection)
+        .orderBy('completedAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => RoutineCompletion.fromMap(doc.data()))
+              .toList();
+        });
   }
 }
