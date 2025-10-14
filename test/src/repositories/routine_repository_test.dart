@@ -1,6 +1,7 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:routine_timer/src/models/routine_completion.dart';
 import 'package:routine_timer/src/models/routine_settings.dart';
 import 'package:routine_timer/src/models/routine_state.dart';
 import 'package:routine_timer/src/models/task.dart';
@@ -178,6 +179,177 @@ void main() {
       expect(loaded2!.tasks[0].name, 'User 2 Task');
       expect(loaded1.tasks[0].estimatedDuration, 300);
       expect(loaded2.tasks[0].estimatedDuration, 600);
+    });
+
+    group('Routine Completion', () {
+      test('saveCompletion stores completion data in Firestore', () async {
+        final completion = RoutineCompletion(
+          completedAt: DateTime(2025, 10, 14, 9, 30),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleStatus: 'ahead',
+          scheduleVarianceSeconds: -120,
+        );
+
+        final result = await repository.saveCompletion(completion);
+
+        expect(result, isTrue);
+
+        // Verify data was saved
+        final history = await repository.loadCompletionHistory();
+        expect(history.length, 1);
+        expect(history[0].totalTimeSpent, 3600);
+        expect(history[0].tasksCompleted, 5);
+        expect(history[0].scheduleStatus, 'ahead');
+        expect(history[0].scheduleVarianceSeconds, -120);
+      });
+
+      test('loadCompletionHistory returns empty list when no data', () async {
+        final history = await repository.loadCompletionHistory();
+        expect(history, isEmpty);
+      });
+
+      test('loadCompletionHistory returns multiple completions', () async {
+        final completion1 = RoutineCompletion(
+          completedAt: DateTime(2025, 10, 14, 9, 0),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleStatus: 'ahead',
+          scheduleVarianceSeconds: -120,
+        );
+
+        final completion2 = RoutineCompletion(
+          completedAt: DateTime(2025, 10, 15, 9, 0),
+          totalTimeSpent: 3800,
+          tasksCompleted: 5,
+          scheduleStatus: 'behind',
+          scheduleVarianceSeconds: 200,
+        );
+
+        final completion3 = RoutineCompletion(
+          completedAt: DateTime(2025, 10, 16, 9, 0),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleStatus: 'on-track',
+          scheduleVarianceSeconds: 0,
+        );
+
+        await repository.saveCompletion(completion1);
+        await repository.saveCompletion(completion2);
+        await repository.saveCompletion(completion3);
+
+        final history = await repository.loadCompletionHistory();
+
+        expect(history.length, 3);
+        // Should be ordered by completedAt descending (most recent first)
+        expect(history[0].completedAt.day, 16);
+        expect(history[1].completedAt.day, 15);
+        expect(history[2].completedAt.day, 14);
+      });
+
+      test('loadCompletionHistory respects limit parameter', () async {
+        // Save 5 completions
+        for (int i = 0; i < 5; i++) {
+          final completion = RoutineCompletion(
+            completedAt: DateTime(2025, 10, 14 + i, 9, 0),
+            totalTimeSpent: 3600,
+            tasksCompleted: 5,
+            scheduleStatus: 'ahead',
+            scheduleVarianceSeconds: -120,
+          );
+          await repository.saveCompletion(completion);
+        }
+
+        final history = await repository.loadCompletionHistory(limit: 3);
+
+        expect(history.length, 3);
+      });
+
+      test('saveCompletion fails when user not signed in', () async {
+        final unauthRepo = RoutineRepository(
+          firestore: fakeFirestore,
+          authService: AuthService(auth: MockFirebaseAuth(signedIn: false)),
+        );
+
+        final completion = RoutineCompletion(
+          completedAt: DateTime(2025, 10, 14, 9, 30),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleStatus: 'ahead',
+          scheduleVarianceSeconds: -120,
+        );
+
+        final result = await unauthRepo.saveCompletion(completion);
+        expect(result, isFalse);
+      });
+
+      test(
+        'loadCompletionHistory returns empty when user not signed in',
+        () async {
+          final unauthRepo = RoutineRepository(
+            firestore: fakeFirestore,
+            authService: AuthService(auth: MockFirebaseAuth(signedIn: false)),
+          );
+
+          final history = await unauthRepo.loadCompletionHistory();
+          expect(history, isEmpty);
+        },
+      );
+
+      test('different users have separate completion history', () async {
+        // User 1
+        final mockAuth1 = MockFirebaseAuth(
+          signedIn: true,
+          mockUser: MockUser(uid: 'user1'),
+        );
+        final authService1 = AuthService(auth: mockAuth1);
+        final repo1 = RoutineRepository(
+          firestore: fakeFirestore,
+          authService: authService1,
+        );
+
+        // User 2
+        final mockAuth2 = MockFirebaseAuth(
+          signedIn: true,
+          mockUser: MockUser(uid: 'user2'),
+        );
+        final authService2 = AuthService(auth: mockAuth2);
+        final repo2 = RoutineRepository(
+          firestore: fakeFirestore,
+          authService: authService2,
+        );
+
+        // Save completion for user 1
+        final completion1 = RoutineCompletion(
+          completedAt: DateTime(2025, 10, 14, 9, 0),
+          totalTimeSpent: 3600,
+          tasksCompleted: 5,
+          scheduleStatus: 'ahead',
+          scheduleVarianceSeconds: -120,
+        );
+        await repo1.saveCompletion(completion1);
+
+        // Save completion for user 2
+        final completion2 = RoutineCompletion(
+          completedAt: DateTime(2025, 10, 14, 10, 0),
+          totalTimeSpent: 4000,
+          tasksCompleted: 6,
+          scheduleStatus: 'behind',
+          scheduleVarianceSeconds: 200,
+        );
+        await repo2.saveCompletion(completion2);
+
+        // Load history for each user and verify separation
+        final history1 = await repo1.loadCompletionHistory();
+        final history2 = await repo2.loadCompletionHistory();
+
+        expect(history1.length, 1);
+        expect(history2.length, 1);
+        expect(history1[0].totalTimeSpent, 3600);
+        expect(history2[0].totalTimeSpent, 4000);
+        expect(history1[0].tasksCompleted, 5);
+        expect(history2[0].tasksCompleted, 6);
+      });
     });
   });
 }

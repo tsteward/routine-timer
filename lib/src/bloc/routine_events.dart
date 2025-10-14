@@ -131,3 +131,22 @@ class CompleteBreak extends RoutineEvent {
 class SkipBreak extends RoutineEvent {
   const SkipBreak();
 }
+
+/// Complete the entire routine and save completion data
+class CompleteRoutine extends RoutineEvent {
+  const CompleteRoutine({
+    required this.totalTimeSpent,
+    required this.scheduleVarianceSeconds,
+  });
+
+  final int totalTimeSpent;
+  final int scheduleVarianceSeconds;
+
+  @override
+  List<Object?> get props => [totalTimeSpent, scheduleVarianceSeconds];
+}
+
+/// Reset the routine to start over
+class ResetRoutine extends RoutineEvent {
+  const ResetRoutine();
+}

@@ -1187,5 +1187,104 @@ void main() {
         expect(decoded.currentBreak!.duration, 30);
       });
     });
+
+    group('Routine Completion', () {
+      test('CompleteRoutine event is handled', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete the routine
+        bloc.add(
+          const CompleteRoutine(
+            totalTimeSpent: 3600,
+            scheduleVarianceSeconds: -120,
+          ),
+        );
+
+        // Wait a bit for the event to be processed
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Verify event was processed (completion is saved in background)
+        // The state itself doesn't change, but we can verify no errors occurred
+        expect(bloc.state.model, isNotNull);
+      });
+
+      test('ResetRoutine clears all task completion states', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete some tasks
+        bloc.add(const MarkTaskDone(actualDuration: 100));
+        await bloc.stream.firstWhere((s) => s.model!.tasks[0].isCompleted);
+
+        // Skip break and complete second task
+        bloc.add(const SkipBreak());
+        await bloc.stream.firstWhere((s) => !s.model!.isOnBreak);
+
+        bloc.add(const MarkTaskDone(actualDuration: 150));
+        await bloc.stream.firstWhere((s) => s.model!.tasks[1].isCompleted);
+
+        // Reset routine
+        bloc.add(const ResetRoutine());
+        final reset = await bloc.stream.firstWhere(
+          (s) => s.model!.tasks.every((t) => !t.isCompleted),
+        );
+
+        // Verify all tasks are reset
+        expect(reset.model!.tasks.every((t) => !t.isCompleted), true);
+        expect(reset.model!.tasks.every((t) => t.actualDuration == null), true);
+        expect(reset.model!.currentTaskIndex, 0);
+        expect(reset.model!.isOnBreak, false);
+        expect(reset.model!.currentBreakIndex, null);
+      });
+
+      test('ResetRoutine returns to first task', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        final initial = await bloc.stream.firstWhere((s) => s.model != null);
+        final firstTaskId = initial.model!.tasks.first.id;
+
+        // Navigate to a different task
+        final thirdTaskId = initial.model!.tasks[2].id;
+        bloc.add(SelectTask(thirdTaskId));
+        await bloc.stream.firstWhere(
+          (s) => s.model!.selectedTaskId == thirdTaskId,
+        );
+
+        // Reset routine
+        bloc.add(const ResetRoutine());
+        final reset = await bloc.stream.firstWhere(
+          (s) => s.model!.selectedTaskId == firstTaskId,
+        );
+
+        expect(reset.model!.currentTaskIndex, 0);
+        expect(reset.model!.selectedTaskId, firstTaskId);
+      });
+
+      test('ResetRoutine with no tasks handles gracefully', () async {
+        final bloc = RoutineBloc();
+
+        // Create state with empty tasks
+        final emptyState = RoutineStateModel(
+          tasks: const [],
+          settings: RoutineSettingsModel(
+            startTime: 0,
+            breaksEnabledByDefault: false,
+            defaultBreakDuration: 0,
+          ),
+        );
+
+        bloc.emit(RoutineBlocState(loading: false, model: emptyState));
+
+        // Reset should handle empty tasks gracefully
+        bloc.add(const ResetRoutine());
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        expect(bloc.state.model!.tasks, isEmpty);
+        expect(bloc.state.model!.selectedTaskId, isNull);
+      });
+    });
   });
 }

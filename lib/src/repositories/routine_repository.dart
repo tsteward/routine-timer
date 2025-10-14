@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/routine_completion.dart';
 import '../models/routine_state.dart';
 import '../services/auth_service.dart';
 
@@ -16,6 +17,9 @@ class RoutineRepository {
 
   /// Collection name for routines in Firestore
   static const String _routinesCollection = 'routines';
+
+  /// Collection name for routine completions in Firestore
+  static const String _completionsCollection = 'routine_completions';
 
   /// Reference to the current user's routine document
   /// Returns null if user is not signed in
@@ -106,6 +110,56 @@ class RoutineRepository {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Saves completion data to Firestore for analytics
+  /// Creates a new document in the completions subcollection
+  Future<bool> saveCompletion(RoutineCompletion completion) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return false;
+      }
+
+      // Store completions in a subcollection under the user's document
+      await _firestore
+          .collection(_completionsCollection)
+          .doc(userId)
+          .collection('history')
+          .add(completion.toMap());
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Loads completion history for the current user
+  Future<List<RoutineCompletion>> loadCompletionHistory({int? limit}) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return [];
+      }
+
+      var query = _firestore
+          .collection(_completionsCollection)
+          .doc(userId)
+          .collection('history')
+          .orderBy('completedAt', descending: true);
+
+      if (limit != null) {
+        query = query.limit(limit);
+      }
+
+      final snapshot = await query.get();
+
+      return snapshot.docs
+          .map((doc) => RoutineCompletion.fromMap(doc.data()))
+          .toList();
+    } catch (e) {
+      return [];
     }
   }
 }

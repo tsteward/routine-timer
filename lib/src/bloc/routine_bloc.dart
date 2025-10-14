@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/break.dart';
+import '../models/routine_completion.dart';
 import '../models/routine_settings.dart';
 import '../models/routine_state.dart';
 import '../models/task.dart';
@@ -34,6 +35,8 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<ReloadRoutineForUser>(_onReloadRoutineForUser);
     on<CompleteBreak>(_onCompleteBreak);
     on<SkipBreak>(_onSkipBreak);
+    on<CompleteRoutine>(_onCompleteRoutine);
+    on<ResetRoutine>(_onResetRoutine);
   }
 
   final RoutineRepository _repository;
@@ -503,5 +506,69 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   void _onSkipBreak(SkipBreak event, Emitter<RoutineBlocState> emit) {
     // Skip break is the same as completing it - just move to next task
     _onCompleteBreak(const CompleteBreak(), emit);
+  }
+
+  void _onCompleteRoutine(
+    CompleteRoutine event,
+    Emitter<RoutineBlocState> emit,
+  ) async {
+    final model = state.model;
+    if (model == null) return;
+
+    // Determine schedule status
+    String scheduleStatus;
+    if (event.scheduleVarianceSeconds > 60) {
+      scheduleStatus = 'ahead';
+    } else if (event.scheduleVarianceSeconds < -60) {
+      scheduleStatus = 'behind';
+    } else {
+      scheduleStatus = 'on-track';
+    }
+
+    // Count completed tasks
+    final completedCount = model.tasks.where((task) => task.isCompleted).length;
+
+    // Create completion record
+    final completion = RoutineCompletion(
+      completedAt: DateTime.now(),
+      totalTimeSpent: event.totalTimeSpent,
+      tasksCompleted: completedCount,
+      scheduleStatus: scheduleStatus,
+      scheduleVarianceSeconds: event.scheduleVarianceSeconds,
+    );
+
+    // Save completion data to Firebase
+    await _repository.saveCompletion(completion);
+
+    // Mark the state as completed (we'll add this to RoutineStateModel if needed)
+    // For now, the completion screen will handle displaying the data
+  }
+
+  void _onResetRoutine(ResetRoutine event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Reset all tasks to incomplete with no actual duration
+    final resetTasks = model.tasks.map((task) {
+      return task.copyWith(isCompleted: false, actualDuration: null);
+    }).toList();
+
+    // Reset to first task
+    final firstTaskId = resetTasks.isNotEmpty ? resetTasks.first.id : null;
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: resetTasks,
+          selectedTaskId: firstTaskId,
+          isRunning: false,
+          isOnBreak: false,
+          currentBreakIndex: null,
+        ),
+      ),
+    );
+
+    // Save the reset state
+    add(const SaveRoutineToFirebase());
   }
 }

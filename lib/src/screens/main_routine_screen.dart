@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../app_theme.dart';
 import '../bloc/routine_bloc.dart';
+import '../models/routine_completion.dart';
 import '../models/routine_state.dart';
 import '../router/app_router.dart';
 import '../widgets/task_drawer.dart';
@@ -77,6 +78,82 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
     return '$sign${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
+  /// Checks if all tasks in the routine are completed
+  bool _isRoutineComplete(RoutineStateModel model) {
+    if (model.tasks.isEmpty) return false;
+    return model.tasks.every((task) => task.isCompleted);
+  }
+
+  /// Handles routine completion by calculating stats and navigating to completion screen
+  void _handleRoutineCompletion(BuildContext context, RoutineStateModel model) {
+    // Calculate total time spent
+    int totalTimeSpent = 0;
+    for (final task in model.tasks) {
+      if (task.actualDuration != null) {
+        totalTimeSpent += task.actualDuration!;
+      }
+    }
+
+    // Calculate schedule variance
+    int expectedTime = 0;
+    int actualTime = 0;
+
+    for (int i = 0; i < model.tasks.length; i++) {
+      final task = model.tasks[i];
+      expectedTime += task.estimatedDuration;
+
+      if (task.actualDuration != null) {
+        actualTime += task.actualDuration!;
+      }
+
+      // Add break time if there's an enabled break after this task
+      if (model.breaks != null &&
+          i < model.breaks!.length &&
+          model.breaks![i].isEnabled) {
+        final breakDuration = model.breaks![i].duration;
+        expectedTime += breakDuration;
+        actualTime += breakDuration; // Assume breaks took estimated time
+      }
+    }
+
+    final scheduleVarianceSeconds = actualTime - expectedTime;
+
+    // Dispatch complete routine event
+    context.read<RoutineBloc>().add(
+      CompleteRoutine(
+        totalTimeSpent: totalTimeSpent,
+        scheduleVarianceSeconds: scheduleVarianceSeconds,
+      ),
+    );
+
+    // Create completion object and navigate
+    String scheduleStatus;
+    if (scheduleVarianceSeconds > 60) {
+      scheduleStatus = 'behind';
+    } else if (scheduleVarianceSeconds < -60) {
+      scheduleStatus = 'ahead';
+    } else {
+      scheduleStatus = 'on-track';
+    }
+
+    final completion = RoutineCompletion(
+      completedAt: DateTime.now(),
+      totalTimeSpent: totalTimeSpent,
+      tasksCompleted: model.tasks.length,
+      scheduleStatus: scheduleStatus,
+      scheduleVarianceSeconds: scheduleVarianceSeconds,
+    );
+
+    // Use post frame callback to ensure navigation happens after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) {
+        Navigator.of(
+          context,
+        ).pushReplacementNamed(AppRoutes.completion, arguments: completion);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<RoutineBloc, RoutineBlocState>(
@@ -90,6 +167,11 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
           _resetTimer();
           _previousTaskIndex = currentIndex;
           _previousBreakState = isOnBreak;
+        }
+
+        // Check for routine completion
+        if (state.model != null && _isRoutineComplete(state.model!)) {
+          _handleRoutineCompletion(context, state.model!);
         }
       },
       builder: (context, state) {
