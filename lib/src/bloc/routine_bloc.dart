@@ -574,8 +574,17 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     if (model == null) return;
 
     // Reset all tasks to uncompleted state
+    // Note: We create new TaskModel instances instead of using copyWith
+    // because copyWith can't distinguish between "null" and "not provided"
     final resetTasks = model.tasks.map((task) {
-      return task.copyWith(isCompleted: false, actualDuration: null);
+      return TaskModel(
+        id: task.id,
+        name: task.name,
+        estimatedDuration: task.estimatedDuration,
+        actualDuration: null, // Explicitly set to null
+        isCompleted: false,
+        order: task.order,
+      );
     }).toList();
 
     // Reset to first task

@@ -1,5 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/models/break.dart';
@@ -13,12 +14,15 @@ import 'package:routine_timer/src/services/auth_service.dart';
 void main() {
   group('RoutineBloc - Completion Logic', () {
     late FakeFirebaseFirestore fakeFirestore;
+    late MockFirebaseAuth mockAuth;
+    late AuthService authService;
     late RoutineRepository repository;
     late RoutineBloc bloc;
 
     setUp(() {
       fakeFirestore = FakeFirebaseFirestore();
-      final authService = AuthService();
+      mockAuth = MockFirebaseAuth(signedIn: true);
+      authService = AuthService(auth: mockAuth);
       repository = RoutineRepository(
         firestore: fakeFirestore,
         authService: authService,
@@ -86,7 +90,16 @@ void main() {
 
     blocTest<RoutineBloc, RoutineBlocState>(
       'CompleteRoutine should calculate completion statistics correctly',
-      build: () => bloc,
+      build: () {
+        final freshFirestore = FakeFirebaseFirestore();
+        final freshAuth = MockFirebaseAuth(signedIn: true);
+        final freshAuthService = AuthService(auth: freshAuth);
+        final freshRepository = RoutineRepository(
+          firestore: freshFirestore,
+          authService: freshAuthService,
+        );
+        return RoutineBloc(repository: freshRepository);
+      },
       seed: () {
         final tasks = [
           const TaskModel(
@@ -140,7 +153,16 @@ void main() {
 
     blocTest<RoutineBloc, RoutineBlocState>(
       'CompleteRoutine should handle behind schedule correctly',
-      build: () => bloc,
+      build: () {
+        final freshFirestore = FakeFirebaseFirestore();
+        final freshAuth = MockFirebaseAuth(signedIn: true);
+        final freshAuthService = AuthService(auth: freshAuth);
+        final freshRepository = RoutineRepository(
+          firestore: freshFirestore,
+          authService: freshAuthService,
+        );
+        return RoutineBloc(repository: freshRepository);
+      },
       seed: () {
         final tasks = [
           const TaskModel(
@@ -178,7 +200,16 @@ void main() {
 
     blocTest<RoutineBloc, RoutineBlocState>(
       'ResetRoutine should reset all tasks and completion state',
-      build: () => bloc,
+      build: () {
+        final freshFirestore = FakeFirebaseFirestore();
+        final freshAuth = MockFirebaseAuth(signedIn: true);
+        final freshAuthService = AuthService(auth: freshAuth);
+        final freshRepository = RoutineRepository(
+          firestore: freshFirestore,
+          authService: freshAuthService,
+        );
+        return RoutineBloc(repository: freshRepository);
+      },
       seed: () {
         final tasks = [
           const TaskModel(

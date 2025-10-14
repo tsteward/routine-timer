@@ -34,12 +34,12 @@ void main() {
     });
 
     Widget createWidgetUnderTest() {
-      return MaterialApp(
-        home: BlocProvider<RoutineBloc>.value(
-          value: mockBloc!,
-          child: const RoutineCompletionScreen(),
+      return BlocProvider<RoutineBloc>.value(
+        value: mockBloc!,
+        child: MaterialApp(
+          home: const RoutineCompletionScreen(),
+          onGenerateRoute: (settings) => AppRouter().onGenerateRoute(settings),
         ),
-        onGenerateRoute: (settings) => AppRouter().onGenerateRoute(settings),
       );
     }
 
