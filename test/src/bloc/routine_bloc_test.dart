@@ -13,12 +13,12 @@ void main() {
     setUp(() {
       FirebaseTestHelper.reset();
     });
-    test('loads sample routine with 4 tasks', () async {
+    test('loads sample routine with 14 tasks', () async {
       final bloc = FirebaseTestHelper.routineBloc;
       bloc.add(const LoadSampleRoutine());
 
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
-      expect(loaded.model!.tasks.length, 4);
+      expect(loaded.model!.tasks.length, 14);
       expect(loaded.model!.currentTaskIndex, 0); // Should still work via getter
       expect(
         loaded.model!.selectedTaskId,
@@ -101,7 +101,7 @@ void main() {
       expect(updated.model!.tasks[2].id, beforeFirst);
       // Ensure orders are 0..n-1
       final orders = updated.model!.tasks.map((t) => t.order).toList();
-      expect(orders, [0, 1, 2, 3]);
+      expect(orders, List.generate(14, (i) => i));
     });
 
     test('previous task goes back safely', () async {
@@ -144,7 +144,7 @@ void main() {
 
       // Test moving last item to first position
       final lastTaskId = loaded.model!.tasks.last.id;
-      bloc.add(const ReorderTasks(oldIndex: 3, newIndex: 0));
+      bloc.add(const ReorderTasks(oldIndex: 13, newIndex: 0));
       final updated = await bloc.stream.firstWhere(
         (s) => s.model!.tasks.first.id == lastTaskId,
       );
@@ -154,7 +154,7 @@ void main() {
 
       // Verify all orders are sequential
       final orders = updated.model!.tasks.map((t) => t.order).toList();
-      expect(orders, [0, 1, 2, 3]);
+      expect(orders, List.generate(14, (i) => i));
     });
 
     test('reorder tasks handles same position (no-op)', () async {
@@ -199,7 +199,7 @@ void main() {
       final originalTask = loaded.model!.tasks[0];
 
       // Move first task to last position
-      bloc.add(const ReorderTasks(oldIndex: 0, newIndex: 3));
+      bloc.add(const ReorderTasks(oldIndex: 0, newIndex: 13));
       final updated = await bloc.stream.firstWhere(
         (s) => s.model!.tasks.last.id == originalTask.id,
       );
@@ -212,7 +212,7 @@ void main() {
       expect(movedTask.estimatedDuration, originalTask.estimatedDuration);
       expect(movedTask.actualDuration, originalTask.actualDuration);
       expect(movedTask.isCompleted, originalTask.isCompleted);
-      expect(movedTask.order, 3); // Only order should change
+      expect(movedTask.order, 13); // Only order should change
     });
 
     test('multiple reorders maintain consistency', () async {
@@ -234,7 +234,7 @@ void main() {
 
       // Verify final order values are still sequential
       final orders = finalState.model!.tasks.map((t) => t.order).toList();
-      expect(orders, [0, 1, 2, 3]);
+      expect(orders, List.generate(14, (i) => i));
 
       // Verify no duplicate orders
       final uniqueOrders = orders.toSet();
@@ -330,12 +330,12 @@ void main() {
 
       bloc.add(const DuplicateTask(1));
       final updated = await bloc.stream.firstWhere(
-        (s) => s.model!.tasks.length == 5,
+        (s) => s.model!.tasks.length == 15,
       );
 
       // Verify all orders are sequential
       final orders = updated.model!.tasks.map((t) => t.order).toList();
-      expect(orders, [0, 1, 2, 3, 4]);
+      expect(orders, List.generate(15, (i) => i));
     });
 
     test('delete task removes task at index', () async {
@@ -378,12 +378,12 @@ void main() {
 
       bloc.add(const DeleteTask(1));
       final updated = await bloc.stream.firstWhere(
-        (s) => s.model!.tasks.length == 3,
+        (s) => s.model!.tasks.length == 13,
       );
 
       // Verify all orders are sequential
       final orders = updated.model!.tasks.map((t) => t.order).toList();
-      expect(orders, [0, 1, 2]);
+      expect(orders, List.generate(13, (i) => i));
     });
 
     test('delete task prevents deleting last task', () async {
@@ -392,6 +392,26 @@ void main() {
       await bloc.stream.firstWhere((s) => s.model != null);
 
       // Delete tasks until only one remains
+      bloc.add(const DeleteTask(13));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 13);
+      bloc.add(const DeleteTask(12));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 12);
+      bloc.add(const DeleteTask(11));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 11);
+      bloc.add(const DeleteTask(10));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 10);
+      bloc.add(const DeleteTask(9));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 9);
+      bloc.add(const DeleteTask(8));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 8);
+      bloc.add(const DeleteTask(7));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 7);
+      bloc.add(const DeleteTask(6));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 6);
+      bloc.add(const DeleteTask(5));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 5);
+      bloc.add(const DeleteTask(4));
+      await bloc.stream.firstWhere((s) => s.model!.tasks.length == 4);
       bloc.add(const DeleteTask(3));
       await bloc.stream.firstWhere((s) => s.model!.tasks.length == 3);
       bloc.add(const DeleteTask(2));
@@ -416,19 +436,19 @@ void main() {
       final loaded = await bloc.stream.firstWhere((s) => s.model != null);
 
       // Select last task
-      final lastTask = loaded.model!.tasks[3];
+      final lastTask = loaded.model!.tasks[13];
       bloc.add(SelectTask(lastTask.id));
-      await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 3);
+      await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 13);
 
       // Delete the last task
-      bloc.add(const DeleteTask(3));
+      bloc.add(const DeleteTask(13));
       final updated = await bloc.stream.firstWhere(
-        (s) => s.model!.currentTaskIndex == 2,
+        (s) => s.model!.currentTaskIndex == 12,
       );
 
       // Current index should adjust to remain valid, and a different task should be selected
-      expect(updated.model!.currentTaskIndex, 2);
-      expect(updated.model!.tasks.length, 3);
+      expect(updated.model!.currentTaskIndex, 12);
+      expect(updated.model!.tasks.length, 13);
       expect(
         updated.model!.selectedTaskId,
         isNot(lastTask.id),
@@ -865,16 +885,19 @@ void main() {
         expect(selected.model!.selectedTask?.name, selectedTaskName);
         expect(selected.model!.currentTaskIndex, 1);
 
-        // Reorder: move selected task from index 1 to index 3 (last position)
-        bloc.add(const ReorderTasks(oldIndex: 1, newIndex: 3));
+        // Reorder: move selected task from index 1 to index 13 (last position)
+        bloc.add(const ReorderTasks(oldIndex: 1, newIndex: 13));
         final reordered = await bloc.stream.firstWhere(
-          (s) => s.model!.tasks[3].id == selectedTaskId,
+          (s) => s.model!.tasks[13].id == selectedTaskId,
         );
 
         // CRITICAL: The same task should still be selected even though it moved
         expect(reordered.model!.selectedTask?.id, selectedTaskId);
         expect(reordered.model!.selectedTask?.name, selectedTaskName);
-        expect(reordered.model!.currentTaskIndex, 3); // New index after reorder
+        expect(
+          reordered.model!.currentTaskIndex,
+          13,
+        ); // New index after reorder
         expect(
           reordered.model!.selectedTaskId,
           selectedTaskId,

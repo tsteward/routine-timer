@@ -78,10 +78,10 @@ void main() {
       // Should show task list
       expect(find.byType(ReorderableListView), findsOneWidget);
       // Tasks will appear in both left column and right column (in text field)
-      expect(find.text('Morning Workout'), findsAtLeastNWidgets(1));
-      expect(find.text('Shower'), findsAtLeastNWidgets(1));
-      expect(find.text('Breakfast'), findsAtLeastNWidgets(1));
-      expect(find.text('Review Plan'), findsAtLeastNWidgets(1));
+      expect(find.text('Wake up'), findsAtLeastNWidgets(1));
+      expect(find.text('Prayer'), findsAtLeastNWidgets(1));
+      expect(find.text('Shower - Gather Clothes'), findsAtLeastNWidgets(1));
+      expect(find.text('Cook'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('displays task durations correctly', (tester) async {
@@ -101,10 +101,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check durations are displayed
-      expect(find.text('20 min'), findsOneWidget); // Morning Workout
-      expect(find.text('10 min'), findsOneWidget); // Shower
-      expect(find.text('15 min'), findsOneWidget); // Breakfast
-      expect(find.text('5 min'), findsOneWidget); // Review Plan
+      expect(
+        find.text('2 min'),
+        findsAtLeastNWidgets(1),
+      ); // Wake up and other 2-min tasks
+      expect(find.text('5 min'), findsAtLeastNWidgets(1)); // Prayer and Shave
+      expect(find.text('15 min'), findsOneWidget); // Cook
+      expect(find.text('20 min'), findsOneWidget); // Eat
     });
 
     testWidgets('displays drag handles', (tester) async {
@@ -123,8 +126,8 @@ void main() {
       bloc.add(const LoadSampleRoutine());
       await tester.pumpAndSettle();
 
-      // Should have drag handles
-      expect(find.byIcon(Icons.drag_handle), findsNWidgets(4));
+      // Should have drag handles (one for each of the 14 tasks)
+      expect(find.byIcon(Icons.drag_handle), findsNWidgets(14));
     });
 
     testWidgets('handles task selection', (tester) async {
@@ -143,8 +146,8 @@ void main() {
       bloc.add(const LoadSampleRoutine());
       await tester.pumpAndSettle();
 
-      // Tap on second task
-      await tester.tap(find.text('Shower'));
+      // Tap on second task (Prayer)
+      await tester.tap(find.text('Prayer').first);
       await tester.pumpAndSettle();
 
       // Verify selection changed

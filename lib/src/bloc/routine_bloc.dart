@@ -39,31 +39,91 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
     emit(state.copyWith(loading: true));
 
-    // Simple hard-coded sample data for development.
+    // Default daily activity schedule
     final tasks = <TaskModel>[
       const TaskModel(
         id: '1',
-        name: 'Morning Workout',
-        estimatedDuration: 20 * 60,
+        name: 'Wake up',
+        estimatedDuration: 2 * 60,
         order: 0,
       ),
       const TaskModel(
         id: '2',
-        name: 'Shower',
-        estimatedDuration: 10 * 60,
+        name: 'Prayer',
+        estimatedDuration: 5 * 60,
         order: 1,
       ),
       const TaskModel(
         id: '3',
-        name: 'Breakfast',
-        estimatedDuration: 15 * 60,
+        name: 'Shower - Gather Clothes',
+        estimatedDuration: 2 * 60,
         order: 2,
       ),
       const TaskModel(
         id: '4',
-        name: 'Review Plan',
-        estimatedDuration: 5 * 60,
+        name: 'Shower - Undress & Get In',
+        estimatedDuration: 1 * 60,
         order: 3,
+      ),
+      const TaskModel(
+        id: '5',
+        name: 'Shower - Get Wet',
+        estimatedDuration: 2 * 60,
+        order: 4,
+      ),
+      const TaskModel(
+        id: '6',
+        name: 'Shower - Soap',
+        estimatedDuration: 2 * 60,
+        order: 5,
+      ),
+      const TaskModel(
+        id: '7',
+        name: 'Shower - Rinse and Get Out',
+        estimatedDuration: 3 * 60,
+        order: 6,
+      ),
+      const TaskModel(
+        id: '8',
+        name: 'Shower - Dry',
+        estimatedDuration: 90,
+        order: 7,
+      ),
+      const TaskModel(
+        id: '9',
+        name: 'Shave',
+        estimatedDuration: 5 * 60,
+        order: 8,
+      ),
+      const TaskModel(
+        id: '10',
+        name: 'Shower - Put on Clothes',
+        estimatedDuration: 3 * 60,
+        order: 9,
+      ),
+      const TaskModel(
+        id: '11',
+        name: 'Shower - Put Cothes Away',
+        estimatedDuration: 3 * 60,
+        order: 10,
+      ),
+      const TaskModel(
+        id: '12',
+        name: 'Read Prayer Updates',
+        estimatedDuration: 10 * 60,
+        order: 11,
+      ),
+      const TaskModel(
+        id: '13',
+        name: 'Cook',
+        estimatedDuration: 15 * 60,
+        order: 12,
+      ),
+      const TaskModel(
+        id: '14',
+        name: 'Eat',
+        estimatedDuration: 20 * 60,
+        order: 13,
       ),
     ];
 
@@ -77,9 +137,21 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       defaultBreakDuration: 2 * 60,
     );
 
+    // Create breaks (transitions) between all tasks
+    // There are 13 breaks for 14 tasks
     final breaks = <BreakModel>[
       BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
-      BreakModel(duration: settings.defaultBreakDuration, isEnabled: false),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
+      BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
       BreakModel(duration: settings.defaultBreakDuration, isEnabled: true),
     ];
 

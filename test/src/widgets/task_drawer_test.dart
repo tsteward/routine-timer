@@ -82,19 +82,19 @@ void main() {
       final testTasks = [
         const TaskModel(
           id: '1',
-          name: 'Morning Workout',
-          estimatedDuration: 1200, // 20 minutes
+          name: 'Wake up',
+          estimatedDuration: 120, // 2 minutes
           order: 0,
         ),
         const TaskModel(
           id: '2',
-          name: 'Shower',
-          estimatedDuration: 600, // 10 minutes
+          name: 'Prayer',
+          estimatedDuration: 300, // 5 minutes
           order: 1,
         ),
         const TaskModel(
           id: '3',
-          name: 'Breakfast',
+          name: 'Cook',
           estimatedDuration: 900, // 15 minutes
           order: 2,
         ),
@@ -128,11 +128,11 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Current Task: Morning Workout'), findsOneWidget);
+      expect(find.text('Current Task: Wake up'), findsOneWidget);
       expect(find.text('Task 1 of 3'), findsOneWidget);
       expect(find.text('Upcoming Tasks:'), findsOneWidget);
-      expect(find.text('Shower'), findsOneWidget);
-      expect(find.text('Breakfast'), findsOneWidget);
+      expect(find.text('Prayer'), findsOneWidget);
+      expect(find.text('Cook'), findsOneWidget);
     });
 
     testWidgets('shows no tasks message when routine is empty', (tester) async {
@@ -160,19 +160,19 @@ void main() {
       final testTasks = [
         const TaskModel(
           id: '1',
-          name: 'Morning Workout',
-          estimatedDuration: 1200,
+          name: 'Wake up',
+          estimatedDuration: 120,
           order: 0,
         ),
         const TaskModel(
           id: '2',
-          name: 'Shower',
-          estimatedDuration: 600,
+          name: 'Prayer',
+          estimatedDuration: 300,
           order: 1,
         ),
         const TaskModel(
           id: '3',
-          name: 'Breakfast',
+          name: 'Cook',
           estimatedDuration: 900,
           order: 2,
         ),
@@ -206,7 +206,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Current Task: Breakfast'), findsOneWidget);
+      expect(find.text('Current Task: Cook'), findsOneWidget);
       expect(find.text('Task 3 of 3'), findsOneWidget);
       // Should not show upcoming tasks when on last task
       expect(find.text('Upcoming Tasks:'), findsOneWidget);
@@ -216,14 +216,14 @@ void main() {
       final testTasks = [
         const TaskModel(
           id: '1',
-          name: 'Morning Workout',
-          estimatedDuration: 1200,
+          name: 'Wake up',
+          estimatedDuration: 120,
           order: 0,
         ),
         const TaskModel(
           id: '2',
-          name: 'Shower',
-          estimatedDuration: 600,
+          name: 'Prayer',
+          estimatedDuration: 300,
           order: 1,
         ),
       ];
@@ -257,7 +257,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Initially shows first task
-      expect(find.text('Current Task: Morning Workout'), findsOneWidget);
+      expect(find.text('Current Task: Wake up'), findsOneWidget);
       expect(find.text('Task 1 of 2'), findsOneWidget);
 
       // Change to second task
@@ -269,7 +269,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Should now show second task
-      expect(find.text('Current Task: Shower'), findsOneWidget);
+      expect(find.text('Current Task: Prayer'), findsOneWidget);
       expect(find.text('Task 2 of 2'), findsOneWidget);
     });
 

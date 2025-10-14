@@ -146,7 +146,7 @@ void main() {
       // Left column should show a reorderable task list with sample data
       expect(find.byType(ReorderableListView), findsOneWidget);
       // Task appears in both left column and right column text field
-      expect(find.text('Morning Workout'), findsAtLeastNWidgets(1));
+      expect(find.text('Wake up'), findsAtLeastNWidgets(1));
       // Right column should show settings and details
       expect(find.text('Routine Settings'), findsOneWidget);
       expect(find.text('Task Details'), findsOneWidget);
