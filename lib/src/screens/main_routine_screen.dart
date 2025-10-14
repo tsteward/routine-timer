@@ -6,6 +6,7 @@ import '../bloc/routine_bloc.dart';
 import '../models/routine_state.dart';
 import '../router/app_router.dart';
 import '../widgets/task_drawer.dart';
+import '../widgets/schedule_header.dart';
 
 class MainRoutineScreen extends StatefulWidget {
   const MainRoutineScreen({super.key});
@@ -144,145 +145,158 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
           body: Stack(
             children: [
               SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    children: [
-                      // Task name at top center
-                      Expanded(
-                        flex: 2,
-                        child: Center(
-                          child: Text(
-                            currentTask.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
+                child: Column(
+                  children: [
+                    // Schedule header
+                    ScheduleHeader(routineState: model),
 
-                      // Massive countdown timer
-                      Expanded(
-                        flex: 3,
-                        child: Center(
-                          child: Text(
-                            _formatTime(remainingSeconds),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 300,
-                              fontWeight: FontWeight.w900,
-                              height: 1.0,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Slim progress bar
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.3,
-                            ),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                            minHeight: 8,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Previous and Done buttons
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // Previous button
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: ElevatedButton(
-                                onPressed: model.currentTaskIndex > 0
-                                    ? () {
-                                        context.read<RoutineBloc>().add(
-                                          const GoToPreviousTask(),
-                                        );
-                                      }
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 20,
-                                  ),
-                                  textStyle: const TextStyle(
-                                    fontSize: 24,
+                    // Main content
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          children: [
+                            // Task name at top center
+                            Expanded(
+                              flex: 2,
+                              child: Center(
+                                child: Text(
+                                  currentTask.name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 48,
                                     fontWeight: FontWeight.bold,
                                   ),
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: backgroundColor,
-                                  disabledBackgroundColor: Colors.white
-                                      .withValues(alpha: 0.3),
-                                  disabledForegroundColor: Colors.white
-                                      .withValues(alpha: 0.5),
+                                  textAlign: TextAlign.center,
                                 ),
-                                child: const Text('Previous'),
                               ),
                             ),
-                          ),
 
-                          // Done button
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  final actualDuration =
-                                      _calculateActualDuration();
-                                  context.read<RoutineBloc>().add(
-                                    MarkTaskDone(
-                                      actualDuration: actualDuration,
+                            // Massive countdown timer
+                            Expanded(
+                              flex: 3,
+                              child: Center(
+                                child: Text(
+                                  _formatTime(remainingSeconds),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 300,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.0,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Slim progress bar
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32.0,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: LinearProgressIndicator(
+                                  value: progress,
+                                  backgroundColor: Colors.white.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                  minHeight: 8,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            // Previous and Done buttons
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                // Previous button
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: ElevatedButton(
+                                      onPressed: model.currentTaskIndex > 0
+                                          ? () {
+                                              context.read<RoutineBloc>().add(
+                                                const GoToPreviousTask(),
+                                              );
+                                            }
+                                          : null,
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 20,
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: backgroundColor,
+                                        disabledBackgroundColor: Colors.white
+                                            .withValues(alpha: 0.3),
+                                        disabledForegroundColor: Colors.white
+                                            .withValues(alpha: 0.5),
+                                      ),
+                                      child: const Text('Previous'),
                                     ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 20,
                                   ),
-                                  textStyle: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: backgroundColor,
                                 ),
-                                child: const Text('Done'),
+
+                                // Done button
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        final actualDuration =
+                                            _calculateActualDuration();
+                                        context.read<RoutineBloc>().add(
+                                          MarkTaskDone(
+                                            actualDuration: actualDuration,
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 20,
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: backgroundColor,
+                                      ),
+                                      child: const Text('Done'),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Task counter
+                            Text(
+                              'Task ${model.currentTaskIndex + 1} of ${model.tasks.length}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
 
-                      const SizedBox(height: 16),
-
-                      // Task counter
-                      Text(
-                        'Task ${model.currentTaskIndex + 1} of ${model.tasks.length}',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
+                            // Add some bottom padding to make room for drawer
+                            const SizedBox(height: 120),
+                          ],
                         ),
                       ),
-
-                      // Add some bottom padding to make room for drawer
-                      const SizedBox(height: 120),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -328,108 +342,129 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
       body: Stack(
         children: [
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  // Break title at top
-                  Expanded(
-                    flex: 2,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Break Time',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
+            child: Column(
+              children: [
+                // Schedule header
+                ScheduleHeader(routineState: model),
+
+                // Main content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      children: [
+                        // Break title at top
+                        Expanded(
+                          flex: 2,
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Break Time',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 48,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Take a moment to relax',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 20,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
-                            textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Take a moment to relax',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 20,
+                        ),
+
+                        // Massive countdown timer
+                        Expanded(
+                          flex: 3,
+                          child: Center(
+                            child: Text(
+                              _formatTime(remainingSeconds),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 300,
+                                fontWeight: FontWeight.w900,
+                                height: 1.0,
+                              ),
                             ),
-                            textAlign: TextAlign.center,
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Massive countdown timer
-                  Expanded(
-                    flex: 3,
-                    child: Center(
-                      child: Text(
-                        _formatTime(remainingSeconds),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 300,
-                          fontWeight: FontWeight.w900,
-                          height: 1.0,
                         ),
-                      ),
-                    ),
-                  ),
 
-                  // Progress bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: Colors.white.withValues(alpha: 0.3),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.white,
-                        ),
-                        minHeight: 8,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Skip break button
-                  SizedBox(
-                    width: double.infinity,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          context.read<RoutineBloc>().add(const SkipBreak());
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          textStyle: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                        // Progress bar
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.3,
+                              ),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                              minHeight: 8,
+                            ),
                           ),
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppTheme.green,
                         ),
-                        child: const Text('Skip Break'),
-                      ),
+
+                        const SizedBox(height: 32),
+
+                        // Skip break button
+                        SizedBox(
+                          width: double.infinity,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                context.read<RoutineBloc>().add(
+                                  const SkipBreak(),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 20,
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                backgroundColor: Colors.white,
+                                foregroundColor: AppTheme.green,
+                              ),
+                              child: const Text('Skip Break'),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Break info text
+                        Text(
+                          'Break ${(model.currentBreakIndex ?? 0) + 1}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
+                        ),
+
+                        const SizedBox(height: 120),
+                      ],
                     ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // Break info text
-                  Text(
-                    'Break ${(model.currentBreakIndex ?? 0) + 1}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-
-                  const SizedBox(height: 120),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
