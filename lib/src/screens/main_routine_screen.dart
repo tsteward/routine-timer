@@ -5,6 +5,8 @@ import '../app_theme.dart';
 import '../bloc/routine_bloc.dart';
 import '../models/routine_state.dart';
 import '../router/app_router.dart';
+import '../services/schedule_tracker.dart';
+import '../widgets/schedule_status_card.dart';
 import '../widgets/task_drawer.dart';
 
 class MainRoutineScreen extends StatefulWidget {
@@ -21,6 +23,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   int? _previousTaskIndex;
   bool? _previousBreakState;
   bool _isDrawerExpanded = false;
+  final _scheduleTracker = const ScheduleTracker();
 
   @override
   void initState() {
@@ -139,6 +142,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
             ? (_elapsedSeconds / currentTask.estimatedDuration).clamp(0.0, 1.0)
             : 0.0;
 
+        // Calculate schedule status
+        final scheduleStatus = _scheduleTracker.calculateScheduleStatus(model);
+
         return Scaffold(
           backgroundColor: backgroundColor,
           body: Stack(
@@ -148,6 +154,39 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
+                      // Header with schedule status and settings
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Schedule status card
+                          Expanded(
+                            child: ScheduleStatusCard(
+                              scheduleStatus: scheduleStatus,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Settings button
+                          IconButton(
+                            onPressed: () {
+                              Navigator.of(context).pushNamed(AppRoutes.tasks);
+                            },
+                            icon: const Icon(
+                              Icons.settings,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.2,
+                              ),
+                              padding: const EdgeInsets.all(12),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
                       // Task name at top center
                       Expanded(
                         flex: 2,
@@ -323,6 +362,9 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
       });
     }
 
+    // Calculate schedule status
+    final scheduleStatus = _scheduleTracker.calculateScheduleStatus(model);
+
     return Scaffold(
       backgroundColor: AppTheme.green, // Keep green during break
       body: Stack(
@@ -332,6 +374,37 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
+                  // Header with schedule status and settings
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Schedule status card
+                      Expanded(
+                        child: ScheduleStatusCard(
+                          scheduleStatus: scheduleStatus,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Settings button
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).pushNamed(AppRoutes.tasks);
+                        },
+                        icon: const Icon(
+                          Icons.settings,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
+                          padding: const EdgeInsets.all(12),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // Break title at top
                   Expanded(
                     flex: 2,
