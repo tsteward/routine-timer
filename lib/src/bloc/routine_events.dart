@@ -121,3 +121,13 @@ class SaveRoutineToFirebase extends RoutineEvent {
 class ReloadRoutineForUser extends RoutineEvent {
   const ReloadRoutineForUser();
 }
+
+/// Complete the current break and move to the next task
+class CompleteBreak extends RoutineEvent {
+  const CompleteBreak();
+}
+
+/// Skip the current break and move immediately to the next task
+class SkipBreak extends RoutineEvent {
+  const SkipBreak();
+}

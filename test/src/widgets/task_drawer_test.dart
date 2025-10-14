@@ -686,7 +686,7 @@ void main() {
       expect(find.text('Sixth Task'), findsOneWidget);
     });
 
-    testWidgets('should show "Upcoming Tasks" section header when expanded', (
+    testWidgets('should show "Up Next" section header when expanded', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -706,7 +706,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Upcoming Tasks'), findsOneWidget);
+      expect(find.text('Up Next'), findsOneWidget);
     });
 
     testWidgets('should show "Completed Tasks" section when expanded', (
@@ -959,7 +959,7 @@ void main() {
         expect(find.text('Sixth Task'), findsOneWidget);
 
         // Verify it's using the collapsed view (no section headers)
-        expect(find.text('Upcoming Tasks'), findsNothing);
+        expect(find.text('Up Next'), findsNothing);
         expect(find.text('Completed Tasks'), findsNothing);
       },
     );
