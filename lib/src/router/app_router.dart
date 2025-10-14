@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../screens/pre_start_screen.dart';
 import '../screens/main_routine_screen.dart';
+import '../screens/routine_completion_screen.dart';
 import '../screens/task_management_screen.dart';
 
 class AppRoutes {
   static const String preStart = '/';
   static const String main = '/main';
   static const String tasks = '/tasks';
+  static const String completion = '/completion';
 }
 
 class AppRouter {
@@ -19,6 +21,10 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const MainRoutineScreen());
       case AppRoutes.tasks:
         return MaterialPageRoute(builder: (_) => const TaskManagementScreen());
+      case AppRoutes.completion:
+        return MaterialPageRoute(
+          builder: (_) => const RoutineCompletionScreen(),
+        );
     }
     return MaterialPageRoute(
       builder: (_) =>

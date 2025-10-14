@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/routine_completion.dart';
 import '../models/routine_state.dart';
 import '../services/auth_service.dart';
 
@@ -16,6 +17,9 @@ class RoutineRepository {
 
   /// Collection name for routines in Firestore
   static const String _routinesCollection = 'routines';
+
+  /// Collection name for completion history in Firestore
+  static const String _completionsCollection = 'completions';
 
   /// Reference to the current user's routine document
   /// Returns null if user is not signed in
@@ -106,6 +110,56 @@ class RoutineRepository {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Saves routine completion data to Firestore.
+  /// Creates a new document in the completions subcollection for the user.
+  /// Returns true if successful, false otherwise.
+  Future<bool> saveCompletionData(RoutineCompletionModel completion) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return false;
+      }
+
+      // Save to user's completions subcollection
+      await _firestore
+          .collection(_routinesCollection)
+          .doc(userId)
+          .collection(_completionsCollection)
+          .add(completion.toMap());
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Loads completion history for the current user.
+  /// Returns a list of completions ordered by most recent first.
+  Future<List<RoutineCompletionModel>> loadCompletionHistory({
+    int limit = 30,
+  }) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return [];
+      }
+
+      final snapshot = await _firestore
+          .collection(_routinesCollection)
+          .doc(userId)
+          .collection(_completionsCollection)
+          .orderBy('completedAt', descending: true)
+          .limit(limit)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => RoutineCompletionModel.fromMap(doc.data()))
+          .toList();
+    } catch (e) {
+      return [];
     }
   }
 }

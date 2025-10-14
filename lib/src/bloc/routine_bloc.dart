@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/break.dart';
+import '../models/routine_completion.dart';
 import '../models/routine_settings.dart';
 import '../models/routine_state.dart';
 import '../models/task.dart';
@@ -34,6 +35,8 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<ReloadRoutineForUser>(_onReloadRoutineForUser);
     on<CompleteBreak>(_onCompleteBreak);
     on<SkipBreak>(_onSkipBreak);
+    on<CompleteRoutine>(_onCompleteRoutine);
+    on<ResetRoutine>(_onResetRoutine);
   }
 
   final RoutineRepository _repository;
@@ -192,6 +195,17 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       isCompleted: true,
       actualDuration: event.actualDuration,
     );
+
+    // Check if this is the last task
+    final isLastTask = currentIndex == updatedTasks.length - 1;
+
+    if (isLastTask) {
+      // All tasks completed, trigger routine completion
+      emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+      // Trigger completion event
+      add(const CompleteRoutine());
+      return;
+    }
 
     // Check if there's a break after this task
     final hasBreakAfter =
@@ -503,5 +517,90 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   void _onSkipBreak(SkipBreak event, Emitter<RoutineBlocState> emit) {
     // Skip break is the same as completing it - just move to next task
     _onCompleteBreak(const CompleteBreak(), emit);
+  }
+
+  void _onCompleteRoutine(
+    CompleteRoutine event,
+    Emitter<RoutineBlocState> emit,
+  ) async {
+    final model = state.model;
+    if (model == null) return;
+
+    // Calculate completion statistics
+    final completedTasks = model.tasks
+        .where((task) => task.isCompleted)
+        .toList();
+    final totalTimeSpent = completedTasks.fold<int>(
+      0,
+      (sum, task) => sum + (task.actualDuration ?? 0),
+    );
+    final totalEstimatedTime = completedTasks.fold<int>(
+      0,
+      (sum, task) => sum + task.estimatedDuration,
+    );
+
+    final tasksDetails = completedTasks
+        .map(
+          (task) => TaskCompletionDetail(
+            taskName: task.name,
+            estimatedDuration: task.estimatedDuration,
+            actualDuration: task.actualDuration ?? 0,
+          ),
+        )
+        .toList();
+
+    final completionData = RoutineCompletionModel(
+      completedAt: DateTime.now().millisecondsSinceEpoch,
+      totalTasksCompleted: completedTasks.length,
+      totalTimeSpent: totalTimeSpent,
+      totalEstimatedTime: totalEstimatedTime,
+      routineName: 'Morning Routine',
+      tasksDetails: tasksDetails,
+    );
+
+    // Save completion data to Firebase
+    await _repository.saveCompletionData(completionData);
+
+    // Update state with completion data
+    emit(state.copyWith(completionData: completionData, isCompleted: true));
+  }
+
+  void _onResetRoutine(ResetRoutine event, Emitter<RoutineBlocState> emit) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Reset all tasks to incomplete - create new objects to ensure null values
+    final resetTasks = model.tasks
+        .map(
+          (task) => TaskModel(
+            id: task.id,
+            name: task.name,
+            estimatedDuration: task.estimatedDuration,
+            actualDuration: null, // Explicitly set to null
+            isCompleted: false,
+            order: task.order,
+          ),
+        )
+        .toList();
+
+    // Reset to first task - create new model to ensure null values
+    final resetModel = RoutineStateModel(
+      tasks: resetTasks,
+      breaks: model.breaks,
+      settings: model.settings,
+      selectedTaskId: resetTasks.isNotEmpty ? resetTasks.first.id : null,
+      isRunning: model.isRunning,
+      isOnBreak: false,
+      currentBreakIndex: null,
+    );
+
+    // Clear completion data
+    emit(
+      state.copyWith(
+        model: resetModel,
+        completionData: null,
+        isCompleted: false,
+      ),
+    );
   }
 }

@@ -78,6 +78,14 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<RoutineBloc, RoutineBlocState>(
       listener: (context, state) {
+        // Navigate to completion screen when routine is completed
+        if (state.isCompleted && state.completionData != null) {
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil(AppRoutes.completion, (route) => false);
+          return;
+        }
+
         // Reset timer when task index changes or break state changes
         final currentIndex = state.model?.currentTaskIndex;
         final isOnBreak = state.model?.isOnBreak ?? false;

@@ -1187,5 +1187,186 @@ void main() {
         expect(decoded.currentBreak!.duration, 30);
       });
     });
+
+    group('Routine Completion', () {
+      test('should trigger completion when last task is marked done', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete all tasks except the last one
+        for (int i = 0; i < 3; i++) {
+          // Disable breaks to move directly to next task
+          bloc.add(ToggleBreakAtIndex(i));
+          await bloc.stream.firstWhere(
+            (s) => s.model!.breaks![i].isEnabled == false,
+          );
+          bloc.add(MarkTaskDone(actualDuration: 100 * (i + 1)));
+          await bloc.stream.firstWhere((s) => s.model!.tasks[i].isCompleted);
+        }
+
+        // Verify we're on the last task
+        expect(bloc.state.model!.currentTaskIndex, 3);
+
+        // Complete the last task
+        bloc.add(const MarkTaskDone(actualDuration: 400));
+
+        // Wait for completion state
+        final completed = await bloc.stream.firstWhere(
+          (s) => s.isCompleted == true,
+        );
+
+        expect(completed.isCompleted, true);
+        expect(completed.completionData, isNotNull);
+        expect(completed.completionData!.totalTasksCompleted, 4);
+      });
+
+      test('should calculate completion statistics correctly', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete all tasks with known durations
+        final actualDurations = [100, 200, 300, 400];
+
+        for (int i = 0; i < 4; i++) {
+          if (i < 3) {
+            // Disable breaks for non-last tasks
+            bloc.add(ToggleBreakAtIndex(i));
+            await bloc.stream.firstWhere(
+              (s) => s.model!.breaks![i].isEnabled == false,
+            );
+          }
+          bloc.add(MarkTaskDone(actualDuration: actualDurations[i]));
+          if (i < 3) {
+            await bloc.stream.firstWhere((s) => s.model!.tasks[i].isCompleted);
+          }
+        }
+
+        final completed = await bloc.stream.firstWhere(
+          (s) => s.isCompleted == true,
+        );
+
+        expect(
+          completed.completionData!.totalTimeSpent,
+          1000,
+        ); // Sum of durations
+        expect(completed.completionData!.totalTasksCompleted, 4);
+        expect(completed.completionData!.routineName, 'Morning Routine');
+        expect(completed.completionData!.tasksDetails?.length, 4);
+      });
+
+      test('should include task details in completion data', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete all tasks
+        for (int i = 0; i < 4; i++) {
+          if (i < 3) {
+            bloc.add(ToggleBreakAtIndex(i));
+            await bloc.stream.firstWhere(
+              (s) => s.model!.breaks![i].isEnabled == false,
+            );
+          }
+          bloc.add(MarkTaskDone(actualDuration: 100 * (i + 1)));
+          // Wait for completion only on last task
+          if (i == 3) {
+            break;
+          }
+          if (i < 3) {
+            await bloc.stream.firstWhere((s) => s.model!.tasks[i].isCompleted);
+          }
+        }
+
+        final completed = await bloc.stream
+            .firstWhere((s) => s.isCompleted == true, orElse: () => bloc.state)
+            .timeout(const Duration(seconds: 5));
+
+        final details = completed.completionData!.tasksDetails!;
+        expect(details[0].taskName, 'Morning Workout');
+        expect(details[0].actualDuration, 100);
+        expect(details[1].taskName, 'Shower');
+        expect(details[1].actualDuration, 200);
+      });
+
+      test('should reset routine to initial state', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete first task
+        bloc.add(const ToggleBreakAtIndex(0));
+        await bloc.stream.firstWhere(
+          (s) => s.model!.breaks![0].isEnabled == false,
+        );
+        bloc.add(const MarkTaskDone(actualDuration: 100));
+        await bloc.stream.firstWhere((s) => s.model!.tasks[0].isCompleted);
+
+        // Verify task is completed
+        expect(bloc.state.model!.tasks[0].isCompleted, true);
+        expect(bloc.state.model!.tasks[0].actualDuration, 100);
+
+        // Reset routine
+        bloc.add(const ResetRoutine());
+        // Wait a bit for the reset to process
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Verify all tasks are reset
+        expect(bloc.state.model!.tasks[0].isCompleted, false);
+        expect(bloc.state.model!.tasks[0].actualDuration, isNull);
+        expect(bloc.state.model!.currentTaskIndex, 0);
+        expect(bloc.state.completionData, isNull);
+        expect(bloc.state.isCompleted, false);
+      });
+
+      test('should reset all tasks when resetting routine', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete first two tasks only (less complex)
+        for (int i = 0; i < 2; i++) {
+          bloc.add(ToggleBreakAtIndex(i));
+          await bloc.stream.firstWhere(
+            (s) => s.model!.breaks![i].isEnabled == false,
+          );
+          bloc.add(MarkTaskDone(actualDuration: 100 * (i + 1)));
+          await bloc.stream.firstWhere((s) => s.model!.tasks[i].isCompleted);
+        }
+
+        // Verify at least one task is completed
+        expect(bloc.state.model!.tasks[0].isCompleted, true);
+
+        // Reset routine
+        bloc.add(const ResetRoutine());
+        // Wait a bit for the reset to process
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Verify all tasks are reset (check just the first few)
+        expect(bloc.state.model!.tasks[0].isCompleted, false);
+        expect(bloc.state.model!.tasks[0].actualDuration, isNull);
+        expect(bloc.state.model!.tasks[1].isCompleted, false);
+        expect(bloc.state.model!.tasks[1].actualDuration, isNull);
+      });
+
+      test('should not trigger completion for non-last task', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        // Complete first task
+        bloc.add(const ToggleBreakAtIndex(0));
+        await bloc.stream.firstWhere(
+          (s) => s.model!.breaks![0].isEnabled == false,
+        );
+        bloc.add(const MarkTaskDone(actualDuration: 100));
+        await bloc.stream.firstWhere((s) => s.model!.tasks[0].isCompleted);
+
+        // Verify routine is NOT completed
+        expect(bloc.state.isCompleted, false);
+        expect(bloc.state.completionData, isNull);
+      });
+    });
   });
 }

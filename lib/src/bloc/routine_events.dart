@@ -131,3 +131,13 @@ class CompleteBreak extends RoutineEvent {
 class SkipBreak extends RoutineEvent {
   const SkipBreak();
 }
+
+/// Complete the routine and save completion data
+class CompleteRoutine extends RoutineEvent {
+  const CompleteRoutine();
+}
+
+/// Reset the routine to start a new session
+class ResetRoutine extends RoutineEvent {
+  const ResetRoutine();
+}
