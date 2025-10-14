@@ -6,6 +6,7 @@ import '../bloc/routine_bloc.dart';
 import '../models/routine_state.dart';
 import '../router/app_router.dart';
 import '../widgets/task_drawer.dart';
+import '../widgets/schedule_header.dart';
 
 class MainRoutineScreen extends StatefulWidget {
   const MainRoutineScreen({super.key});
@@ -21,10 +22,12 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   int? _previousTaskIndex;
   bool? _previousBreakState;
   bool _isDrawerExpanded = false;
+  DateTime? _routineStartTime;
 
   @override
   void initState() {
     super.initState();
+    _routineStartTime = DateTime.now();
     _startTimer();
   }
 
@@ -148,6 +151,16 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
+                      // Header with schedule status and settings icon
+                      ScheduleHeader(
+                        routineState: model,
+                        routineStartTime: _routineStartTime ?? DateTime.now(),
+                        onSettingsTap: () {
+                          Navigator.of(context).pushNamed(AppRoutes.tasks);
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
                       // Task name at top center
                       Expanded(
                         flex: 2,
@@ -332,6 +345,16 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
+                  // Header with schedule status and settings icon
+                  ScheduleHeader(
+                    routineState: model,
+                    routineStartTime: _routineStartTime ?? DateTime.now(),
+                    onSettingsTap: () {
+                      Navigator.of(context).pushNamed(AppRoutes.tasks);
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
                   // Break title at top
                   Expanded(
                     flex: 2,
