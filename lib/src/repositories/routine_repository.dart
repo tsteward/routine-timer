@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/routine_completion.dart';
 import '../models/routine_state.dart';
 import '../services/auth_service.dart';
 
@@ -106,6 +107,58 @@ class RoutineRepository {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Saves completion data to Firestore for analytics.
+  /// Stores in a subcollection: routines/{userId}/completions/{completionId}
+  /// Returns true if successful, false otherwise.
+  Future<bool> saveCompletion(RoutineCompletion completion) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return false;
+      }
+
+      // Use completion timestamp as document ID for easy querying
+      final completionId = completion.completedAt.millisecondsSinceEpoch
+          .toString();
+
+      await _firestore
+          .collection(_routinesCollection)
+          .doc(userId)
+          .collection('completions')
+          .doc(completionId)
+          .set(completion.toMap());
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Loads recent completion records from Firestore.
+  /// Returns list of completions sorted by most recent first.
+  Future<List<RoutineCompletion>> loadCompletions({int limit = 10}) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return [];
+      }
+
+      final querySnapshot = await _firestore
+          .collection(_routinesCollection)
+          .doc(userId)
+          .collection('completions')
+          .orderBy('completedAt', descending: true)
+          .limit(limit)
+          .get();
+
+      return querySnapshot.docs
+          .map((doc) => RoutineCompletion.fromMap(doc.data()))
+          .toList();
+    } catch (e) {
+      return [];
     }
   }
 }

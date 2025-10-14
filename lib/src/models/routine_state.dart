@@ -105,6 +105,34 @@ class RoutineStateModel {
     return breaks![currentBreakIndex!];
   }
 
+  /// Returns true if all tasks have been completed.
+  bool get isRoutineCompleted {
+    if (tasks.isEmpty) return false;
+    return tasks.every((task) => task.isCompleted);
+  }
+
+  /// Returns the number of completed tasks.
+  int get completedTasksCount {
+    return tasks.where((task) => task.isCompleted).length;
+  }
+
+  /// Calculates total time spent on completed tasks in seconds.
+  int get totalTimeSpent {
+    return tasks
+        .where((task) => task.isCompleted)
+        .fold<int>(0, (sum, task) => sum + (task.actualDuration ?? 0));
+  }
+
+  /// Calculates total estimated time for all tasks in seconds.
+  int get totalEstimatedTime {
+    return tasks.fold<int>(0, (sum, task) => sum + task.estimatedDuration);
+  }
+
+  /// Calculates schedule variance in seconds (positive = behind schedule).
+  int get scheduleVariance {
+    return totalTimeSpent - totalEstimatedTime;
+  }
+
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'tasks': tasks.map((e) => e.toMap()).toList(),

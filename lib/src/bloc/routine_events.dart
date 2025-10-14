@@ -131,3 +131,17 @@ class CompleteBreak extends RoutineEvent {
 class SkipBreak extends RoutineEvent {
   const SkipBreak();
 }
+
+/// Reset the routine to its initial state (uncomplete all tasks)
+class ResetRoutine extends RoutineEvent {
+  const ResetRoutine();
+}
+
+/// Save completion data to Firebase for analytics
+class SaveRoutineCompletion extends RoutineEvent {
+  const SaveRoutineCompletion({required this.routineStartTime});
+  final DateTime routineStartTime;
+
+  @override
+  List<Object?> get props => [routineStartTime];
+}
