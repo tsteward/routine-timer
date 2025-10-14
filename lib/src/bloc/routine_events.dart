@@ -131,3 +131,18 @@ class CompleteBreak extends RoutineEvent {
 class SkipBreak extends RoutineEvent {
   const SkipBreak();
 }
+
+/// Start the routine and record start time
+class StartRoutine extends RoutineEvent {
+  const StartRoutine();
+}
+
+/// Reset the routine to initial state (clear completion, reset tasks)
+class ResetRoutine extends RoutineEvent {
+  const ResetRoutine();
+}
+
+/// Save completion data to Firebase history
+class SaveCompletionToFirebase extends RoutineEvent {
+  const SaveCompletionToFirebase();
+}

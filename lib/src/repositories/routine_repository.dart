@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/routine_completion.dart';
 import '../models/routine_state.dart';
 import '../services/auth_service.dart';
 
@@ -16,6 +17,9 @@ class RoutineRepository {
 
   /// Collection name for routines in Firestore
   static const String _routinesCollection = 'routines';
+
+  /// Collection name for routine completions/history in Firestore
+  static const String _completionsCollection = 'routine_completions';
 
   /// Reference to the current user's routine document
   /// Returns null if user is not signed in
@@ -106,6 +110,55 @@ class RoutineRepository {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Saves routine completion data to Firebase for analytics/history
+  /// Creates a new document in the completions collection with timestamp
+  Future<bool> saveCompletion(RoutineCompletionData completion) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return false;
+      }
+
+      // Create a document with auto-generated ID
+      await _firestore
+          .collection(_completionsCollection)
+          .doc(userId)
+          .collection('history')
+          .add(completion.toMap());
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Loads recent routine completions for the current user
+  /// Returns a list of completions sorted by completion time (most recent first)
+  Future<List<RoutineCompletionData>> loadRecentCompletions({
+    int limit = 10,
+  }) async {
+    try {
+      final userId = _authService.currentUserId;
+      if (userId == null) {
+        return [];
+      }
+
+      final snapshot = await _firestore
+          .collection(_completionsCollection)
+          .doc(userId)
+          .collection('history')
+          .orderBy('completedAt', descending: true)
+          .limit(limit)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => RoutineCompletionData.fromMap(doc.data()))
+          .toList();
+    } catch (e) {
+      return [];
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'break.dart';
+import 'routine_completion.dart';
 import 'routine_settings.dart';
 import 'task.dart';
 
@@ -14,6 +15,9 @@ class RoutineStateModel {
     this.breaks,
     this.isOnBreak = false,
     this.currentBreakIndex,
+    this.isCompleted = false,
+    this.completionData,
+    this.routineStartTime,
   });
 
   /// Ordered list of tasks.
@@ -38,6 +42,15 @@ class RoutineStateModel {
   /// Index of the current break being taken. Only relevant when isOnBreak is true.
   final int? currentBreakIndex;
 
+  /// Whether the routine has been completed
+  final bool isCompleted;
+
+  /// Completion data if the routine has been completed
+  final RoutineCompletionData? completionData;
+
+  /// Timestamp when the routine was started (for wall clock time tracking)
+  final int? routineStartTime;
+
   RoutineStateModel copyWith({
     List<TaskModel>? tasks,
     List<BreakModel>? breaks,
@@ -46,6 +59,9 @@ class RoutineStateModel {
     bool? isRunning,
     bool? isOnBreak,
     int? currentBreakIndex,
+    bool? isCompleted,
+    RoutineCompletionData? completionData,
+    int? routineStartTime,
   }) {
     return RoutineStateModel(
       tasks: tasks ?? this.tasks,
@@ -55,6 +71,9 @@ class RoutineStateModel {
       isRunning: isRunning ?? this.isRunning,
       isOnBreak: isOnBreak ?? this.isOnBreak,
       currentBreakIndex: currentBreakIndex ?? this.currentBreakIndex,
+      isCompleted: isCompleted ?? this.isCompleted,
+      completionData: completionData ?? this.completionData,
+      routineStartTime: routineStartTime ?? this.routineStartTime,
     );
   }
 
@@ -114,6 +133,9 @@ class RoutineStateModel {
       'isRunning': isRunning,
       'isOnBreak': isOnBreak,
       'currentBreakIndex': currentBreakIndex,
+      'isCompleted': isCompleted,
+      'completionData': completionData?.toMap(),
+      'routineStartTime': routineStartTime,
     };
   }
 
@@ -131,6 +153,8 @@ class RoutineStateModel {
       }
     }
 
+    final completionDataMap = map['completionData'] as Map<String, dynamic>?;
+
     return RoutineStateModel(
       tasks: tasks,
       breaks: (map['breaks'] as List<dynamic>?)
@@ -143,6 +167,11 @@ class RoutineStateModel {
       isRunning: map['isRunning'] as bool? ?? false,
       isOnBreak: map['isOnBreak'] as bool? ?? false,
       currentBreakIndex: map['currentBreakIndex'] as int?,
+      isCompleted: map['isCompleted'] as bool? ?? false,
+      completionData: completionDataMap != null
+          ? RoutineCompletionData.fromMap(completionDataMap)
+          : null,
+      routineStartTime: map['routineStartTime'] as int?,
     );
   }
 

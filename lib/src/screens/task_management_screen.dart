@@ -55,6 +55,10 @@ class TaskManagementScreen extends StatelessWidget {
                 value: AppRoutes.tasks,
                 child: Text('Task Management'),
               ),
+              PopupMenuItem(
+                value: AppRoutes.completion,
+                child: Text('Completion'),
+              ),
             ],
           );
           if (selected != null) {

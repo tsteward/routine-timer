@@ -78,6 +78,18 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<RoutineBloc, RoutineBlocState>(
       listener: (context, state) {
+        final model = state.model;
+
+        // Check if routine is completed and navigate to completion screen
+        if (model != null && model.isCompleted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              Navigator.of(context).pushReplacementNamed(AppRoutes.completion);
+            }
+          });
+          return;
+        }
+
         // Reset timer when task index changes or break state changes
         final currentIndex = state.model?.currentTaskIndex;
         final isOnBreak = state.model?.isOnBreak ?? false;
@@ -462,6 +474,10 @@ class _NavFab extends StatelessWidget {
             PopupMenuItem(
               value: AppRoutes.tasks,
               child: Text('Task Management'),
+            ),
+            PopupMenuItem(
+              value: AppRoutes.completion,
+              child: Text('Completion'),
             ),
           ],
         );

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:routine_timer/src/bloc/routine_bloc.dart';
 import 'package:routine_timer/src/models/break.dart';
+import 'package:routine_timer/src/models/routine_completion.dart';
 import 'package:routine_timer/src/models/routine_settings.dart';
 import 'package:routine_timer/src/models/routine_state.dart';
 import 'package:routine_timer/src/models/task.dart';
@@ -1185,6 +1186,246 @@ void main() {
         expect(decoded.currentBreakIndex, 0);
         expect(decoded.currentBreak, isNotNull);
         expect(decoded.currentBreak!.duration, 30);
+      });
+    });
+
+    group('Routine Completion', () {
+      test('StartRoutine sets routine start time', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        expect(bloc.state.model!.routineStartTime, null);
+
+        bloc.add(const StartRoutine());
+        final started = await bloc.stream.firstWhere(
+          (s) => s.model!.routineStartTime != null,
+        );
+
+        expect(started.model!.routineStartTime, isNotNull);
+        expect(started.model!.isRunning, true);
+      });
+
+      test('StartRoutine does not override existing start time', () async {
+        final bloc = FirebaseTestHelper.routineBloc
+          ..add(const LoadSampleRoutine());
+        await bloc.stream.firstWhere((s) => s.model != null);
+
+        bloc.add(const StartRoutine());
+        final started = await bloc.stream.firstWhere(
+          (s) => s.model!.routineStartTime != null,
+        );
+
+        final originalStartTime = started.model!.routineStartTime;
+
+        // Try to start again
+        bloc.add(const StartRoutine());
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        expect(bloc.state.model!.routineStartTime, originalStartTime);
+      });
+
+      test('MarkTaskDone on last task marks routine as completed', () async {
+        final bloc = FirebaseTestHelper.routineBloc;
+        final tasks = const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 600, order: 0),
+          TaskModel(id: '2', name: 'Task2', estimatedDuration: 600, order: 1),
+        ];
+
+        final model = RoutineStateModel(
+          tasks: tasks,
+          settings: RoutineSettingsModel(
+            startTime: DateTime.now().millisecondsSinceEpoch,
+            breaksEnabledByDefault: false,
+            defaultBreakDuration: 120,
+          ),
+          selectedTaskId: tasks.first.id,
+          routineStartTime: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        bloc.emit(RoutineBlocState(loading: false, model: model));
+
+        // Complete first task
+        bloc.add(const MarkTaskDone(actualDuration: 550));
+        await bloc.stream.firstWhere((s) => s.model!.currentTaskIndex == 1);
+
+        // Complete last task
+        bloc.add(const MarkTaskDone(actualDuration: 550));
+        final completed = await bloc.stream.firstWhere(
+          (s) => s.model!.isCompleted,
+        );
+
+        expect(completed.model!.isCompleted, true);
+        expect(completed.model!.completionData, isNotNull);
+        expect(completed.model!.completionData!.tasksCompleted, 2);
+        expect(completed.model!.completionData!.totalActualDuration, 1100);
+        expect(completed.model!.completionData!.totalEstimatedDuration, 1200);
+      });
+
+      test('completion data calculates correct statistics', () async {
+        final bloc = FirebaseTestHelper.routineBloc;
+        final now = DateTime.now();
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Task1',
+            estimatedDuration: 600,
+            actualDuration: 550,
+            isCompleted: true,
+            order: 0,
+          ),
+        ];
+
+        final model = RoutineStateModel(
+          tasks: tasks,
+          settings: RoutineSettingsModel(
+            startTime: now.millisecondsSinceEpoch,
+            breaksEnabledByDefault: false,
+            defaultBreakDuration: 120,
+          ),
+          selectedTaskId: tasks.first.id,
+          routineStartTime: now
+              .subtract(const Duration(seconds: 550))
+              .millisecondsSinceEpoch,
+        );
+
+        bloc.emit(RoutineBlocState(loading: false, model: model));
+
+        // Complete the last (and only remaining) task
+        bloc.add(const MarkTaskDone(actualDuration: 550));
+        final completed = await bloc.stream.firstWhere(
+          (s) => s.model!.isCompleted,
+        );
+
+        final data = completed.model!.completionData!;
+        expect(data.tasksCompleted, 1);
+        expect(data.totalEstimatedDuration, 600);
+        expect(data.totalActualDuration, 550);
+        expect(data.timeDifference, -50); // 50 seconds ahead
+        expect(data.isAheadOfSchedule, true);
+        expect(data.routineName, 'Morning Routine');
+      });
+
+      test('ResetRoutine clears completion and resets all tasks', () async {
+        final bloc = FirebaseTestHelper.routineBloc;
+        final tasks = const [
+          TaskModel(
+            id: '1',
+            name: 'Task1',
+            estimatedDuration: 600,
+            actualDuration: 550,
+            isCompleted: true,
+            order: 0,
+          ),
+          TaskModel(
+            id: '2',
+            name: 'Task2',
+            estimatedDuration: 600,
+            actualDuration: 550,
+            isCompleted: true,
+            order: 1,
+          ),
+        ];
+
+        final completedModel = RoutineStateModel(
+          tasks: tasks,
+          settings: RoutineSettingsModel(
+            startTime: DateTime.now().millisecondsSinceEpoch,
+            breaksEnabledByDefault: false,
+            defaultBreakDuration: 120,
+          ),
+          selectedTaskId: tasks.last.id,
+          isCompleted: true,
+          routineStartTime: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        bloc.emit(RoutineBlocState(loading: false, model: completedModel));
+
+        bloc.add(const ResetRoutine());
+        final reset = await bloc.stream.firstWhere(
+          (s) => s.model!.isCompleted == false,
+        );
+
+        expect(reset.model!.isCompleted, false);
+        expect(reset.model!.completionData, null);
+        expect(reset.model!.routineStartTime, null);
+        expect(reset.model!.isRunning, false);
+        expect(reset.model!.tasks.every((t) => !t.isCompleted), true);
+        expect(reset.model!.tasks.every((t) => t.actualDuration == null), true);
+        expect(reset.model!.currentTaskIndex, 0); // Reset to first task
+      });
+
+      test('MarkTaskDone does not complete if not last task', () async {
+        final bloc = FirebaseTestHelper.routineBloc;
+        final tasks = const [
+          TaskModel(id: '1', name: 'Task1', estimatedDuration: 600, order: 0),
+          TaskModel(id: '2', name: 'Task2', estimatedDuration: 600, order: 1),
+        ];
+
+        final model = RoutineStateModel(
+          tasks: tasks,
+          settings: RoutineSettingsModel(
+            startTime: DateTime.now().millisecondsSinceEpoch,
+            breaksEnabledByDefault: false,
+            defaultBreakDuration: 120,
+          ),
+          selectedTaskId: tasks.first.id,
+          routineStartTime: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        bloc.emit(RoutineBlocState(loading: false, model: model));
+
+        // Complete first task (not last)
+        bloc.add(const MarkTaskDone(actualDuration: 550));
+        final updated = await bloc.stream.firstWhere(
+          (s) => s.model!.tasks.first.isCompleted,
+        );
+
+        expect(updated.model!.isCompleted, false);
+        expect(updated.model!.completionData, null);
+        expect(updated.model!.currentTaskIndex, 1); // Advanced to next task
+      });
+
+      test('completion state persists through serialization', () {
+        final now = DateTime.now();
+        final completionData = RoutineCompletionData(
+          completedAt: now.millisecondsSinceEpoch,
+          totalDurationSeconds: 3600,
+          tasksCompleted: 4,
+          totalEstimatedDuration: 3000,
+          totalActualDuration: 2700,
+          routineName: 'Morning Routine',
+        );
+
+        final state = RoutineStateModel(
+          tasks: const [
+            TaskModel(
+              id: '1',
+              name: 'Task1',
+              estimatedDuration: 600,
+              actualDuration: 550,
+              isCompleted: true,
+              order: 0,
+            ),
+          ],
+          settings: RoutineSettingsModel(
+            startTime: now.millisecondsSinceEpoch,
+            breaksEnabledByDefault: false,
+            defaultBreakDuration: 120,
+          ),
+          isCompleted: true,
+          completionData: completionData,
+          routineStartTime: now.millisecondsSinceEpoch,
+        );
+
+        final map = state.toMap();
+        final decoded = RoutineStateModel.fromMap(map);
+
+        expect(decoded.isCompleted, true);
+        expect(decoded.completionData, isNotNull);
+        expect(decoded.completionData!.tasksCompleted, 4);
+        expect(decoded.completionData!.totalActualDuration, 2700);
+        expect(decoded.routineStartTime, now.millisecondsSinceEpoch);
       });
     });
   });

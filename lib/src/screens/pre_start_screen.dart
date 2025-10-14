@@ -90,6 +90,8 @@ class _PreStartScreenState extends State<PreStartScreen> {
 
   void _navigateToMainScreen() {
     if (mounted) {
+      // Start the routine timer before navigating
+      context.read<RoutineBloc>().add(const StartRoutine());
       Navigator.of(context).pushReplacementNamed(AppRoutes.main);
     }
   }
