@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'break.dart';
+import 'routine_completion.dart';
 import 'routine_settings.dart';
 import 'task.dart';
 
@@ -14,6 +15,8 @@ class RoutineStateModel {
     this.breaks,
     this.isOnBreak = false,
     this.currentBreakIndex,
+    this.completion,
+    this.isCompleted = false,
   });
 
   /// Ordered list of tasks.
@@ -38,6 +41,12 @@ class RoutineStateModel {
   /// Index of the current break being taken. Only relevant when isOnBreak is true.
   final int? currentBreakIndex;
 
+  /// Completion summary if routine is completed.
+  final RoutineCompletion? completion;
+
+  /// Whether the routine has been completed.
+  final bool isCompleted;
+
   RoutineStateModel copyWith({
     List<TaskModel>? tasks,
     List<BreakModel>? breaks,
@@ -46,6 +55,8 @@ class RoutineStateModel {
     bool? isRunning,
     bool? isOnBreak,
     int? currentBreakIndex,
+    RoutineCompletion? completion,
+    bool? isCompleted,
   }) {
     return RoutineStateModel(
       tasks: tasks ?? this.tasks,
@@ -55,6 +66,8 @@ class RoutineStateModel {
       isRunning: isRunning ?? this.isRunning,
       isOnBreak: isOnBreak ?? this.isOnBreak,
       currentBreakIndex: currentBreakIndex ?? this.currentBreakIndex,
+      completion: completion ?? this.completion,
+      isCompleted: isCompleted ?? this.isCompleted,
     );
   }
 
@@ -114,6 +127,8 @@ class RoutineStateModel {
       'isRunning': isRunning,
       'isOnBreak': isOnBreak,
       'currentBreakIndex': currentBreakIndex,
+      'completion': completion?.toMap(),
+      'isCompleted': isCompleted,
     };
   }
 
@@ -143,6 +158,10 @@ class RoutineStateModel {
       isRunning: map['isRunning'] as bool? ?? false,
       isOnBreak: map['isOnBreak'] as bool? ?? false,
       currentBreakIndex: map['currentBreakIndex'] as int?,
+      completion: map['completion'] != null
+          ? RoutineCompletion.fromMap(map['completion'] as Map<String, dynamic>)
+          : null,
+      isCompleted: map['isCompleted'] as bool? ?? false,
     );
   }
 
