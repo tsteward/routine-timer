@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
+import '../models/break.dart';
 import '../models/task.dart';
 import '../utils/time_formatter.dart';
 
 /// A card displaying task information for use in the task drawer
 class TaskCard extends StatelessWidget {
-  const TaskCard({super.key, required this.task, this.width, this.height});
+  const TaskCard({
+    super.key,
+    required this.task,
+    this.width,
+    this.height,
+    this.breakAfter,
+  });
 
   final TaskModel task;
   final double? width;
   final double? height;
+  final BreakModel? breakAfter;
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +77,24 @@ class TaskCard extends StatelessWidget {
               ),
             ],
           ),
+          if (breakAfter != null) ...[
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                Icon(Icons.coffee, size: 12, color: Colors.green.shade700),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Break: ${TimeFormatter.formatDuration(breakAfter!.duration)}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.green.shade700,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/break.dart';
 import '../models/task.dart';
 import '../models/routine_state.dart';
-import '../utils/time_formatter.dart';
 import 'task_card.dart';
 import 'completed_task_card.dart';
 
@@ -19,37 +18,33 @@ class TaskDrawer extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggleExpanded;
 
-  /// Represents an item in the upcoming list (either a task or a break)
-  List<_UpcomingItem> get _upcomingItems {
+  /// Represents tasks with their following breaks
+  List<_TaskWithBreak> get _upcomingItems {
     final currentIndex = routineState.currentTaskIndex;
     final totalTasks = routineState.tasks.length;
-    final items = <_UpcomingItem>[];
+    final items = <_TaskWithBreak>[];
 
-    // If on break, the next item is the task we're breaking before
-    final startIndex = routineState.isOnBreak ? currentIndex : currentIndex + 1;
+    // Bug fix: During break, show next task (not the just-completed one)
+    final startIndex = routineState.isOnBreak
+        ? currentIndex + 1
+        : currentIndex + 1;
 
     if (startIndex >= totalTasks) {
       return []; // No upcoming items
     }
 
-    if (isExpanded) {
-      // Expanded: show all remaining tasks and interleave enabled breaks
-      for (int i = startIndex; i < totalTasks; i++) {
-        items.add(_UpcomingItem.task(routineState.tasks[i]));
-        if (i < totalTasks - 1 &&
-            routineState.breaks != null &&
-            i < routineState.breaks!.length) {
-          final breakItem = routineState.breaks![i];
-          if (breakItem.isEnabled) {
-            items.add(_UpcomingItem.breakItem(breakItem));
-          }
+    // Show all remaining tasks with their following breaks
+    for (int i = startIndex; i < totalTasks; i++) {
+      BreakModel? followingBreak;
+      if (i < totalTasks - 1 &&
+          routineState.breaks != null &&
+          i < routineState.breaks!.length) {
+        final breakItem = routineState.breaks![i];
+        if (breakItem.isEnabled) {
+          followingBreak = breakItem;
         }
       }
-    } else {
-      // Collapsed: show all remaining tasks (no breaks)
-      for (int i = startIndex; i < totalTasks; i++) {
-        items.add(_UpcomingItem.task(routineState.tasks[i]));
-      }
+      items.add(_TaskWithBreak(routineState.tasks[i], followingBreak));
     }
 
     return items;
@@ -179,7 +174,7 @@ class TaskDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildCollapsedContent(List<_UpcomingItem> upcomingItems) {
+  Widget _buildCollapsedContent(List<_TaskWithBreak> upcomingItems) {
     const cardHeight = 80.0;
     return SizedBox(
       height: cardHeight,
@@ -189,11 +184,11 @@ class TaskDrawer extends StatelessWidget {
         itemCount: upcomingItems.length,
         itemBuilder: (context, index) {
           final item = upcomingItems[index];
-          return item.when(
-            task: (task) =>
-                TaskCard(task: task, width: 140, height: cardHeight),
-            breakItem: (breakModel) =>
-                _buildBreakCard(breakModel, width: 140, height: cardHeight),
+          return TaskCard(
+            task: item.task,
+            width: 140,
+            height: cardHeight,
+            breakAfter: item.breakAfter,
           );
         },
       ),
@@ -203,7 +198,7 @@ class TaskDrawer extends StatelessWidget {
   Widget _buildExpandedContent(
     ThemeData theme,
     ColorScheme colorScheme,
-    List<_UpcomingItem> upcomingItems,
+    List<_TaskWithBreak> upcomingItems,
     List<TaskModel> completedTasks,
   ) {
     return SingleChildScrollView(
@@ -212,7 +207,7 @@ class TaskDrawer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Upcoming Items Section (tasks + breaks)
+          // Upcoming Items Section (tasks with break info)
           if (upcomingItems.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -220,11 +215,11 @@ class TaskDrawer extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: upcomingItems.map((item) {
-                  return item.when(
-                    task: (task) =>
-                        TaskCard(task: task, width: 140, height: 80),
-                    breakItem: (breakModel) =>
-                        _buildBreakCard(breakModel, width: 140, height: 80),
+                  return TaskCard(
+                    task: item.task,
+                    width: 140,
+                    height: 80,
+                    breakAfter: item.breakAfter,
                   );
                 }).toList(),
               ),
@@ -258,78 +253,12 @@ class TaskDrawer extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildBreakCard(
-    BreakModel breakModel, {
-    required double width,
-    double? height,
-  }) {
-    return Container(
-      width: width,
-      height: height,
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.green.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.coffee, size: 16, color: Colors.green.shade700),
-                const SizedBox(width: 4),
-                Text(
-                  'Break',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.green.shade700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              TimeFormatter.formatDuration(breakModel.duration),
-              style: TextStyle(fontSize: 12, color: Colors.green.shade600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
-/// Represents either a task or a break in the upcoming list
-class _UpcomingItem {
-  _UpcomingItem.task(this.taskModel) : breakModel = null, isTask = true;
+/// Represents a task with its optional following break
+class _TaskWithBreak {
+  const _TaskWithBreak(this.task, this.breakAfter);
 
-  _UpcomingItem.breakItem(this.breakModel) : taskModel = null, isTask = false;
-
-  final TaskModel? taskModel;
-  final BreakModel? breakModel;
-  final bool isTask;
-
-  T when<T>({
-    required T Function(TaskModel) task,
-    required T Function(BreakModel) breakItem,
-  }) {
-    if (isTask) {
-      return task(taskModel!);
-    } else {
-      return breakItem(breakModel!);
-    }
-  }
+  final TaskModel task;
+  final BreakModel? breakAfter;
 }
