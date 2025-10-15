@@ -17,73 +17,65 @@ class PreStartScreen extends StatefulWidget {
 class _PreStartScreenState extends State<PreStartScreen> {
   Timer? _countdownTimer;
   int _remainingSeconds = 0;
-  bool _initialized = false;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_initialized) {
-      _initialized = true;
-      _initializeCountdown();
-    }
+  void initState() {
+    super.initState();
+    _startCountdown();
   }
 
-  void _initializeCountdown() {
-    final routineBloc = context.read<RoutineBloc>();
-    final model = routineBloc.state.model;
-
-    if (model == null) {
-      // If no model, navigate to main screen immediately
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _navigateToMainScreen();
-      });
-      return;
-    }
-
-    final startTime = DateTime.fromMillisecondsSinceEpoch(
-      model.settings.startTime,
-    );
-    final now = DateTime.now();
-
-    // Extract the time-of-day from the stored startTime
-    final targetHour = startTime.hour;
-    final targetMinute = startTime.minute;
-    final targetSecond = startTime.second;
-
-    // Create target DateTime for today at the target time
-    var targetDateTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      targetHour,
-      targetMinute,
-      targetSecond,
-    );
-
-    // If target time has already passed today, target tomorrow instead
-    if (targetDateTime.isBefore(now) || targetDateTime.isAtSameMomentAs(now)) {
-      targetDateTime = targetDateTime.add(const Duration(days: 1));
-    }
-
-    final difference = targetDateTime.difference(now);
-
-    // Start countdown
-    setState(() {
-      _remainingSeconds = difference.inSeconds;
-    });
-
+  void _startCountdown() {
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          _remainingSeconds--;
-        });
-
-        if (_remainingSeconds <= 0) {
-          timer.cancel();
-          _navigateToMainScreen();
-        }
-      } else {
+      if (!mounted) {
         timer.cancel();
+        return;
+      }
+
+      final routineBloc = context.read<RoutineBloc>();
+      final model = routineBloc.state.model;
+
+      // If no model loaded yet, just wait (don't navigate)
+      if (model == null) {
+        return;
+      }
+
+      // Calculate time until start
+      final startTime = DateTime.fromMillisecondsSinceEpoch(
+        model.settings.startTime,
+      );
+      final now = DateTime.now();
+
+      // Extract the time-of-day from the stored startTime
+      final targetHour = startTime.hour;
+      final targetMinute = startTime.minute;
+      final targetSecond = startTime.second;
+
+      // Create target DateTime for today at the target time
+      var targetDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        targetHour,
+        targetMinute,
+        targetSecond,
+      );
+
+      // If target time has already passed today, target tomorrow instead
+      if (targetDateTime.isBefore(now)) {
+        targetDateTime = targetDateTime.add(const Duration(days: 1));
+      }
+
+      final difference = targetDateTime.difference(now);
+      final remainingSeconds = difference.inSeconds;
+
+      setState(() {
+        _remainingSeconds = remainingSeconds;
+      });
+
+      // Only auto-navigate when countdown reaches zero
+      if (remainingSeconds <= 0) {
+        timer.cancel();
+        _navigateToMainScreen();
       }
     });
   }
