@@ -46,11 +46,9 @@ class TaskDrawer extends StatelessWidget {
         }
       }
     } else {
-      // Collapsed: show only the next 3 tasks (no breaks)
-      int shown = 0;
-      for (int i = startIndex; i < totalTasks && shown < 3; i++) {
+      // Collapsed: show all remaining tasks (no breaks)
+      for (int i = startIndex; i < totalTasks; i++) {
         items.add(_UpcomingItem.task(routineState.tasks[i]));
-        shown++;
       }
     }
 
@@ -213,20 +211,18 @@ class TaskDrawer extends StatelessWidget {
         children: [
           // Upcoming Items Section (tasks + breaks)
           if (upcomingItems.isNotEmpty) ...[
-            SizedBox(
-              height: 80,
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
-                scrollDirection: Axis.horizontal,
-                itemCount: upcomingItems.length,
-                itemBuilder: (context, index) {
-                  final item = upcomingItems[index];
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: upcomingItems.map((item) {
                   return item.when(
                     task: (task) => TaskCard(task: task, width: 140),
                     breakItem: (breakModel) =>
                         _buildBreakCard(breakModel, width: 140),
                   );
-                },
+                }).toList(),
               ),
             ),
           ],
@@ -243,16 +239,14 @@ class TaskDrawer extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(
-              height: 80,
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
-                scrollDirection: Axis.horizontal,
-                itemCount: completedTasks.length,
-                itemBuilder: (context, index) {
-                  final task = completedTasks[index];
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: completedTasks.map((task) {
                   return CompletedTaskCard(task: task, width: 140);
-                },
+                }).toList(),
               ),
             ),
           ],

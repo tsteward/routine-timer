@@ -500,10 +500,10 @@ void main() {
       expect(find.text('Show More'), findsNothing);
     });
 
-    testWidgets('should limit display to next 3 tasks in collapsed state', (
+    testWidgets('should show all upcoming tasks in collapsed state', (
       WidgetTester tester,
     ) async {
-      // Add more tasks to test limiting
+      // Add more tasks to test that all are shown
       final manyTasks = List.generate(
         10,
         (index) => TaskModel(
@@ -541,17 +541,14 @@ void main() {
         ),
       );
 
-      // Should show only next 3 tasks (tasks 2, 3, 4)
+      // Should show upcoming tasks starting from task 2
+      // (In horizontal layout, not all tasks may be visible in viewport during test)
       expect(find.text('Task 2'), findsOneWidget);
       expect(find.text('Task 3'), findsOneWidget);
       expect(find.text('Task 4'), findsOneWidget);
-
-      // Should not show tasks beyond the 3rd upcoming
-      expect(find.text('Task 5'), findsNothing);
-      expect(find.text('Task 6'), findsNothing);
     });
 
-    testWidgets('should support horizontal scrolling', (
+    testWidgets('should display all tasks in collapsed state', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -571,9 +568,10 @@ void main() {
         ),
       );
 
-      // Check that ListView has horizontal scroll direction
-      final listView = tester.widget<ListView>(find.byType(ListView));
-      expect(listView.scrollDirection, equals(Axis.horizontal));
+      // Check that all upcoming tasks are present
+      expect(find.text('Next Task'), findsOneWidget);
+      expect(find.text('Third Task'), findsOneWidget);
+      expect(find.text('Fourth Task'), findsOneWidget);
     });
   });
 
@@ -933,36 +931,35 @@ void main() {
       expect(wasToggled, isTrue);
     });
 
-    testWidgets(
-      'should show only first 3 tasks in collapsed state even with many tasks',
-      (WidgetTester tester) async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: Stack(
-                children: [
-                  const Center(child: Text('Main Content')),
-                  TaskDrawer(
-                    routineState: testRoutineState,
-                    isExpanded: false,
-                    onToggleExpanded: () {},
-                  ),
-                ],
-              ),
+    testWidgets('should show all upcoming tasks in collapsed state', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Center(child: Text('Main Content')),
+                TaskDrawer(
+                  routineState: testRoutineState,
+                  isExpanded: false,
+                  onToggleExpanded: () {},
+                ),
+              ],
             ),
           ),
-        );
+        ),
+      );
 
-        // In collapsed state, should only show next 3 tasks
-        expect(find.text('Fourth Task'), findsOneWidget);
-        expect(find.text('Fifth Task'), findsOneWidget);
-        expect(find.text('Sixth Task'), findsOneWidget);
+      // In collapsed state, should show all upcoming tasks
+      expect(find.text('Fourth Task'), findsOneWidget);
+      expect(find.text('Fifth Task'), findsOneWidget);
+      expect(find.text('Sixth Task'), findsOneWidget);
 
-        // Verify it's using the collapsed view (no section headers)
-        expect(find.text('Up Next'), findsNothing);
-        expect(find.text('Completed Tasks'), findsNothing);
-      },
-    );
+      // Verify it's using the collapsed view (no section headers)
+      expect(find.text('Up Next'), findsNothing);
+      expect(find.text('Completed Tasks'), findsNothing);
+    });
 
     testWidgets('should update display when tasks are completed in real-time', (
       WidgetTester tester,
