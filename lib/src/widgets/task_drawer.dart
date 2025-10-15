@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/break.dart';
 import '../models/task.dart';
 import '../models/routine_state.dart';
-import '../utils/time_formatter.dart';
 import 'task_card.dart';
 import 'completed_task_card.dart';
 
@@ -19,39 +18,33 @@ class TaskDrawer extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onToggleExpanded;
 
-  /// Represents an item in the upcoming list (either a task or a break)
-  List<_UpcomingItem> get _upcomingItems {
+  /// Represents tasks with their following breaks
+  List<_TaskWithBreak> get _upcomingItems {
     final currentIndex = routineState.currentTaskIndex;
     final totalTasks = routineState.tasks.length;
-    final items = <_UpcomingItem>[];
+    final items = <_TaskWithBreak>[];
 
-    // If on break, the next item is the task we're breaking before
-    final startIndex = routineState.isOnBreak ? currentIndex : currentIndex + 1;
+    // Bug fix: During break, show next task (not the just-completed one)
+    final startIndex = routineState.isOnBreak
+        ? currentIndex + 1
+        : currentIndex + 1;
 
     if (startIndex >= totalTasks) {
       return []; // No upcoming items
     }
 
-    if (isExpanded) {
-      // Expanded: show all remaining tasks and interleave enabled breaks
-      for (int i = startIndex; i < totalTasks; i++) {
-        items.add(_UpcomingItem.task(routineState.tasks[i]));
-        if (i < totalTasks - 1 &&
-            routineState.breaks != null &&
-            i < routineState.breaks!.length) {
-          final breakItem = routineState.breaks![i];
-          if (breakItem.isEnabled) {
-            items.add(_UpcomingItem.breakItem(breakItem));
-          }
+    // Show all remaining tasks with their following breaks
+    for (int i = startIndex; i < totalTasks; i++) {
+      BreakModel? followingBreak;
+      if (i < totalTasks - 1 &&
+          routineState.breaks != null &&
+          i < routineState.breaks!.length) {
+        final breakItem = routineState.breaks![i];
+        if (breakItem.isEnabled) {
+          followingBreak = breakItem;
         }
       }
-    } else {
-      // Collapsed: show only the next 3 tasks (no breaks)
-      int shown = 0;
-      for (int i = startIndex; i < totalTasks && shown < 3; i++) {
-        items.add(_UpcomingItem.task(routineState.tasks[i]));
-        shown++;
-      }
+      items.add(_TaskWithBreak(routineState.tasks[i], followingBreak));
     }
 
     return items;
@@ -97,7 +90,7 @@ class TaskDrawer extends StatelessWidget {
               constraints: BoxConstraints(
                 maxHeight: isExpanded
                     ? MediaQuery.of(context).size.height * 0.6
-                    : 160,
+                    : 135,
               ),
               decoration: BoxDecoration(
                 color: colorScheme.surface,
@@ -114,28 +107,47 @@ class TaskDrawer extends StatelessWidget {
               ),
               child: SafeArea(
                 top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                child: Stack(
                   children: [
-                    // Header with toggle link
-                    _buildHeader(
-                      theme,
-                      colorScheme,
-                      showLabel: isExpanded || _completedTasks.isEmpty,
-                    ),
-
-                    // Content based on state
-                    if (isExpanded)
-                      Expanded(
-                        child: _buildExpandedContent(
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Header with label
+                        _buildHeader(
                           theme,
                           colorScheme,
-                          upcomingItems,
-                          completedTasks,
+                          showLabel: isExpanded || _completedTasks.isEmpty,
                         ),
-                      )
-                    else
-                      _buildCollapsedContent(upcomingItems),
+
+                        // Content based on state
+                        if (isExpanded)
+                          Expanded(
+                            child: _buildExpandedContent(
+                              theme,
+                              colorScheme,
+                              upcomingItems,
+                              completedTasks,
+                            ),
+                          )
+                        else
+                          _buildCollapsedContent(upcomingItems),
+                      ],
+                    ),
+                    // Show More/Less button positioned on the right
+                    Positioned(
+                      top: 12,
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: onToggleExpanded,
+                        child: Text(
+                          isExpanded ? 'Show Less' : 'Show More',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -151,48 +163,36 @@ class TaskDrawer extends StatelessWidget {
     ColorScheme colorScheme, {
     required bool showLabel,
   }) {
-    return GestureDetector(
-      onTap: onToggleExpanded,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            showLabel
-                ? Text(
-                    'Up Next',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-            Text(
-              isExpanded ? 'Show Less' : 'Show More',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w500,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 80, 8),
+      child: showLabel
+          ? Text(
+              'Up Next',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
               ),
-            ),
-          ],
-        ),
-      ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 
-  Widget _buildCollapsedContent(List<_UpcomingItem> upcomingItems) {
+  Widget _buildCollapsedContent(List<_TaskWithBreak> upcomingItems) {
+    const cardHeight = 95.0;
     return SizedBox(
-      height: 80,
+      height: cardHeight,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
         scrollDirection: Axis.horizontal,
         itemCount: upcomingItems.length,
         itemBuilder: (context, index) {
           final item = upcomingItems[index];
-          return item.when(
-            task: (task) => TaskCard(task: task, width: 140),
-            breakItem: (breakModel) => _buildBreakCard(breakModel, width: 140),
+          return TaskCard(
+            task: item.task,
+            width: 140,
+            height: cardHeight,
+            breakAfter: item.breakAfter,
           );
         },
       ),
@@ -202,7 +202,7 @@ class TaskDrawer extends StatelessWidget {
   Widget _buildExpandedContent(
     ThemeData theme,
     ColorScheme colorScheme,
-    List<_UpcomingItem> upcomingItems,
+    List<_TaskWithBreak> upcomingItems,
     List<TaskModel> completedTasks,
   ) {
     return SingleChildScrollView(
@@ -211,22 +211,22 @@ class TaskDrawer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Upcoming Items Section (tasks + breaks)
+          // Upcoming Items Section (tasks with break info)
           if (upcomingItems.isNotEmpty) ...[
-            SizedBox(
-              height: 80,
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
-                scrollDirection: Axis.horizontal,
-                itemCount: upcomingItems.length,
-                itemBuilder: (context, index) {
-                  final item = upcomingItems[index];
-                  return item.when(
-                    task: (task) => TaskCard(task: task, width: 140),
-                    breakItem: (breakModel) =>
-                        _buildBreakCard(breakModel, width: 140),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Wrap(
+                alignment: WrapAlignment.start,
+                spacing: 8,
+                runSpacing: 8,
+                children: upcomingItems.map((item) {
+                  return TaskCard(
+                    task: item.task,
+                    width: 140,
+                    height: 95,
+                    breakAfter: item.breakAfter,
                   );
-                },
+                }).toList(),
               ),
             ),
           ],
@@ -243,16 +243,15 @@ class TaskDrawer extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(
-              height: 80,
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
-                scrollDirection: Axis.horizontal,
-                itemCount: completedTasks.length,
-                itemBuilder: (context, index) {
-                  final task = completedTasks[index];
-                  return CompletedTaskCard(task: task, width: 140);
-                },
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Wrap(
+                alignment: WrapAlignment.start,
+                spacing: 8,
+                runSpacing: 8,
+                children: completedTasks.map((task) {
+                  return CompletedTaskCard(task: task, width: 140, height: 95);
+                }).toList(),
               ),
             ),
           ],
@@ -260,73 +259,12 @@ class TaskDrawer extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildBreakCard(BreakModel breakModel, {required double width}) {
-    return Container(
-      width: width,
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.green.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.coffee, size: 16, color: Colors.green.shade700),
-                const SizedBox(width: 4),
-                Text(
-                  'Break',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.green.shade700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              TimeFormatter.formatDuration(breakModel.duration),
-              style: TextStyle(fontSize: 12, color: Colors.green.shade600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
-/// Represents either a task or a break in the upcoming list
-class _UpcomingItem {
-  _UpcomingItem.task(this.taskModel) : breakModel = null, isTask = true;
+/// Represents a task with its optional following break
+class _TaskWithBreak {
+  const _TaskWithBreak(this.task, this.breakAfter);
 
-  _UpcomingItem.breakItem(this.breakModel) : taskModel = null, isTask = false;
-
-  final TaskModel? taskModel;
-  final BreakModel? breakModel;
-  final bool isTask;
-
-  T when<T>({
-    required T Function(TaskModel) task,
-    required T Function(BreakModel) breakItem,
-  }) {
-    if (isTask) {
-      return task(taskModel!);
-    } else {
-      return breakItem(breakModel!);
-    }
-  }
+  final TaskModel task;
+  final BreakModel? breakAfter;
 }
