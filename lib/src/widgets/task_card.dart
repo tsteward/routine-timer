@@ -27,7 +27,7 @@ class TaskCard extends StatelessWidget {
       width: width ?? 140,
       height: height,
       margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
