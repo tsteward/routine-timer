@@ -107,28 +107,47 @@ class TaskDrawer extends StatelessWidget {
               ),
               child: SafeArea(
                 top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                child: Stack(
                   children: [
-                    // Header with toggle link
-                    _buildHeader(
-                      theme,
-                      colorScheme,
-                      showLabel: isExpanded || _completedTasks.isEmpty,
-                    ),
-
-                    // Content based on state
-                    if (isExpanded)
-                      Expanded(
-                        child: _buildExpandedContent(
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Header with label
+                        _buildHeader(
                           theme,
                           colorScheme,
-                          upcomingItems,
-                          completedTasks,
+                          showLabel: isExpanded || _completedTasks.isEmpty,
                         ),
-                      )
-                    else
-                      _buildCollapsedContent(upcomingItems),
+
+                        // Content based on state
+                        if (isExpanded)
+                          Expanded(
+                            child: _buildExpandedContent(
+                              theme,
+                              colorScheme,
+                              upcomingItems,
+                              completedTasks,
+                            ),
+                          )
+                        else
+                          _buildCollapsedContent(upcomingItems),
+                      ],
+                    ),
+                    // Show More/Less button positioned on the right
+                    Positioned(
+                      top: 12,
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: onToggleExpanded,
+                        child: Text(
+                          isExpanded ? 'Show Less' : 'Show More',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -144,33 +163,18 @@ class TaskDrawer extends StatelessWidget {
     ColorScheme colorScheme, {
     required bool showLabel,
   }) {
-    return GestureDetector(
-      onTap: onToggleExpanded,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            showLabel
-                ? Text(
-                    'Up Next',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-            Text(
-              isExpanded ? 'Show Less' : 'Show More',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w500,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 80, 8),
+      child: showLabel
+          ? Text(
+              'Up Next',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
               ),
-            ),
-          ],
-        ),
-      ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 
@@ -212,6 +216,7 @@ class TaskDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Wrap(
+                alignment: WrapAlignment.start,
                 spacing: 8,
                 runSpacing: 8,
                 children: upcomingItems.map((item) {
@@ -241,6 +246,7 @@ class TaskDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Wrap(
+                alignment: WrapAlignment.start,
                 spacing: 8,
                 runSpacing: 8,
                 children: completedTasks.map((task) {
