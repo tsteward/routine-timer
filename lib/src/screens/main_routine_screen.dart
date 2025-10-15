@@ -22,12 +22,10 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
   int? _previousTaskIndex;
   bool? _previousBreakState;
   bool _isDrawerExpanded = false;
-  DateTime? _routineStartTime;
 
   @override
   void initState() {
     super.initState();
-    _routineStartTime = DateTime.now();
     _startTimer();
   }
 
@@ -164,7 +162,6 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       // Header with schedule status and settings icon
                       ScheduleHeader(
                         routineState: model,
-                        routineStartTime: _routineStartTime ?? DateTime.now(),
                         onSettingsTap: () {
                           Navigator.of(context).pushNamed(AppRoutes.tasks);
                         },
@@ -358,7 +355,6 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                   // Header with schedule status and settings icon
                   ScheduleHeader(
                     routineState: model,
-                    routineStartTime: _routineStartTime ?? DateTime.now(),
                     onSettingsTap: () {
                       Navigator.of(context).pushNamed(AppRoutes.tasks);
                     },

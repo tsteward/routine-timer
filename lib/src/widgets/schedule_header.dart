@@ -5,14 +5,12 @@ import '../models/routine_state.dart';
 class ScheduleHeader extends StatelessWidget {
   const ScheduleHeader({
     required this.routineState,
-    required this.routineStartTime,
     required this.onSettingsTap,
     this.currentTime,
     super.key,
   });
 
   final RoutineStateModel routineState;
-  final DateTime routineStartTime;
   final VoidCallback onSettingsTap;
   final DateTime? currentTime;
 
@@ -84,27 +82,18 @@ class ScheduleHeader extends StatelessWidget {
   /// and estimated completion time.
   ScheduleStatus _calculateScheduleStatus() {
     final now = currentTime ?? DateTime.now();
+    final scheduledStartTime = DateTime.fromMillisecondsSinceEpoch(
+      routineState.settings.startTime,
+    );
 
-    // Calculate expected elapsed time from routine start
-    // This is the time that should have passed based on estimated task durations
-    int expectedElapsedSeconds = 0;
+    // Calculate expected elapsed time from scheduled start time
+    // This is how much time should have passed since the scheduled start
+    final expectedElapsedSeconds = now
+        .difference(scheduledStartTime)
+        .inSeconds
+        .clamp(0, 86400);
+
     final currentTaskIndex = routineState.currentTaskIndex;
-
-    // Sum up estimated durations of completed tasks
-    for (
-      int i = 0;
-      i < currentTaskIndex && i < routineState.tasks.length;
-      i++
-    ) {
-      expectedElapsedSeconds += routineState.tasks[i].estimatedDuration;
-
-      // Add break time if there's an enabled break after this task
-      if (routineState.breaks != null &&
-          i < routineState.breaks!.length &&
-          routineState.breaks![i].isEnabled) {
-        expectedElapsedSeconds += routineState.breaks![i].duration;
-      }
-    }
 
     // Calculate actual elapsed time (sum of actual task durations)
     int actualElapsedSeconds = 0;
@@ -129,7 +118,9 @@ class ScheduleHeader extends StatelessWidget {
       }
     }
 
-    // Calculate variance (negative = ahead, positive = behind)
+    // Calculate variance (positive = ahead, negative = behind)
+    // If actual > expected, user has completed more work than time passed (ahead)
+    // If actual < expected, user has completed less work than time passed (behind)
     final varianceSeconds = actualElapsedSeconds - expectedElapsedSeconds;
 
     // Determine status text
@@ -137,8 +128,8 @@ class ScheduleHeader extends StatelessWidget {
     if (varianceSeconds.abs() < 30) {
       // Within 30 seconds is considered "on track"
       statusText = 'On track';
-    } else if (varianceSeconds < 0) {
-      // Ahead of schedule
+    } else if (varianceSeconds > 0) {
+      // Ahead of schedule (completed more work than time passed)
       final minutes = (varianceSeconds.abs() ~/ 60);
       final seconds = varianceSeconds.abs() % 60;
       if (minutes > 0) {
@@ -150,9 +141,9 @@ class ScheduleHeader extends StatelessWidget {
         statusText = 'Ahead by $seconds sec';
       }
     } else {
-      // Behind schedule
-      final minutes = varianceSeconds ~/ 60;
-      final seconds = varianceSeconds % 60;
+      // Behind schedule (completed less work than time passed)
+      final minutes = varianceSeconds.abs() ~/ 60;
+      final seconds = varianceSeconds.abs() % 60;
       if (minutes > 0) {
         statusText = 'Behind by $minutes min';
         if (seconds > 0) {
@@ -196,7 +187,9 @@ class ScheduleHeader extends StatelessWidget {
 
     // Adjust for current pace (if behind, add extra time; if ahead, subtract time)
     // This makes the estimate more realistic based on current performance
-    final adjustedRemainingSeconds = remainingSeconds + varianceSeconds;
+    // Variance: positive = ahead, negative = behind
+    // If ahead, subtract variance (finish earlier); if behind, add variance (finish later)
+    final adjustedRemainingSeconds = remainingSeconds - varianceSeconds;
 
     final estimatedCompletion = now.add(
       Duration(
@@ -233,6 +226,6 @@ class ScheduleStatus {
   /// Formatted estimated completion time (e.g., "9:30 AM")
   final String estimatedCompletionTime;
 
-  /// Variance in seconds (negative = ahead, positive = behind)
+  /// Variance in seconds (positive = ahead, negative = behind)
   final int varianceSeconds;
 }
