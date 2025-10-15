@@ -127,31 +127,44 @@ class _PreStartScreenState extends State<PreStartScreen> {
                   fontFamily: 'monospace',
                 ),
               ),
+              const SizedBox(height: 48),
+              // Start Early button
+              SizedBox(
+                width: 250,
+                child: ElevatedButton(
+                  onPressed: _navigateToMainScreen,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    textStyle: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: const Text('Start Early'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Manage Tasks button
+              SizedBox(
+                width: 250,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed(AppRoutes.tasks);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    textStyle: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: const Text('Manage Tasks'),
+                ),
+              ),
             ],
           ),
         ),
       ),
-      floatingActionButton: _NavFab(current: AppRoutes.preStart),
-    );
-  }
-}
-
-class _NavFab extends StatelessWidget {
-  const _NavFab({required this.current});
-
-  final String current;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.navigation, color: Colors.white),
-      color: Colors.white,
-      onSelected: (route) => Navigator.of(context).pushNamed(route),
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: AppRoutes.preStart, child: Text('Pre-Start')),
-        PopupMenuItem(value: AppRoutes.main, child: Text('Main Routine')),
-        PopupMenuItem(value: AppRoutes.tasks, child: Text('Task Management')),
-      ],
     );
   }
 }

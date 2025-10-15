@@ -132,7 +132,6 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                 ),
               ),
             ),
-            floatingActionButton: const _NavFab(),
           );
         }
 
@@ -317,7 +316,6 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
               ),
             ],
           ),
-          floatingActionButton: const _NavFab(),
         );
       },
     );
@@ -330,7 +328,6 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
       return Scaffold(
         backgroundColor: AppTheme.green,
         body: const Center(child: CircularProgressIndicator()),
-        floatingActionButton: const _NavFab(),
       );
     }
 
@@ -474,37 +471,6 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
           ),
         ],
       ),
-      floatingActionButton: const _NavFab(),
-    );
-  }
-}
-
-class _NavFab extends StatelessWidget {
-  const _NavFab();
-
-  @override
-  Widget build(BuildContext context) {
-    return FloatingActionButton.extended(
-      onPressed: () async {
-        final selected = await showMenu<String>(
-          context: context,
-          position: const RelativeRect.fromLTRB(1000, 0, 16, 0),
-          items: const [
-            PopupMenuItem(value: AppRoutes.preStart, child: Text('Pre-Start')),
-            PopupMenuItem(value: AppRoutes.main, child: Text('Main Routine')),
-            PopupMenuItem(
-              value: AppRoutes.tasks,
-              child: Text('Task Management'),
-            ),
-          ],
-        );
-        if (selected != null && context.mounted) {
-          // ignore: use_build_context_synchronously
-          Navigator.of(context).pushNamed(selected);
-        }
-      },
-      label: const Text('Navigate'),
-      icon: const Icon(Icons.navigation),
     );
   }
 }
