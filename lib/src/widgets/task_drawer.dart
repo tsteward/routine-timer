@@ -180,8 +180,9 @@ class TaskDrawer extends StatelessWidget {
   }
 
   Widget _buildCollapsedContent(List<_UpcomingItem> upcomingItems) {
+    const cardHeight = 80.0;
     return SizedBox(
-      height: 80,
+      height: cardHeight,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
         scrollDirection: Axis.horizontal,
@@ -189,8 +190,10 @@ class TaskDrawer extends StatelessWidget {
         itemBuilder: (context, index) {
           final item = upcomingItems[index];
           return item.when(
-            task: (task) => TaskCard(task: task, width: 140),
-            breakItem: (breakModel) => _buildBreakCard(breakModel, width: 140),
+            task: (task) =>
+                TaskCard(task: task, width: 140, height: cardHeight),
+            breakItem: (breakModel) =>
+                _buildBreakCard(breakModel, width: 140, height: cardHeight),
           );
         },
       ),
@@ -218,9 +221,10 @@ class TaskDrawer extends StatelessWidget {
                 runSpacing: 8,
                 children: upcomingItems.map((item) {
                   return item.when(
-                    task: (task) => TaskCard(task: task, width: 140),
+                    task: (task) =>
+                        TaskCard(task: task, width: 140, height: 80),
                     breakItem: (breakModel) =>
-                        _buildBreakCard(breakModel, width: 140),
+                        _buildBreakCard(breakModel, width: 140, height: 80),
                   );
                 }).toList(),
               ),
@@ -245,7 +249,7 @@ class TaskDrawer extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: completedTasks.map((task) {
-                  return CompletedTaskCard(task: task, width: 140);
+                  return CompletedTaskCard(task: task, width: 140, height: 80);
                 }).toList(),
               ),
             ),
@@ -255,9 +259,14 @@ class TaskDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildBreakCard(BreakModel breakModel, {required double width}) {
+  Widget _buildBreakCard(
+    BreakModel breakModel, {
+    required double width,
+    double? height,
+  }) {
     return Container(
       width: width,
+      height: height,
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

@@ -4,10 +4,11 @@ import '../utils/time_formatter.dart';
 
 /// A card displaying task information for use in the task drawer
 class TaskCard extends StatelessWidget {
-  const TaskCard({super.key, required this.task, this.width});
+  const TaskCard({super.key, required this.task, this.width, this.height});
 
   final TaskModel task;
   final double? width;
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +17,7 @@ class TaskCard extends StatelessWidget {
 
     return Container(
       width: width ?? 140,
+      height: height,
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
