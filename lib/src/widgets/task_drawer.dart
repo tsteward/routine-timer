@@ -90,7 +90,7 @@ class TaskDrawer extends StatelessWidget {
               constraints: BoxConstraints(
                 maxHeight: isExpanded
                     ? MediaQuery.of(context).size.height * 0.6
-                    : 150,
+                    : 135,
               ),
               decoration: BoxDecoration(
                 color: colorScheme.surface,
@@ -179,7 +179,7 @@ class TaskDrawer extends StatelessWidget {
   }
 
   Widget _buildCollapsedContent(List<_TaskWithBreak> upcomingItems) {
-    const cardHeight = 110.0;
+    const cardHeight = 95.0;
     return SizedBox(
       height: cardHeight,
       child: ListView.builder(
@@ -223,7 +223,7 @@ class TaskDrawer extends StatelessWidget {
                   return TaskCard(
                     task: item.task,
                     width: 140,
-                    height: 110,
+                    height: 95,
                     breakAfter: item.breakAfter,
                   );
                 }).toList(),
@@ -250,7 +250,7 @@ class TaskDrawer extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: completedTasks.map((task) {
-                  return CompletedTaskCard(task: task, width: 140, height: 110);
+                  return CompletedTaskCard(task: task, width: 140, height: 95);
                 }).toList(),
               ),
             ),
