@@ -165,6 +165,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                       ScheduleHeader(
                         routineState: model,
                         routineStartTime: _routineStartTime ?? DateTime.now(),
+                        currentTaskElapsedSeconds: _elapsedSeconds,
                         onSettingsTap: () {
                           Navigator.of(context).pushNamed(AppRoutes.tasks);
                         },
@@ -359,6 +360,7 @@ class _MainRoutineScreenState extends State<MainRoutineScreen> {
                   ScheduleHeader(
                     routineState: model,
                     routineStartTime: _routineStartTime ?? DateTime.now(),
+                    currentTaskElapsedSeconds: _elapsedSeconds,
                     onSettingsTap: () {
                       Navigator.of(context).pushNamed(AppRoutes.tasks);
                     },
