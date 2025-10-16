@@ -872,36 +872,6 @@ void main() {
       });
     });
 
-    group('Navigation FAB', () {
-      testWidgets('displays navigation FAB', (tester) async {
-        final tasks = [
-          const TaskModel(
-            id: '1',
-            name: 'Test Task',
-            estimatedDuration: 60,
-            order: 0,
-          ),
-        ];
-        final settings = RoutineSettingsModel(
-          startTime: DateTime.now().millisecondsSinceEpoch,
-          breaksEnabledByDefault: true,
-          defaultBreakDuration: 120,
-        );
-        final model = RoutineStateModel(
-          tasks: tasks,
-          settings: settings,
-          selectedTaskId: tasks.first.id,
-        );
-        bloc.emit(bloc.state.copyWith(model: model));
-
-        await tester.pumpWidget(makeTestableWidget(const MainRoutineScreen()));
-        await tester.pump();
-
-        expect(find.byType(FloatingActionButton), findsOneWidget);
-        expect(find.text('Navigate'), findsOneWidget);
-      });
-    });
-
     group('Edge Cases', () {
       testWidgets('handles zero duration task', (tester) async {
         final tasks = [

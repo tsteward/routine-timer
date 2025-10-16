@@ -127,18 +127,14 @@ void main() {
       );
     });
 
-    testWidgets('Can navigate to Task Management via the test menu', (
+    testWidgets('Can navigate to Task Management via the Manage Tasks button', (
       tester,
     ) async {
       await tester.pumpWidget(const TestRoutineTimerApp());
       await tester.pumpAndSettle();
 
-      // Open the popup menu (navigation menu)
-      await tester.tap(find.byIcon(Icons.navigation));
-      await tester.pumpAndSettle();
-
-      // Select Task Management
-      await tester.tap(find.text('Task Management'));
+      // Click the Manage Tasks button on the prestart screen
+      await tester.tap(find.text('Manage Tasks'));
       await tester.pumpAndSettle();
 
       // AppBar title should be visible
@@ -152,17 +148,14 @@ void main() {
       expect(find.text('Task Details'), findsOneWidget);
     });
 
-    testWidgets('Can navigate to Main Routine via the test menu', (
+    testWidgets('Can navigate to Main Routine via the Start Early button', (
       tester,
     ) async {
       await tester.pumpWidget(const TestRoutineTimerApp());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.navigation));
-      await tester.pumpAndSettle();
-
-      // Tap the last "Main Routine" in the menu (not the title)
-      await tester.tap(find.text('Main Routine').last);
+      // Click the Start Early button on the prestart screen
+      await tester.tap(find.text('Start Early'));
       await tester.pumpAndSettle();
 
       // Should show the task counter (sample routine loads 4 tasks)
