@@ -923,5 +923,64 @@ void main() {
       // Estimated completion should be current time (task is already over)
       expect(find.textContaining('Est. Completion: 6:17 AM'), findsOneWidget);
     });
+
+    testWidgets(
+      'uses current day for scheduled start time even when saved start time is from different day',
+      (tester) async {
+        // Bug: Saved start time from previous day (Oct 13, 6:00 AM)
+        // Current day: Oct 14, 6:05 AM
+        // Expected: Should use Oct 14, 6:00 AM (current day with saved time)
+        // Task 1: 10 min estimated, 5 min actual (5 min ahead)
+        // Task 2: 5 min estimated
+        // Scheduled completion: Oct 14, 6:00 + 10 min + 5 min = Oct 14, 6:15
+        // Estimated completion: Oct 14, 6:05 + 5 min = Oct 14, 6:10 (5 min ahead)
+
+        final settingsWithPreviousDay = RoutineSettingsModel(
+          startTime: DateTime(2025, 10, 13, 6, 0).millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Task 1',
+            estimatedDuration: 600, // 10 minutes estimated
+            order: 0,
+            isCompleted: true,
+            actualDuration: 300, // 5 minutes actual (5 min ahead)
+          ),
+          const TaskModel(
+            id: '2',
+            name: 'Task 2',
+            estimatedDuration: 300,
+            order: 1,
+          ),
+        ];
+
+        final state = RoutineStateModel(
+          tasks: tasks,
+          settings: settingsWithPreviousDay,
+          selectedTaskId: tasks[1].id,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ScheduleHeader(
+                routineState: state,
+                routineStartTime: DateTime(2025, 10, 14, 6, 0),
+                currentTime: DateTime(2025, 10, 14, 6, 5),
+                currentTaskElapsedSeconds: 0, // Just started task 2
+                onSettingsTap: () {},
+              ),
+            ),
+          ),
+        );
+
+        // Should show "Ahead by 5 min" because it uses current day (Oct 14) not saved day (Oct 13)
+        expect(find.text('Ahead by 5 min'), findsOneWidget);
+      },
+    );
   });
 }
