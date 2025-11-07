@@ -8,6 +8,7 @@ class ScheduleHeader extends StatelessWidget {
     required this.routineStartTime,
     required this.onSettingsTap,
     this.currentTime,
+    this.currentTaskElapsedSeconds,
     super.key,
   });
 
@@ -15,6 +16,7 @@ class ScheduleHeader extends StatelessWidget {
   final DateTime routineStartTime;
   final VoidCallback onSettingsTap;
   final DateTime? currentTime;
+  final int? currentTaskElapsedSeconds;
 
   @override
   Widget build(BuildContext context) {
@@ -84,53 +86,85 @@ class ScheduleHeader extends StatelessWidget {
   /// and estimated completion time.
   ScheduleStatus _calculateScheduleStatus() {
     final now = currentTime ?? DateTime.now();
+    // Extract hour and minute from saved start time, but use current day
+    final savedStartTime = DateTime.fromMillisecondsSinceEpoch(
+      routineState.settings.startTime,
+    );
+    final scheduledStartTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      savedStartTime.hour,
+      savedStartTime.minute,
+      savedStartTime.second,
+    );
 
-    // Calculate expected elapsed time from routine start
-    // This is the time that should have passed based on estimated task durations
-    int expectedElapsedSeconds = 0;
+    // Calculate scheduled completion time (scheduled start + all tasks + breaks)
+    int totalScheduledSeconds = 0;
+    for (final task in routineState.tasks) {
+      totalScheduledSeconds += task.estimatedDuration;
+    }
+    if (routineState.breaks != null) {
+      for (final breakItem in routineState.breaks!) {
+        if (breakItem.isEnabled) {
+          totalScheduledSeconds += breakItem.duration;
+        }
+      }
+    }
+    final scheduledCompletionTime = scheduledStartTime.add(
+      Duration(seconds: totalScheduledSeconds),
+    );
+
+    // Calculate estimated completion time
+    // Current time + remaining time for all remaining tasks/breaks + remaining time for current task
+    int remainingSeconds = 0;
     final currentTaskIndex = routineState.currentTaskIndex;
 
-    // Sum up estimated durations of completed tasks
-    for (
-      int i = 0;
-      i < currentTaskIndex && i < routineState.tasks.length;
-      i++
-    ) {
-      expectedElapsedSeconds += routineState.tasks[i].estimatedDuration;
+    // Add remaining time for current task (if any)
+    if (currentTaskIndex >= 0 && currentTaskIndex < routineState.tasks.length) {
+      final currentTask = routineState.tasks[currentTaskIndex];
+      if (!currentTask.isCompleted && currentTaskElapsedSeconds != null) {
+        // Calculate remaining time for current task
+        // If elapsed time exceeds estimated, we're overtime
+        final currentTaskRemaining =
+            currentTask.estimatedDuration - currentTaskElapsedSeconds!;
 
-      // Add break time if there's an enabled break after this task
+        // If task is overtime (negative), we still count 0 remaining time
+        // (we're already past the estimated time, just need to finish)
+        // The behind status will be reflected in the variance calculation
+        remainingSeconds += currentTaskRemaining > 0 ? currentTaskRemaining : 0;
+      } else if (!currentTask.isCompleted) {
+        // Fallback if elapsed time not provided
+        remainingSeconds += currentTask.estimatedDuration;
+      }
+
+      // Add time for all remaining tasks after current
+      for (int i = currentTaskIndex + 1; i < routineState.tasks.length; i++) {
+        remainingSeconds += routineState.tasks[i].estimatedDuration;
+
+        // Add break time if there's an enabled break after this task
+        if (routineState.breaks != null &&
+            i < routineState.breaks!.length &&
+            routineState.breaks![i].isEnabled) {
+          remainingSeconds += routineState.breaks![i].duration;
+        }
+      }
+
+      // Add the break after current task if it exists and is enabled
       if (routineState.breaks != null &&
-          i < routineState.breaks!.length &&
-          routineState.breaks![i].isEnabled) {
-        expectedElapsedSeconds += routineState.breaks![i].duration;
+          currentTaskIndex < routineState.breaks!.length &&
+          routineState.breaks![currentTaskIndex].isEnabled) {
+        remainingSeconds += routineState.breaks![currentTaskIndex].duration;
       }
     }
 
-    // Calculate actual elapsed time (sum of actual task durations)
-    int actualElapsedSeconds = 0;
-    for (
-      int i = 0;
-      i < currentTaskIndex && i < routineState.tasks.length;
-      i++
-    ) {
-      final task = routineState.tasks[i];
-      if (task.isCompleted && task.actualDuration != null) {
-        actualElapsedSeconds += task.actualDuration!;
-      } else {
-        // If not completed yet, use estimated duration as fallback
-        actualElapsedSeconds += task.estimatedDuration;
-      }
+    final estimatedCompletion = now.add(Duration(seconds: remainingSeconds));
 
-      // Add break time if there's an enabled break after this task
-      if (routineState.breaks != null &&
-          i < routineState.breaks!.length &&
-          routineState.breaks![i].isEnabled) {
-        actualElapsedSeconds += routineState.breaks![i].duration;
-      }
-    }
-
-    // Calculate variance (negative = ahead, positive = behind)
-    final varianceSeconds = actualElapsedSeconds - expectedElapsedSeconds;
+    // Calculate variance (estimated completion - scheduled completion)
+    // Negative = ahead, positive = behind
+    final varianceSeconds = estimatedCompletion
+        .difference(scheduledCompletionTime)
+        .inSeconds;
 
     // Determine status text
     String statusText;
@@ -162,47 +196,6 @@ class ScheduleHeader extends StatelessWidget {
         statusText = 'Behind by $seconds sec';
       }
     }
-
-    // Calculate estimated completion time
-    // Current time + remaining task time + remaining break time - variance
-    int remainingSeconds = 0;
-
-    // Add remaining time for current task (if any)
-    if (currentTaskIndex >= 0 && currentTaskIndex < routineState.tasks.length) {
-      final currentTask = routineState.tasks[currentTaskIndex];
-      if (!currentTask.isCompleted) {
-        remainingSeconds += currentTask.estimatedDuration;
-      }
-
-      // Add time for all remaining tasks after current
-      for (int i = currentTaskIndex + 1; i < routineState.tasks.length; i++) {
-        remainingSeconds += routineState.tasks[i].estimatedDuration;
-
-        // Add break time if there's an enabled break after this task
-        if (routineState.breaks != null &&
-            i < routineState.breaks!.length &&
-            routineState.breaks![i].isEnabled) {
-          remainingSeconds += routineState.breaks![i].duration;
-        }
-      }
-
-      // Add the break after current task if it exists and is enabled
-      if (routineState.breaks != null &&
-          currentTaskIndex < routineState.breaks!.length &&
-          routineState.breaks![currentTaskIndex].isEnabled) {
-        remainingSeconds += routineState.breaks![currentTaskIndex].duration;
-      }
-    }
-
-    // Adjust for current pace (if behind, add extra time; if ahead, subtract time)
-    // This makes the estimate more realistic based on current performance
-    final adjustedRemainingSeconds = remainingSeconds + varianceSeconds;
-
-    final estimatedCompletion = now.add(
-      Duration(
-        seconds: adjustedRemainingSeconds.clamp(0, 86400),
-      ), // Max 24 hours
-    );
 
     final hour = estimatedCompletion.hour;
     final minute = estimatedCompletion.minute;

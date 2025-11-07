@@ -11,25 +11,21 @@ This project includes MCP integrations and conventions so you can run, test, and
 - Tests: `test/`
  - Plan directory: `plan/` — see `plan/Plan.md` and `plan/Routine Timer.md` for a high-level overview and roadmap.
 
-## 0) Environment Assumptions
-- Project root: `C:\Users\tstew\projects\routine_timer`
-- Flutter installed on stable; Dart ≥ 3.9.
-
 ## 1) Install Dependencies
 From project root:
-```powershell
+```bash
 flutter pub get
 ```
 
 ## 2) List Devices and Select Target
-```powershell
+```bash
 flutter devices
 ```
 Choose the physical Android device (e.g., `356120352015875`).
 
 ## 3) Run the App
 Launch the app on your selected device:
-```powershell
+```bash
 flutter run -d <deviceId> --target=lib/main.dart
 ```
 Optional: If you plan to use MCP, add `--print-dtd` to also print a DTD URI (you will see "The Dart Tooling Daemon is available at: ws://...").
@@ -47,11 +43,11 @@ If using MCP tooling, call `connect_dart_tooling_daemon(uri)`, then `hot_reload(
 ## 6) Running Tests via MCP (Optional)
 1) Ensure root is registered:
 ```json
-mcp_dart_add_roots: [{ "uri": "file:///C:/Users/tstew/projects/routine_timer", "name": "routine_timer" }]
+mcp_dart_add_roots: [{ "uri": "file:///<project_root>", "name": "routine_timer" }]
 ```
 2) Run tests:
 ```json
-mcp_dart_run_tests: { "roots": [{ "root": "file:///C:/Users/tstew/projects/routine_timer" }], "testRunnerArgs": { "reporter": "compact" } }
+mcp_dart_run_tests: { "roots": [{ "root": "file:///<project_root>" }], "testRunnerArgs": { "reporter": "compact" } }
 ```
 Expected: all tests pass.
 
@@ -59,19 +55,19 @@ Expected: all tests pass.
 - Make edits with apply_patch/edit_file tools only
 - If `pubspec.yaml` changed → run `flutter pub get`
 - Run local tests and ensure they all pass (include edge cases):
-```powershell
+```bash
 flutter test
 ```
 - Run static analysis and fix all errors and warnings (treat warnings as errors). Do not proceed until 0 issues:
-```powershell
+```bash
 dart analyze
 ```
 - Optionally run analyzer in Flutter context as well:
-```powershell
+```bash
 flutter analyze
 ```
 - Format code before finishing (no unformatted files allowed):
-```powershell
+```bash
 dart format .
 ```
 - If app is running, trigger `hot_reload`
@@ -84,14 +80,14 @@ dart format .
 - Never commit or share printed DTD URIs; they’re local and ephemeral.
 
 ## 10) One-Command Recap
-```powershell
+```bash
 flutter run -d <deviceId> --target=lib/main.dart
 # Optional: add --print-dtd and connect to DTD if needed
 ```
 
 ## 11) Code Formatting
 Always run the formatter before finishing any change. Never commit unformatted code.
-```powershell
+```bash
 dart format .
 ```
 
@@ -99,11 +95,11 @@ dart format .
 All changes must pass static analysis and lints with 0 errors and 0 warnings.
 
 - **Analyze the codebase**:
-```powershell
+```bash
 dart analyze
 ```
 - **Optional Flutter-context analysis** (may catch additional issues):
-```powershell
+```bash
 flutter analyze
 ```
 - **Resolve all findings**: Treat warnings as errors; do not defer fixes. If a rule is inappropriate, prefer improving the code over disabling the lint. Only adjust rules in `analysis_options.yaml` with strong justification.
@@ -119,7 +115,7 @@ flutter analyze
   - Integration points and interactions with other components
 - **Update existing tests** when modifying functionality to reflect the new behavior
 - **Run tests locally** and ensure 100% of executed tests pass:
-```powershell
+```bash
 flutter test
 ```
 - **Avoid flakiness**: use proper async/waits, pumps, and deterministic inputs
@@ -150,7 +146,7 @@ lib/src/widgets/routine_card.dart          → test/src/widgets/routine_card_tes
 
 #### Verification
 Before completing any change that adds or modifies lib files:
-```powershell
+```bash
 # Verify test file exists for each lib file
 # (Manual check or use a script to validate structure alignment)
 ```
@@ -160,14 +156,14 @@ Before completing any change that adds or modifies lib files:
 
 #### Generate Coverage Report
 Run tests with coverage collection enabled:
-```powershell
+```bash
 flutter test --coverage
 ```
 This generates a `coverage/lcov.info` file containing line-by-line coverage data.
 
 #### View Coverage Report (HTML)
 To generate a human-readable HTML report:
-```powershell
+```bash
 # Install lcov if not already available (Linux/WSL)
 # sudo apt-get install lcov
 
@@ -175,15 +171,12 @@ To generate a human-readable HTML report:
 genhtml coverage/lcov.info -o coverage/html
 
 # Open the report in your browser
-# Windows:
-start coverage/html/index.html
-# Linux:
 xdg-open coverage/html/index.html
 ```
 
 #### View Coverage Summary (Command Line)
 For a quick summary without generating HTML:
-```powershell
+```bash
 # Linux/WSL with lcov installed:
 lcov --summary coverage/lcov.info
 
@@ -193,7 +186,7 @@ flutter test --coverage --reporter=compact
 
 #### Inspect Specific File Coverage
 To check coverage for specific files you modified:
-```powershell
+```bash
 # View coverage for a specific file
 lcov --list coverage/lcov.info | grep "your_file.dart"
 ```
@@ -341,15 +334,15 @@ Before considering a change complete, verify all of the following are green:
 2. **Test file structure aligned**: Test files mirror lib file structure exactly (see Section 13.1)
 3. **Coverage verified**: Run `flutter test --coverage` and confirm 100% coverage of new code (see Section 13.2)
 4. Tests pass locally (including edge cases):
-   ```powershell
+   ```bash
    flutter test
    ```
 5. Static analysis clean (0 issues):
-   ```powershell
+   ```bash
    dart analyze
    ```
 6. Tests pass via MCP (if using MCP workflow)
 7. Code formatted:
-   ```powershell
+   ```bash
    dart format .
    ```
