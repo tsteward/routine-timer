@@ -86,8 +86,17 @@ class ScheduleHeader extends StatelessWidget {
   /// and estimated completion time.
   ScheduleStatus _calculateScheduleStatus() {
     final now = currentTime ?? DateTime.now();
-    final scheduledStartTime = DateTime.fromMillisecondsSinceEpoch(
+    // Extract hour and minute from saved start time, but use current day
+    final savedStartTime = DateTime.fromMillisecondsSinceEpoch(
       routineState.settings.startTime,
+    );
+    final scheduledStartTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      savedStartTime.hour,
+      savedStartTime.minute,
+      savedStartTime.second,
     );
 
     // Calculate scheduled completion time (scheduled start + all tasks + breaks)
