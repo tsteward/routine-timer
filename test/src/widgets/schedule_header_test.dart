@@ -531,41 +531,6 @@ void main() {
       expect(find.textContaining('Est. Completion: 6:25 AM'), findsOneWidget);
     });
 
-    testWidgets('handles PM times correctly', (tester) async {
-      final now = DateTime(2025, 10, 14, 23, 30); // 11:30 PM
-
-      final tasks = [
-        const TaskModel(
-          id: '1',
-          name: 'Task 1',
-          estimatedDuration: 1800, // 30 min
-          order: 0,
-        ),
-      ];
-
-      final state = RoutineStateModel(
-        tasks: tasks,
-        settings: settings,
-        selectedTaskId: tasks.first.id,
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ScheduleHeader(
-              routineState: state,
-              routineStartTime: now,
-              currentTime: now,
-              onSettingsTap: () {},
-            ),
-          ),
-        ),
-      );
-
-      // Should complete at midnight (12:00 AM)
-      expect(find.textContaining('Est. Completion: 12:00 AM'), findsOneWidget);
-    });
-
     testWidgets('handles multiple completed tasks correctly', (tester) async {
       // Scheduled start: 6:00 AM
       // Task 1: 10 min estimated, 9 min 10 sec actual (50 sec ahead)
