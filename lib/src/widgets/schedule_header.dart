@@ -117,7 +117,8 @@ class ScheduleHeader extends StatelessWidget {
         0,
         (sum, task) => sum + task.estimatedDuration,
       );
-      final breakSeconds = routineState.breaks?.fold<int>(
+      final breakSeconds =
+          routineState.breaks?.fold<int>(
             0,
             (sum, item) => item.isEnabled ? sum + item.duration : sum,
           ) ??
@@ -145,8 +146,9 @@ class ScheduleHeader extends StatelessWidget {
       }
     }
 
-    int firstIncompleteTaskIndex =
-        tasks.indexWhere((task) => !task.isCompleted);
+    int firstIncompleteTaskIndex = tasks.indexWhere(
+      (task) => !task.isCompleted,
+    );
     if (firstIncompleteTaskIndex == -1) {
       firstIncompleteTaskIndex = tasks.length;
     }
@@ -160,10 +162,13 @@ class ScheduleHeader extends StatelessWidget {
         final task = tasks[i];
         final bool isTaskCompleted = task.isCompleted;
         final bool isActiveTask =
-            !routineState.isOnBreak && !isTaskCompleted && i == effectiveCurrentTaskIndex;
+            !routineState.isOnBreak &&
+            !isTaskCompleted &&
+            i == effectiveCurrentTaskIndex;
 
         if (isActiveTask) {
-          final remainingForTask = task.estimatedDuration - activeElapsedSeconds;
+          final remainingForTask =
+              task.estimatedDuration - activeElapsedSeconds;
           if (remainingForTask > 0) {
             remainingSeconds += remainingForTask;
           }
@@ -177,7 +182,8 @@ class ScheduleHeader extends StatelessWidget {
             continue;
           }
 
-          final bool isBreakActive = routineState.isOnBreak &&
+          final bool isBreakActive =
+              routineState.isOnBreak &&
               (routineState.currentBreakIndex ?? -1) == i;
           final bool hasAdvancedPastBreak =
               (!routineState.isOnBreak && effectiveCurrentTaskIndex > i) ||
@@ -185,7 +191,8 @@ class ScheduleHeader extends StatelessWidget {
               firstIncompleteTaskIndex > i + 1;
 
           if (isBreakActive) {
-            final remainingForBreak = breakModel.duration - activeElapsedSeconds;
+            final remainingForBreak =
+                breakModel.duration - activeElapsedSeconds;
             if (remainingForBreak > 0) {
               remainingSeconds += remainingForBreak;
             }
@@ -200,7 +207,8 @@ class ScheduleHeader extends StatelessWidget {
       remainingSeconds = 0;
     }
 
-    bool hasStartedRoutine = tasks.any((task) => task.isCompleted) ||
+    bool hasStartedRoutine =
+        tasks.any((task) => task.isCompleted) ||
         activeElapsedSeconds > 0 ||
         routineState.isOnBreak;
 
@@ -215,8 +223,9 @@ class ScheduleHeader extends StatelessWidget {
       estimatedCompletion = now.add(Duration(seconds: remainingSeconds));
     }
 
-    final varianceSeconds =
-        estimatedCompletion.difference(scheduledCompletionTime).inSeconds;
+    final varianceSeconds = estimatedCompletion
+        .difference(scheduledCompletionTime)
+        .inSeconds;
 
     String buildStatusText() {
       if (varianceSeconds.abs() < toleranceSeconds) {
