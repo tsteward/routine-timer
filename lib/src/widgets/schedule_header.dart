@@ -86,115 +86,173 @@ class ScheduleHeader extends StatelessWidget {
   /// and estimated completion time.
   ScheduleStatus _calculateScheduleStatus() {
     final now = currentTime ?? DateTime.now();
-    // Extract hour and minute from saved start time, but use current day
     final savedStartTime = DateTime.fromMillisecondsSinceEpoch(
       routineState.settings.startTime,
     );
-    final scheduledStartTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      savedStartTime.hour,
-      savedStartTime.minute,
-      savedStartTime.second,
-    );
 
-    // Calculate scheduled completion time (scheduled start + all tasks + breaks)
-    int totalScheduledSeconds = 0;
-    for (final task in routineState.tasks) {
-      totalScheduledSeconds += task.estimatedDuration;
-    }
-    if (routineState.breaks != null) {
-      for (final breakItem in routineState.breaks!) {
-        if (breakItem.isEnabled) {
-          totalScheduledSeconds += breakItem.duration;
-        }
+    DateTime normalizeScheduledStart() {
+      final base = routineStartTime;
+      var candidate = DateTime(
+        base.year,
+        base.month,
+        base.day,
+        savedStartTime.hour,
+        savedStartTime.minute,
+        savedStartTime.second,
+      );
+
+      final difference = base.difference(candidate);
+      if (difference.inHours >= 12) {
+        candidate = candidate.add(const Duration(days: 1));
+      } else if (difference.inHours <= -12) {
+        candidate = candidate.subtract(const Duration(days: 1));
       }
+      return candidate;
     }
+
+    final scheduledStartTime = normalizeScheduledStart();
+
+    int sumScheduledSeconds() {
+      final taskSeconds = routineState.tasks.fold<int>(
+        0,
+        (sum, task) => sum + task.estimatedDuration,
+      );
+      final breakSeconds =
+          routineState.breaks?.fold<int>(
+            0,
+            (sum, item) => item.isEnabled ? sum + item.duration : sum,
+          ) ??
+          0;
+      return taskSeconds + breakSeconds;
+    }
+
     final scheduledCompletionTime = scheduledStartTime.add(
-      Duration(seconds: totalScheduledSeconds),
+      Duration(seconds: sumScheduledSeconds()),
     );
 
-    // Calculate estimated completion time
-    // Current time + remaining time for all remaining tasks/breaks + remaining time for current task
-    int remainingSeconds = 0;
-    final currentTaskIndex = routineState.currentTaskIndex;
+    final tasks = routineState.tasks;
+    final breaks = routineState.breaks;
 
-    // Add remaining time for current task (if any)
-    if (currentTaskIndex >= 0 && currentTaskIndex < routineState.tasks.length) {
-      final currentTask = routineState.tasks[currentTaskIndex];
-      if (!currentTask.isCompleted && currentTaskElapsedSeconds != null) {
-        // Calculate remaining time for current task
-        // If elapsed time exceeds estimated, we're overtime
-        final currentTaskRemaining =
-            currentTask.estimatedDuration - currentTaskElapsedSeconds!;
+    final toleranceSeconds = 30;
+    final int activeElapsedSeconds = currentTaskElapsedSeconds ?? 0;
 
-        // If task is overtime (negative), we still count 0 remaining time
-        // (we're already past the estimated time, just need to finish)
-        // The behind status will be reflected in the variance calculation
-        remainingSeconds += currentTaskRemaining > 0 ? currentTaskRemaining : 0;
-      } else if (!currentTask.isCompleted) {
-        // Fallback if elapsed time not provided
-        remainingSeconds += currentTask.estimatedDuration;
-      }
-
-      // Add time for all remaining tasks after current
-      for (int i = currentTaskIndex + 1; i < routineState.tasks.length; i++) {
-        remainingSeconds += routineState.tasks[i].estimatedDuration;
-
-        // Add break time if there's an enabled break after this task
-        if (routineState.breaks != null &&
-            i < routineState.breaks!.length &&
-            routineState.breaks![i].isEnabled) {
-          remainingSeconds += routineState.breaks![i].duration;
-        }
-      }
-
-      // Add the break after current task if it exists and is enabled
-      if (routineState.breaks != null &&
-          currentTaskIndex < routineState.breaks!.length &&
-          routineState.breaks![currentTaskIndex].isEnabled) {
-        remainingSeconds += routineState.breaks![currentTaskIndex].duration;
+    int effectiveCurrentTaskIndex = routineState.currentTaskIndex;
+    if (tasks.isEmpty) {
+      effectiveCurrentTaskIndex = -1;
+    } else {
+      if (effectiveCurrentTaskIndex < 0) effectiveCurrentTaskIndex = 0;
+      if (effectiveCurrentTaskIndex >= tasks.length) {
+        effectiveCurrentTaskIndex = tasks.length - 1;
       }
     }
 
-    final estimatedCompletion = now.add(Duration(seconds: remainingSeconds));
+    int firstIncompleteTaskIndex = tasks.indexWhere(
+      (task) => !task.isCompleted,
+    );
+    if (firstIncompleteTaskIndex == -1) {
+      firstIncompleteTaskIndex = tasks.length;
+    }
 
-    // Calculate variance (estimated completion - scheduled completion)
-    // Negative = ahead, positive = behind
+    int remainingSeconds = 0;
+
+    if (!routineState.isCompleted && tasks.isEmpty) {
+      remainingSeconds = 0;
+    } else if (!routineState.isCompleted) {
+      for (int i = 0; i < tasks.length; i++) {
+        final task = tasks[i];
+        final bool isTaskCompleted = task.isCompleted;
+        final bool isActiveTask =
+            !routineState.isOnBreak &&
+            !isTaskCompleted &&
+            i == effectiveCurrentTaskIndex;
+
+        if (isActiveTask) {
+          final remainingForTask =
+              task.estimatedDuration - activeElapsedSeconds;
+          if (remainingForTask > 0) {
+            remainingSeconds += remainingForTask;
+          }
+        } else if (!isTaskCompleted) {
+          remainingSeconds += task.estimatedDuration;
+        }
+
+        if (breaks != null && i < breaks.length) {
+          final breakModel = breaks[i];
+          if (!breakModel.isEnabled) {
+            continue;
+          }
+
+          final bool isBreakActive =
+              routineState.isOnBreak &&
+              (routineState.currentBreakIndex ?? -1) == i;
+          final bool hasAdvancedPastBreak =
+              (!routineState.isOnBreak && effectiveCurrentTaskIndex > i) ||
+              tasks.skip(i + 1).any((t) => t.isCompleted) ||
+              firstIncompleteTaskIndex > i + 1;
+
+          if (isBreakActive) {
+            final remainingForBreak =
+                breakModel.duration - activeElapsedSeconds;
+            if (remainingForBreak > 0) {
+              remainingSeconds += remainingForBreak;
+            }
+          } else if (!hasAdvancedPastBreak) {
+            remainingSeconds += breakModel.duration;
+          }
+        }
+      }
+    }
+
+    if (remainingSeconds < 0) {
+      remainingSeconds = 0;
+    }
+
+    bool hasStartedRoutine =
+        tasks.any((task) => task.isCompleted) ||
+        activeElapsedSeconds > 0 ||
+        routineState.isOnBreak;
+
+    DateTime estimatedCompletion;
+    if (!hasStartedRoutine && now.isBefore(scheduledStartTime)) {
+      estimatedCompletion = scheduledCompletionTime;
+    } else if (remainingSeconds == 0 && routineState.completion != null) {
+      estimatedCompletion = DateTime.fromMillisecondsSinceEpoch(
+        routineState.completion!.completedAt,
+      );
+    } else {
+      estimatedCompletion = now.add(Duration(seconds: remainingSeconds));
+    }
+
     final varianceSeconds = estimatedCompletion
         .difference(scheduledCompletionTime)
         .inSeconds;
 
-    // Determine status text
-    String statusText;
-    if (varianceSeconds.abs() < 30) {
-      // Within 30 seconds is considered "on track"
-      statusText = 'On track';
-    } else if (varianceSeconds < 0) {
-      // Ahead of schedule
-      final minutes = (varianceSeconds.abs() ~/ 60);
-      final seconds = varianceSeconds.abs() % 60;
+    String buildStatusText() {
+      if (varianceSeconds.abs() < toleranceSeconds) {
+        return routineState.isCompleted ? 'Completed on track' : 'On track';
+      }
+
+      final isAhead = varianceSeconds < 0;
+      final absVariance = varianceSeconds.abs();
+      final minutes = absVariance ~/ 60;
+      final seconds = absVariance % 60;
+
+      final buffer = StringBuffer(
+        routineState.isCompleted
+            ? (isAhead ? 'Completed ahead by ' : 'Completed behind by ')
+            : (isAhead ? 'Ahead by ' : 'Behind by '),
+      );
+
       if (minutes > 0) {
-        statusText = 'Ahead by $minutes min';
+        buffer.write('$minutes min');
         if (seconds > 0) {
-          statusText += ' $seconds sec';
+          buffer.write(' $seconds sec');
         }
       } else {
-        statusText = 'Ahead by $seconds sec';
+        buffer.write('$seconds sec');
       }
-    } else {
-      // Behind schedule
-      final minutes = varianceSeconds ~/ 60;
-      final seconds = varianceSeconds % 60;
-      if (minutes > 0) {
-        statusText = 'Behind by $minutes min';
-        if (seconds > 0) {
-          statusText += ' $seconds sec';
-        }
-      } else {
-        statusText = 'Behind by $seconds sec';
-      }
+
+      return buffer.toString();
     }
 
     final hour = estimatedCompletion.hour;
@@ -205,7 +263,7 @@ class ScheduleHeader extends StatelessWidget {
         '$displayHour:${minute.toString().padLeft(2, '0')} $period';
 
     return ScheduleStatus(
-      displayText: statusText,
+      displayText: buildStatusText(),
       estimatedCompletionTime: completionText,
       varianceSeconds: varianceSeconds,
     );
