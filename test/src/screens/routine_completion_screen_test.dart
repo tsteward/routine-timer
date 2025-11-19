@@ -11,7 +11,6 @@ import 'package:routine_timer/src/models/routine_state.dart';
 import 'package:routine_timer/src/models/task.dart';
 import 'package:routine_timer/src/repositories/routine_repository.dart';
 import 'package:routine_timer/src/router/app_router.dart';
-import 'package:routine_timer/src/screens/routine_completion_screen.dart';
 import 'package:routine_timer/src/services/auth_service.dart';
 
 void main() {
@@ -37,7 +36,7 @@ void main() {
       return BlocProvider<RoutineBloc>.value(
         value: mockBloc!,
         child: MaterialApp(
-          home: const RoutineCompletionScreen(),
+          initialRoute: AppRoutes.completion,
           onGenerateRoute: (settings) => AppRouter().onGenerateRoute(settings),
         ),
       );
