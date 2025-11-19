@@ -16,15 +16,17 @@ class TimeFormatter {
     return '$hour:$minute';
   }
 
-  /// Formats duration in seconds to a human-readable format (e.g., "1h 30m")
+  /// Formats duration in seconds to a human-readable format (e.g., "10m 30s" or "90m")
   static String formatDuration(int seconds) {
-    final hours = seconds ~/ 3600;
-    final minutes = (seconds % 3600) ~/ 60;
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
 
-    if (hours > 0) {
-      return '${hours}h ${minutes}m';
-    } else {
+    if (minutes > 0 && secs > 0) {
+      return '${minutes}m ${secs}s';
+    } else if (minutes > 0) {
       return '${minutes}m';
+    } else {
+      return '${secs}s';
     }
   }
 

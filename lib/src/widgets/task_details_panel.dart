@@ -242,8 +242,8 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
 
     final currentBreak = widget.model.breaks![taskIndex];
     final currentDuration = currentBreak.duration;
-    final hours = currentDuration ~/ 3600;
-    final minutes = (currentDuration % 3600) ~/ 60;
+    final minutes = currentDuration ~/ 60;
+    final seconds = currentDuration % 60;
 
     // Capture BuildContext values before async gap
     final messenger = ScaffoldMessenger.of(context);
@@ -251,8 +251,8 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
 
     final picked = await DurationPickerDialog.show(
       context: context,
-      initialHours: hours,
       initialMinutes: minutes,
+      initialSeconds: seconds,
       title: 'Break Duration',
     );
 
@@ -285,8 +285,8 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
 
   Future<void> _pickTaskDuration(BuildContext context) async {
     final currentDuration = widget.task.estimatedDuration;
-    final hours = currentDuration ~/ 3600;
-    final minutes = (currentDuration % 3600) ~/ 60;
+    final minutes = currentDuration ~/ 60;
+    final seconds = currentDuration % 60;
 
     // Capture BuildContext values before async gap
     final messenger = ScaffoldMessenger.of(context);
@@ -294,8 +294,8 @@ class _TaskDetailsPanelState extends State<TaskDetailsPanel> {
 
     final picked = await DurationPickerDialog.show(
       context: context,
-      initialHours: hours,
       initialMinutes: minutes,
+      initialSeconds: seconds,
       title: 'Task Duration',
     );
 
