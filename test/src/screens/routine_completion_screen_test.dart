@@ -339,7 +339,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Assert
-      expect(find.text('Start New Routine'), findsOneWidget);
+      expect(find.text('Back to Start'), findsOneWidget);
     });
 
     testWidgets('should have Task Management button', (tester) async {
@@ -386,7 +386,7 @@ void main() {
       expect(find.text('Task Management'), findsOneWidget);
     });
 
-    testWidgets('should navigate to main screen when no completion data', (
+    testWidgets('should navigate to pre-start screen when no completion data', (
       tester,
     ) async {
       // Arrange
@@ -421,13 +421,11 @@ void main() {
       await tester.pump(); // Trigger the navigation callback
       await tester.pumpAndSettle();
 
-      // Assert - should show main routine screen (default in our app router)
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+      // Assert - should show pre-start screen (which has "Routine Starts In:" text)
+      expect(find.text('Routine Starts In:'), findsOneWidget);
     });
 
-    testWidgets('Start New Routine button should reset routine', (
-      tester,
-    ) async {
+    testWidgets('Back to Start button should reset routine', (tester) async {
       // Arrange
       final completion = RoutineCompletion(
         completedAt: DateTime.now().millisecondsSinceEpoch,
@@ -470,7 +468,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap the Start New Routine button
-      await tester.tap(find.text('Start New Routine'));
+      await tester.tap(find.text('Back to Start'));
       await tester.pumpAndSettle();
 
       // Assert - verify ResetRoutine event was added

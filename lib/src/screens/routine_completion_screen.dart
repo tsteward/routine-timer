@@ -18,7 +18,7 @@ class RoutineCompletionScreen extends StatelessWidget {
         if (completion == null) {
           // If no completion data, redirect to main screen
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed(AppRoutes.main);
+            Navigator.of(context).pushReplacementNamed(AppRoutes.preStart);
           });
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -147,7 +147,7 @@ class RoutineCompletionScreen extends StatelessWidget {
                             );
                             Navigator.of(
                               context,
-                            ).pushReplacementNamed(AppRoutes.main);
+                            ).pushReplacementNamed(AppRoutes.preStart);
                           },
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 20),
@@ -158,7 +158,7 @@ class RoutineCompletionScreen extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          child: const Text('Start New Routine'),
+                          child: const Text('Back to Start'),
                         ),
                       ),
                       const SizedBox(width: 16),
