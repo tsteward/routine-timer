@@ -165,9 +165,7 @@ class RoutineCompletionScreen extends StatelessWidget {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            Navigator.of(
-                              context,
-                            ).pushReplacementNamed(AppRoutes.tasks);
+                            Navigator.of(context).pushNamed(AppRoutes.tasks);
                           },
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 20),

@@ -475,5 +475,67 @@ void main() {
       // For now, we just ensure no errors occurred during the tap
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'Task Management button should preserve navigation stack (uses pushNamed)',
+      (tester) async {
+        // Arrange
+        final completion = RoutineCompletion(
+          completedAt: DateTime.now().millisecondsSinceEpoch,
+          totalTimeSpent: 3600,
+          tasksCompleted: 4,
+          totalEstimatedTime: 3000,
+          taskDetails: const [],
+        );
+
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Task 1',
+            estimatedDuration: 600,
+            order: 0,
+          ),
+        ];
+
+        final settings = RoutineSettingsModel(
+          startTime: DateTime.now().millisecondsSinceEpoch,
+          defaultBreakDuration: 120,
+        );
+
+        mockBloc!.emit(
+          RoutineBlocState(
+            loading: false,
+            model: RoutineStateModel(
+              tasks: tasks,
+              settings: settings,
+              isCompleted: true,
+              completion: completion,
+            ),
+          ),
+        );
+
+        // Act
+        await tester.pumpWidget(createWidgetUnderTest());
+        await tester.pumpAndSettle();
+
+        // Tap the Task Management button
+        await tester.tap(find.text('Task Management'));
+        await tester.pumpAndSettle();
+
+        // Assert - verify we navigated to task management screen
+        expect(find.text('Task Management'), findsOneWidget); // AppBar title
+
+        // Verify back button exists (proving navigation stack was preserved)
+        final backButton = find.byType(BackButton);
+        expect(backButton, findsOneWidget);
+
+        // Tap back button to verify we can return to completion screen
+        await tester.tap(backButton);
+        await tester.pumpAndSettle();
+
+        // Should be back on completion screen
+        expect(find.text('Routine Accomplished! 🎉'), findsOneWidget);
+      },
+    );
   });
 }
