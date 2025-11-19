@@ -320,7 +320,7 @@ void main() {
     });
 
     group('UI Elements', () {
-      testWidgets('displays navigation FAB', (tester) async {
+      testWidgets('displays Start Early button', (tester) async {
         final now = DateTime.now();
         final startTime = now.add(const Duration(hours: 1));
 
@@ -343,8 +343,103 @@ void main() {
         await tester.pumpWidget(makeTestableWidget(const PreStartScreen()));
         await tester.pump();
 
-        // Should have navigation FAB
-        expect(find.byType(PopupMenuButton<String>), findsOneWidget);
+        // Should have Start Early button
+        expect(find.text('Start Early'), findsOneWidget);
+        expect(
+          find.widgetWithText(ElevatedButton, 'Start Early'),
+          findsOneWidget,
+        );
+      });
+
+      testWidgets('displays Manage Tasks button', (tester) async {
+        final now = DateTime.now();
+        final startTime = now.add(const Duration(hours: 1));
+
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Test Task',
+            estimatedDuration: 300,
+            order: 0,
+          ),
+        ];
+        final settings = RoutineSettingsModel(
+          startTime: startTime.millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+        final model = RoutineStateModel(tasks: tasks, settings: settings);
+        bloc.emit(bloc.state.copyWith(model: model));
+
+        await tester.pumpWidget(makeTestableWidget(const PreStartScreen()));
+        await tester.pump();
+
+        // Should have Manage Tasks button
+        expect(find.text('Manage Tasks'), findsOneWidget);
+        expect(
+          find.widgetWithText(ElevatedButton, 'Manage Tasks'),
+          findsOneWidget,
+        );
+      });
+
+      testWidgets('Start Early button is tappable', (tester) async {
+        final now = DateTime.now();
+        final startTime = now.add(const Duration(hours: 1));
+
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Test Task',
+            estimatedDuration: 300,
+            order: 0,
+          ),
+        ];
+        final settings = RoutineSettingsModel(
+          startTime: startTime.millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+        final model = RoutineStateModel(tasks: tasks, settings: settings);
+        bloc.emit(bloc.state.copyWith(model: model));
+
+        await tester.pumpWidget(makeTestableWidget(const PreStartScreen()));
+        await tester.pump();
+
+        // Verify Start Early button exists and is enabled
+        final startEarlyButton = tester.widget<ElevatedButton>(
+          find.widgetWithText(ElevatedButton, 'Start Early'),
+        );
+        expect(startEarlyButton.onPressed, isNotNull);
+      });
+
+      testWidgets('Manage Tasks button is tappable', (tester) async {
+        final now = DateTime.now();
+        final startTime = now.add(const Duration(hours: 1));
+
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Test Task',
+            estimatedDuration: 300,
+            order: 0,
+          ),
+        ];
+        final settings = RoutineSettingsModel(
+          startTime: startTime.millisecondsSinceEpoch,
+          breaksEnabledByDefault: true,
+          defaultBreakDuration: 120,
+        );
+        final model = RoutineStateModel(tasks: tasks, settings: settings);
+        bloc.emit(bloc.state.copyWith(model: model));
+
+        await tester.pumpWidget(makeTestableWidget(const PreStartScreen()));
+        await tester.pump();
+
+        // Verify Manage Tasks button exists and is enabled
+        final manageTasksButton = tester.widget<ElevatedButton>(
+          find.widgetWithText(ElevatedButton, 'Manage Tasks'),
+        );
+        expect(manageTasksButton.onPressed, isNotNull);
       });
 
       testWidgets('has black background', (tester) async {

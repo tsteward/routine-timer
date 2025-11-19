@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/routine_bloc.dart';
-import '../router/app_router.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/task_details_panel.dart';
 import '../widgets/task_list_column.dart';
@@ -39,30 +38,6 @@ class TaskManagementScreen extends StatelessWidget {
           ),
           const TaskManagementBottomBar(),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final selected = await showMenu<String>(
-            context: context,
-            position: const RelativeRect.fromLTRB(1000, 0, 16, 0),
-            items: const [
-              PopupMenuItem(
-                value: AppRoutes.preStart,
-                child: Text('Pre-Start'),
-              ),
-              PopupMenuItem(value: AppRoutes.main, child: Text('Main Routine')),
-              PopupMenuItem(
-                value: AppRoutes.tasks,
-                child: Text('Task Management'),
-              ),
-            ],
-          );
-          if (selected != null) {
-            // ignore: use_build_context_synchronously
-            Navigator.of(context).pushNamed(selected);
-          }
-        },
-        child: const Icon(Icons.navigation),
       ),
     );
   }

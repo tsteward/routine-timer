@@ -38,7 +38,6 @@ void main() {
         find.byType(Expanded),
         findsNWidgets(3),
       ); // Main content + left and right columns
-      expect(find.byType(FloatingActionButton), findsOneWidget);
     });
 
     testWidgets('shows no routine loaded initially', (tester) async {

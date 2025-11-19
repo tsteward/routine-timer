@@ -11,7 +11,6 @@ import 'package:routine_timer/src/models/routine_state.dart';
 import 'package:routine_timer/src/models/task.dart';
 import 'package:routine_timer/src/repositories/routine_repository.dart';
 import 'package:routine_timer/src/router/app_router.dart';
-import 'package:routine_timer/src/screens/routine_completion_screen.dart';
 import 'package:routine_timer/src/services/auth_service.dart';
 
 void main() {
@@ -37,7 +36,7 @@ void main() {
       return BlocProvider<RoutineBloc>.value(
         value: mockBloc!,
         child: MaterialApp(
-          home: const RoutineCompletionScreen(),
+          initialRoute: AppRoutes.completion,
           onGenerateRoute: (settings) => AppRouter().onGenerateRoute(settings),
         ),
       );
@@ -339,7 +338,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Assert
-      expect(find.text('Start New Routine'), findsOneWidget);
+      expect(find.text('Back to Start'), findsOneWidget);
     });
 
     testWidgets('should have Task Management button', (tester) async {
@@ -386,7 +385,7 @@ void main() {
       expect(find.text('Task Management'), findsOneWidget);
     });
 
-    testWidgets('should navigate to main screen when no completion data', (
+    testWidgets('should navigate to pre-start screen when no completion data', (
       tester,
     ) async {
       // Arrange
@@ -421,13 +420,11 @@ void main() {
       await tester.pump(); // Trigger the navigation callback
       await tester.pumpAndSettle();
 
-      // Assert - should show main routine screen (default in our app router)
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+      // Assert - should show pre-start screen (which has "Routine Starts In:" text)
+      expect(find.text('Routine Starts In:'), findsOneWidget);
     });
 
-    testWidgets('Start New Routine button should reset routine', (
-      tester,
-    ) async {
+    testWidgets('Back to Start button should reset routine', (tester) async {
       // Arrange
       final completion = RoutineCompletion(
         completedAt: DateTime.now().millisecondsSinceEpoch,
@@ -470,7 +467,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap the Start New Routine button
-      await tester.tap(find.text('Start New Routine'));
+      await tester.tap(find.text('Back to Start'));
       await tester.pumpAndSettle();
 
       // Assert - verify ResetRoutine event was added
@@ -478,5 +475,67 @@ void main() {
       // For now, we just ensure no errors occurred during the tap
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'Task Management button should preserve navigation stack (uses pushNamed)',
+      (tester) async {
+        // Arrange
+        final completion = RoutineCompletion(
+          completedAt: DateTime.now().millisecondsSinceEpoch,
+          totalTimeSpent: 3600,
+          tasksCompleted: 4,
+          totalEstimatedTime: 3000,
+          taskDetails: const [],
+        );
+
+        final tasks = [
+          const TaskModel(
+            id: '1',
+            name: 'Task 1',
+            estimatedDuration: 600,
+            order: 0,
+          ),
+        ];
+
+        final settings = RoutineSettingsModel(
+          startTime: DateTime.now().millisecondsSinceEpoch,
+          defaultBreakDuration: 120,
+        );
+
+        mockBloc!.emit(
+          RoutineBlocState(
+            loading: false,
+            model: RoutineStateModel(
+              tasks: tasks,
+              settings: settings,
+              isCompleted: true,
+              completion: completion,
+            ),
+          ),
+        );
+
+        // Act
+        await tester.pumpWidget(createWidgetUnderTest());
+        await tester.pumpAndSettle();
+
+        // Tap the Task Management button
+        await tester.tap(find.text('Task Management'));
+        await tester.pumpAndSettle();
+
+        // Assert - verify we navigated to task management screen
+        expect(find.text('Task Management'), findsOneWidget); // AppBar title
+
+        // Verify back button exists (proving navigation stack was preserved)
+        final backButton = find.byType(BackButton);
+        expect(backButton, findsOneWidget);
+
+        // Tap back button to verify we can return to completion screen
+        await tester.tap(backButton);
+        await tester.pumpAndSettle();
+
+        // Should be back on completion screen
+        expect(find.text('Routine Accomplished! 🎉'), findsOneWidget);
+      },
+    );
   });
 }
