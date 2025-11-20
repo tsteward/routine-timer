@@ -149,13 +149,13 @@ class SettingsPanel extends StatelessWidget {
 
   Future<void> _pickBreakDuration(BuildContext context) async {
     final currentDuration = model.settings.defaultBreakDuration;
-    final hours = currentDuration ~/ 3600;
-    final minutes = (currentDuration % 3600) ~/ 60;
+    final minutes = currentDuration ~/ 60;
+    final seconds = currentDuration % 60;
 
     final picked = await DurationPickerDialog.show(
       context: context,
-      initialHours: hours,
       initialMinutes: minutes,
+      initialSeconds: seconds,
       title: 'Break Duration',
     );
 

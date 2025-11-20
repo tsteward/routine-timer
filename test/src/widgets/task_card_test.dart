@@ -89,11 +89,11 @@ void main() {
       expect(textWidget.maxLines, equals(2));
     });
 
-    testWidgets('should format hours correctly for longer tasks', (
+    testWidgets('should format minutes correctly for longer tasks', (
       WidgetTester tester,
     ) async {
       final longTask = testTask.copyWith(
-        estimatedDuration: 3900, // 1 hour 5 minutes
+        estimatedDuration: 3900, // 65 minutes
       );
 
       await tester.pumpWidget(
@@ -102,8 +102,8 @@ void main() {
         ),
       );
 
-      // 3900 seconds = 1h 5m
-      expect(find.text('1h 5m'), findsOneWidget);
+      // 3900 seconds = 65m
+      expect(find.text('65m'), findsOneWidget);
     });
   });
 }

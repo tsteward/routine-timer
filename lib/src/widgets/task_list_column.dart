@@ -223,13 +223,13 @@ class _TaskListColumnState extends State<TaskListColumn> {
   ) async {
     final currentBreak = model.breaks![breakIndex];
     final currentDuration = currentBreak.duration;
-    final hours = currentDuration ~/ 3600;
-    final minutes = (currentDuration % 3600) ~/ 60;
+    final minutes = currentDuration ~/ 60;
+    final seconds = currentDuration % 60;
 
     final picked = await DurationPickerDialog.show(
       context: context,
-      initialHours: hours,
       initialMinutes: minutes,
+      initialSeconds: seconds,
       title: currentBreak.isCustomized
           ? 'Break Duration (Customized)'
           : 'Break Duration (Default)',

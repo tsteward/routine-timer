@@ -26,13 +26,13 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   }
 
   Future<void> _pickDuration() async {
-    final hours = _durationInSeconds ~/ 3600;
-    final minutes = (_durationInSeconds % 3600) ~/ 60;
+    final minutes = _durationInSeconds ~/ 60;
+    final seconds = _durationInSeconds % 60;
 
     final picked = await DurationPickerDialog.show(
       context: context,
-      initialHours: hours,
       initialMinutes: minutes,
+      initialSeconds: seconds,
       title: 'Task Duration',
     );
 
@@ -45,17 +45,17 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   }
 
   String _formatDuration() {
-    final hours = _durationInSeconds ~/ 3600;
-    final minutes = (_durationInSeconds % 3600) ~/ 60;
-    if (hours == 0 && minutes == 0) {
+    final minutes = _durationInSeconds ~/ 60;
+    final seconds = _durationInSeconds % 60;
+    if (minutes == 0 && seconds == 0) {
       return 'Tap to select duration';
     }
-    if (hours > 0 && minutes > 0) {
-      return '${hours}h ${minutes}m';
-    } else if (hours > 0) {
-      return '${hours}h';
-    } else {
+    if (minutes > 0 && seconds > 0) {
+      return '${minutes}m ${seconds}s';
+    } else if (minutes > 0) {
       return '${minutes}m';
+    } else {
+      return '${seconds}s';
     }
   }
 

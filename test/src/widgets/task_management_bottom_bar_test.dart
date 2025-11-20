@@ -219,8 +219,8 @@ void main() {
 
       // Custom duration picker dialog should appear
       expect(find.text('Task Duration'), findsOneWidget);
-      expect(find.text('hours'), findsOneWidget);
       expect(find.text('minutes'), findsOneWidget);
+      expect(find.text('seconds'), findsOneWidget);
     });
 
     testWidgets('duration field displays default value', (tester) async {
@@ -318,13 +318,11 @@ void main() {
       // Verify task was added
       expect(bloc.state.model!.tasks.length, initialTaskCount + 1);
 
-      // New total: 54m + 10m task + 2m break = 66m = 1h 6m
-      expect(find.text('1h 6m'), findsOneWidget);
+      // New total: 54m + 10m task + 2m break = 66m
+      expect(find.text('66m'), findsOneWidget);
     });
 
-    testWidgets('formats time in hours and minutes when over 60 minutes', (
-      tester,
-    ) async {
+    testWidgets('formats time in minutes when over 60 minutes', (tester) async {
       final bloc = FirebaseTestHelper.routineBloc
         ..add(const LoadSampleRoutine());
       await bloc.stream.firstWhere((s) => s.model != null);
@@ -347,8 +345,8 @@ void main() {
       bloc.add(const AddTask(name: 'Long Task', durationSeconds: 3600));
       await tester.pumpAndSettle();
 
-      // Should display in hours and minutes format (54m + 60m + 2m break = 116m = 1h 56m)
-      expect(find.text('1h 56m'), findsOneWidget);
+      // Should display in minutes format (54m + 60m + 2m break = 116m)
+      expect(find.text('116m'), findsOneWidget);
     });
   });
 }
