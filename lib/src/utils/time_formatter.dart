@@ -36,13 +36,9 @@ class TimeFormatter {
     return '$minutes min';
   }
 
-  /// Formats duration in seconds to hours and minutes (e.g., "1h 30m" or "30m")
+  /// Formats duration in seconds to minutes only (e.g., "90m" or "116m")
   static String formatDurationHoursMinutes(int seconds) {
-    final hours = seconds ~/ 3600;
-    final minutes = (seconds % 3600) ~/ 60;
-    if (hours > 0) {
-      return '${hours}h ${minutes}m';
-    }
+    final minutes = seconds ~/ 60;
     return '${minutes}m';
   }
 

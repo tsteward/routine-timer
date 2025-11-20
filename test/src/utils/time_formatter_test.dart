@@ -55,22 +55,19 @@ void main() {
     });
 
     group('formatDuration', () {
-      test('formats duration less than 1 hour in minutes only', () {
+      test('formats duration less than 1 minute in seconds only', () {
+        expect(TimeFormatter.formatDuration(0), '0s');
+        expect(TimeFormatter.formatDuration(30), '30s');
+        expect(TimeFormatter.formatDuration(45), '45s');
+        expect(TimeFormatter.formatDuration(59), '59s');
+      });
+
+      test('formats duration in minutes and seconds', () {
         expect(TimeFormatter.formatDuration(60), '1m');
-        expect(TimeFormatter.formatDuration(300), '5m');
-        expect(TimeFormatter.formatDuration(1800), '30m');
-        expect(TimeFormatter.formatDuration(3540), '59m');
-      });
-
-      test('formats duration over 1 hour in hours and minutes', () {
-        expect(TimeFormatter.formatDuration(3600), '1h 0m');
-        expect(TimeFormatter.formatDuration(5400), '1h 30m');
-        expect(TimeFormatter.formatDuration(7200), '2h 0m');
-        expect(TimeFormatter.formatDuration(9000), '2h 30m');
-      });
-
-      test('formats zero duration', () {
-        expect(TimeFormatter.formatDuration(0), '0m');
+        expect(TimeFormatter.formatDuration(90), '1m 30s');
+        expect(TimeFormatter.formatDuration(125), '2m 5s');
+        expect(TimeFormatter.formatDuration(3600), '60m');
+        expect(TimeFormatter.formatDuration(3665), '61m 5s');
       });
     });
 
@@ -86,18 +83,18 @@ void main() {
     });
 
     group('formatDurationHoursMinutes', () {
-      test('formats duration less than 1 hour in minutes only', () {
+      test('formats duration in minutes only', () {
         expect(TimeFormatter.formatDurationHoursMinutes(60), '1m');
         expect(TimeFormatter.formatDurationHoursMinutes(300), '5m');
         expect(TimeFormatter.formatDurationHoursMinutes(1800), '30m');
         expect(TimeFormatter.formatDurationHoursMinutes(3540), '59m');
       });
 
-      test('formats duration over 1 hour in hours and minutes', () {
-        expect(TimeFormatter.formatDurationHoursMinutes(3600), '1h 0m');
-        expect(TimeFormatter.formatDurationHoursMinutes(5400), '1h 30m');
-        expect(TimeFormatter.formatDurationHoursMinutes(7200), '2h 0m');
-        expect(TimeFormatter.formatDurationHoursMinutes(9000), '2h 30m');
+      test('formats duration over 60 minutes in minutes', () {
+        expect(TimeFormatter.formatDurationHoursMinutes(3600), '60m');
+        expect(TimeFormatter.formatDurationHoursMinutes(5400), '90m');
+        expect(TimeFormatter.formatDurationHoursMinutes(7200), '120m');
+        expect(TimeFormatter.formatDurationHoursMinutes(9000), '150m');
       });
 
       test('formats zero duration', () {
