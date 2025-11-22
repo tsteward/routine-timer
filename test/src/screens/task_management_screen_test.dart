@@ -33,7 +33,8 @@ void main() {
       expect(find.byType(Scaffold), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('Task Management'), findsOneWidget);
-      expect(find.byType(Row), findsOneWidget); // Two-column layout
+      // Now we have multiple Row widgets (main layout + app bar actions)
+      expect(find.byType(Row), findsWidgets);
       expect(
         find.byType(Expanded),
         findsNWidgets(3),

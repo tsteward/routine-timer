@@ -1,7 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/break.dart';
+import '../models/library_task.dart';
 import '../models/routine_completion.dart';
 import '../models/routine_settings.dart';
 import '../models/routine_state.dart';
@@ -37,6 +39,8 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     on<SkipBreak>(_onSkipBreak);
     on<CompleteRoutine>(_onCompleteRoutine);
     on<ResetRoutine>(_onResetRoutine);
+    on<AddTaskFromLibrary>(_onAddTaskFromLibrary);
+    on<DeleteLibraryTask>(_onDeleteLibraryTask);
   }
 
   final RoutineRepository _repository;
@@ -44,36 +48,77 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
     emit(state.copyWith(loading: true));
 
-    // Simple hard-coded sample data for development.
-    final tasks = <TaskModel>[
-      const TaskModel(
-        id: '1',
+    final now = DateTime.now();
+
+    // Create sample data with library tasks
+    final workoutLibId = const Uuid().v4();
+    final showerLibId = const Uuid().v4();
+    final breakfastLibId = const Uuid().v4();
+    final reviewLibId = const Uuid().v4();
+
+    final libraryTasks = [
+      LibraryTask(
+        id: workoutLibId,
+        name: 'Morning Workout',
+        defaultDuration: 20 * 60,
+        createdAt: now,
+        lastUsedAt: now,
+      ),
+      LibraryTask(
+        id: showerLibId,
+        name: 'Shower',
+        defaultDuration: 10 * 60,
+        createdAt: now,
+        lastUsedAt: now,
+      ),
+      LibraryTask(
+        id: breakfastLibId,
+        name: 'Breakfast',
+        defaultDuration: 15 * 60,
+        createdAt: now,
+        lastUsedAt: now,
+      ),
+      LibraryTask(
+        id: reviewLibId,
+        name: 'Review Plan',
+        defaultDuration: 5 * 60,
+        createdAt: now,
+        lastUsedAt: now,
+      ),
+    ];
+
+    final tasks = [
+      TaskModel(
+        id: const Uuid().v4(),
         name: 'Morning Workout',
         estimatedDuration: 20 * 60,
         order: 0,
+        libraryTaskId: workoutLibId,
       ),
-      const TaskModel(
-        id: '2',
+      TaskModel(
+        id: const Uuid().v4(),
         name: 'Shower',
         estimatedDuration: 10 * 60,
         order: 1,
+        libraryTaskId: showerLibId,
       ),
-      const TaskModel(
-        id: '3',
+      TaskModel(
+        id: const Uuid().v4(),
         name: 'Breakfast',
         estimatedDuration: 15 * 60,
         order: 2,
+        libraryTaskId: breakfastLibId,
       ),
-      const TaskModel(
-        id: '4',
+      TaskModel(
+        id: const Uuid().v4(),
         name: 'Review Plan',
         estimatedDuration: 5 * 60,
         order: 3,
+        libraryTaskId: reviewLibId,
       ),
     ];
 
     // Set default start time to 6am today
-    final now = DateTime.now();
     final sixAm = DateTime(now.year, now.month, now.day, 6, 0);
 
     final settings = RoutineSettingsModel(
@@ -92,11 +137,15 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       tasks: tasks,
       breaks: breaks,
       settings: settings,
+      libraryTasks: libraryTasks,
       selectedTaskId: tasks.isNotEmpty ? tasks.first.id : null,
       isRunning: false,
     );
 
     emit(state.copyWith(loading: false, model: model));
+
+    // Save sample routine to Firebase
+    add(const SaveRoutineToFirebase());
   }
 
   void _onSelectTask(SelectTask event, Emitter<RoutineBlocState> emit) {
@@ -264,7 +313,33 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     final updatedTasks = List<TaskModel>.from(model.tasks);
     updatedTasks[event.index] = event.task;
 
-    emit(state.copyWith(model: model.copyWith(tasks: updatedTasks)));
+    // If the task is linked to a library task, update it too
+    List<LibraryTask>? updatedLibraryTasks;
+    if (event.task.libraryTaskId != null) {
+      final libraryIndex = model.libraryTasks.indexWhere(
+        (lib) => lib.id == event.task.libraryTaskId,
+      );
+
+      if (libraryIndex != -1) {
+        updatedLibraryTasks = List<LibraryTask>.from(model.libraryTasks);
+        final existingLibTask = updatedLibraryTasks[libraryIndex];
+
+        // Update library task with new name and duration
+        updatedLibraryTasks[libraryIndex] = existingLibTask.copyWith(
+          name: event.task.name,
+          defaultDuration: event.task.estimatedDuration,
+        );
+      }
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: updatedTasks,
+          libraryTasks: updatedLibraryTasks ?? model.libraryTasks,
+        ),
+      ),
+    );
 
     // Auto-save after task update
     add(const SaveRoutineToFirebase());
@@ -276,9 +351,22 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     if (event.index < 0 || event.index >= model.tasks.length) return;
 
     final taskToDuplicate = model.tasks[event.index];
+    final now = DateTime.now();
+
+    // Create a new library task for the duplicate (don't share the same library reference)
+    final newLibraryTaskId = const Uuid().v4();
+    final newLibraryTask = LibraryTask(
+      id: newLibraryTaskId,
+      name: taskToDuplicate.name,
+      defaultDuration: taskToDuplicate.estimatedDuration,
+      createdAt: now,
+      lastUsedAt: now,
+    );
+
     final newTask = taskToDuplicate.copyWith(
-      id: '${taskToDuplicate.id}-copy-${DateTime.now().millisecondsSinceEpoch}',
+      id: const Uuid().v4(),
       order: event.index + 1,
+      libraryTaskId: newLibraryTaskId, // Link to new library task
     );
 
     final updatedTasks = List<TaskModel>.from(model.tasks);
@@ -290,6 +378,10 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       reindexed.add(updatedTasks[i].copyWith(order: i));
     }
 
+    // Add new library task
+    final updatedLibraryTasks = List<LibraryTask>.from(model.libraryTasks)
+      ..add(newLibraryTask);
+
     // Also duplicate the break if breaks exist
     List<BreakModel>? updatedBreaks = model.breaks;
     if (model.breaks != null && event.index < model.breaks!.length) {
@@ -300,7 +392,11 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     emit(
       state.copyWith(
-        model: model.copyWith(tasks: reindexed, breaks: updatedBreaks),
+        model: model.copyWith(
+          tasks: reindexed,
+          breaks: updatedBreaks,
+          libraryTasks: updatedLibraryTasks,
+        ),
       ),
     );
 
@@ -361,19 +457,33 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     final model = state.model;
     if (model == null) return;
 
-    // Generate a unique ID for the new task using timestamp + counter
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final newId = '$now-${model.tasks.length}';
+    // Generate unique IDs for the new task and library task
+    final now = DateTime.now();
+    final taskId = const Uuid().v4();
+    final libraryTaskId = const Uuid().v4();
     final newOrder = model.tasks.length;
 
+    // Create the library task
+    final libraryTask = LibraryTask(
+      id: libraryTaskId,
+      name: event.name,
+      defaultDuration: event.durationSeconds,
+      createdAt: now,
+      lastUsedAt: now, // Set to now since we're using it immediately
+    );
+
+    // Create the new task linked to the library
     final newTask = TaskModel(
-      id: newId,
+      id: taskId,
       name: event.name,
       estimatedDuration: event.durationSeconds,
       order: newOrder,
+      libraryTaskId: libraryTaskId,
     );
 
     final updatedTasks = List<TaskModel>.from(model.tasks)..add(newTask);
+    final updatedLibraryTasks = List<LibraryTask>.from(model.libraryTasks)
+      ..add(libraryTask);
 
     // Add a new break if breaks are enabled and there are existing tasks
     List<BreakModel>? updatedBreaks = model.breaks;
@@ -389,7 +499,11 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     emit(
       state.copyWith(
-        model: model.copyWith(tasks: updatedTasks, breaks: updatedBreaks),
+        model: model.copyWith(
+          tasks: updatedTasks,
+          breaks: updatedBreaks,
+          libraryTasks: updatedLibraryTasks,
+        ),
       ),
     );
 
@@ -607,6 +721,118 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     );
 
     // Save reset state to Firebase
+    add(const SaveRoutineToFirebase());
+  }
+
+  void _onAddTaskFromLibrary(
+    AddTaskFromLibrary event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Find the library task
+    final libraryTask = model.libraryTasks.firstWhere(
+      (lib) => lib.id == event.libraryTaskId,
+      orElse: () => throw Exception('Library task not found'),
+    );
+
+    // Check if this library task is already in the routine (prevent duplicates)
+    final alreadyInRoutine = model.tasks.any(
+      (task) => task.libraryTaskId == event.libraryTaskId,
+    );
+
+    if (alreadyInRoutine) {
+      // Silently ignore - task is already in routine
+      return;
+    }
+
+    // Create new task linked to the library
+    final now = DateTime.now();
+    final newTaskId = const Uuid().v4();
+    final newOrder = model.tasks.length;
+
+    final newTask = TaskModel(
+      id: newTaskId,
+      name: libraryTask.name,
+      estimatedDuration: libraryTask.defaultDuration,
+      order: newOrder,
+      libraryTaskId: libraryTask.id,
+    );
+
+    // Update library task's lastUsedAt
+    final libraryIndex = model.libraryTasks.indexOf(libraryTask);
+    final updatedLibraryTasks = List<LibraryTask>.from(model.libraryTasks);
+    updatedLibraryTasks[libraryIndex] = libraryTask.copyWith(lastUsedAt: now);
+
+    final updatedTasks = List<TaskModel>.from(model.tasks)..add(newTask);
+
+    // Add a new break if breaks are enabled and there are existing tasks
+    List<BreakModel>? updatedBreaks = model.breaks;
+    if (model.breaks != null && model.tasks.isNotEmpty) {
+      updatedBreaks = List<BreakModel>.from(model.breaks!)
+        ..add(
+          BreakModel(
+            duration: model.settings.defaultBreakDuration,
+            isEnabled: model.settings.breaksEnabledByDefault,
+          ),
+        );
+    }
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: updatedTasks,
+          breaks: updatedBreaks,
+          libraryTasks: updatedLibraryTasks,
+        ),
+      ),
+    );
+
+    // Auto-save after adding task
+    add(const SaveRoutineToFirebase());
+  }
+
+  void _onDeleteLibraryTask(
+    DeleteLibraryTask event,
+    Emitter<RoutineBlocState> emit,
+  ) {
+    final model = state.model;
+    if (model == null) return;
+
+    // Find the library task index
+    final libraryIndex = model.libraryTasks.indexWhere(
+      (lib) => lib.id == event.libraryTaskId,
+    );
+
+    if (libraryIndex == -1) {
+      // Library task not found, nothing to do
+      return;
+    }
+
+    // Remove library task
+    final updatedLibraryTasks = List<LibraryTask>.from(model.libraryTasks)
+      ..removeAt(libraryIndex);
+
+    // Detach any routine tasks that reference this library task
+    final updatedTasks = model.tasks.map((task) {
+      if (task.libraryTaskId == event.libraryTaskId) {
+        // Detach from library
+        return task.copyWith(libraryTaskId: null);
+      }
+      return task;
+    }).toList();
+
+    emit(
+      state.copyWith(
+        model: model.copyWith(
+          tasks: updatedTasks,
+          libraryTasks: updatedLibraryTasks,
+        ),
+      ),
+    );
+
+    // Auto-save after deletion
     add(const SaveRoutineToFirebase());
   }
 }
