@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/break.dart';
 import '../models/library_task.dart';
@@ -47,36 +48,77 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
   void _onLoadSample(LoadSampleRoutine event, Emitter<RoutineBlocState> emit) {
     emit(state.copyWith(loading: true));
 
-    // Simple hard-coded sample data for development.
-    final tasks = <TaskModel>[
-      const TaskModel(
-        id: '1',
+    final now = DateTime.now();
+
+    // Create sample data with library tasks
+    final workoutLibId = const Uuid().v4();
+    final showerLibId = const Uuid().v4();
+    final breakfastLibId = const Uuid().v4();
+    final reviewLibId = const Uuid().v4();
+
+    final libraryTasks = [
+      LibraryTask(
+        id: workoutLibId,
+        name: 'Morning Workout',
+        defaultDuration: 20 * 60,
+        createdAt: now,
+        lastUsedAt: now,
+      ),
+      LibraryTask(
+        id: showerLibId,
+        name: 'Shower',
+        defaultDuration: 10 * 60,
+        createdAt: now,
+        lastUsedAt: now,
+      ),
+      LibraryTask(
+        id: breakfastLibId,
+        name: 'Breakfast',
+        defaultDuration: 15 * 60,
+        createdAt: now,
+        lastUsedAt: now,
+      ),
+      LibraryTask(
+        id: reviewLibId,
+        name: 'Review Plan',
+        defaultDuration: 5 * 60,
+        createdAt: now,
+        lastUsedAt: now,
+      ),
+    ];
+
+    final tasks = [
+      TaskModel(
+        id: const Uuid().v4(),
         name: 'Morning Workout',
         estimatedDuration: 20 * 60,
         order: 0,
+        libraryTaskId: workoutLibId,
       ),
-      const TaskModel(
-        id: '2',
+      TaskModel(
+        id: const Uuid().v4(),
         name: 'Shower',
         estimatedDuration: 10 * 60,
         order: 1,
+        libraryTaskId: showerLibId,
       ),
-      const TaskModel(
-        id: '3',
+      TaskModel(
+        id: const Uuid().v4(),
         name: 'Breakfast',
         estimatedDuration: 15 * 60,
         order: 2,
+        libraryTaskId: breakfastLibId,
       ),
-      const TaskModel(
-        id: '4',
+      TaskModel(
+        id: const Uuid().v4(),
         name: 'Review Plan',
         estimatedDuration: 5 * 60,
         order: 3,
+        libraryTaskId: reviewLibId,
       ),
     ];
 
     // Set default start time to 6am today
-    final now = DateTime.now();
     final sixAm = DateTime(now.year, now.month, now.day, 6, 0);
 
     final settings = RoutineSettingsModel(
@@ -95,11 +137,15 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
       tasks: tasks,
       breaks: breaks,
       settings: settings,
+      libraryTasks: libraryTasks,
       selectedTaskId: tasks.isNotEmpty ? tasks.first.id : null,
       isRunning: false,
     );
 
     emit(state.copyWith(loading: false, model: model));
+
+    // Save sample routine to Firebase
+    add(const SaveRoutineToFirebase());
   }
 
   void _onSelectTask(SelectTask event, Emitter<RoutineBlocState> emit) {
@@ -308,7 +354,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     final now = DateTime.now();
 
     // Create a new library task for the duplicate (don't share the same library reference)
-    final newLibraryTaskId = 'lib-${now.millisecondsSinceEpoch}-dup';
+    final newLibraryTaskId = const Uuid().v4();
     final newLibraryTask = LibraryTask(
       id: newLibraryTaskId,
       name: taskToDuplicate.name,
@@ -318,7 +364,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
     );
 
     final newTask = taskToDuplicate.copyWith(
-      id: '${taskToDuplicate.id}-copy-${now.millisecondsSinceEpoch}',
+      id: const Uuid().v4(),
       order: event.index + 1,
       libraryTaskId: newLibraryTaskId, // Link to new library task
     );
@@ -413,8 +459,8 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     // Generate unique IDs for the new task and library task
     final now = DateTime.now();
-    final taskId = '${now.millisecondsSinceEpoch}-${model.tasks.length}';
-    final libraryTaskId = 'lib-${now.millisecondsSinceEpoch}';
+    final taskId = const Uuid().v4();
+    final libraryTaskId = const Uuid().v4();
     final newOrder = model.tasks.length;
 
     // Create the library task
@@ -703,7 +749,7 @@ class RoutineBloc extends Bloc<RoutineEvent, RoutineBlocState> {
 
     // Create new task linked to the library
     final now = DateTime.now();
-    final newTaskId = '${now.millisecondsSinceEpoch}-${model.tasks.length}';
+    final newTaskId = const Uuid().v4();
     final newOrder = model.tasks.length;
 
     final newTask = TaskModel(
