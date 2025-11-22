@@ -106,11 +106,12 @@ void main() {
       await tester.tap(find.text('Add New Task'));
       await tester.pumpAndSettle();
 
-      // Dialog should appear
+      // Dialog should appear with title "Add Task" (not "Add New Task")
+      expect(find.text('Add New Task'), findsOneWidget); // Just the button
       expect(
-        find.text('Add New Task'),
-        findsNWidgets(2),
-      ); // Button + dialog title
+        find.text('Add Task'),
+        findsWidgets,
+      ); // Dialog title + button text + tab
       // Note: 'Task Name' appears in both the dialog and the settings column
       expect(find.text('Task Name'), findsAtLeastNWidgets(1));
       expect(find.text('Duration'), findsAtLeastNWidgets(1));

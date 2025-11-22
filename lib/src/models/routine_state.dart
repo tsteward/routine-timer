@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'break.dart';
+import 'library_task.dart';
 import 'routine_completion.dart';
 import 'routine_settings.dart';
 import 'task.dart';
@@ -17,6 +18,7 @@ class RoutineStateModel {
     this.currentBreakIndex,
     this.completion,
     this.isCompleted = false,
+    this.libraryTasks = const [],
   });
 
   /// Ordered list of tasks.
@@ -47,6 +49,9 @@ class RoutineStateModel {
   /// Whether the routine has been completed.
   final bool isCompleted;
 
+  /// Collection of reusable task templates.
+  final List<LibraryTask> libraryTasks;
+
   RoutineStateModel copyWith({
     List<TaskModel>? tasks,
     List<BreakModel>? breaks,
@@ -57,6 +62,7 @@ class RoutineStateModel {
     int? currentBreakIndex,
     RoutineCompletion? completion,
     bool? isCompleted,
+    List<LibraryTask>? libraryTasks,
   }) {
     return RoutineStateModel(
       tasks: tasks ?? this.tasks,
@@ -68,6 +74,7 @@ class RoutineStateModel {
       currentBreakIndex: currentBreakIndex ?? this.currentBreakIndex,
       completion: completion ?? this.completion,
       isCompleted: isCompleted ?? this.isCompleted,
+      libraryTasks: libraryTasks ?? this.libraryTasks,
     );
   }
 
@@ -129,6 +136,7 @@ class RoutineStateModel {
       'currentBreakIndex': currentBreakIndex,
       'completion': completion?.toMap(),
       'isCompleted': isCompleted,
+      'libraryTasks': libraryTasks.map((e) => e.toMap()).toList(),
     };
   }
 
@@ -146,6 +154,13 @@ class RoutineStateModel {
       }
     }
 
+    // Handle migration for libraryTasks (may not exist in old data)
+    final libraryTasks =
+        (map['libraryTasks'] as List<dynamic>?)
+            ?.map((e) => LibraryTask.fromMap(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+
     return RoutineStateModel(
       tasks: tasks,
       breaks: (map['breaks'] as List<dynamic>?)
@@ -162,6 +177,7 @@ class RoutineStateModel {
           ? RoutineCompletion.fromMap(map['completion'] as Map<String, dynamic>)
           : null,
       isCompleted: map['isCompleted'] as bool? ?? false,
+      libraryTasks: libraryTasks,
     );
   }
 

@@ -141,3 +141,24 @@ class CompleteRoutine extends RoutineEvent {
 class ResetRoutine extends RoutineEvent {
   const ResetRoutine();
 }
+
+/// Add a task from the library to the routine
+class AddTaskFromLibrary extends RoutineEvent {
+  const AddTaskFromLibrary({required this.libraryTaskId});
+
+  final String libraryTaskId;
+
+  @override
+  List<Object?> get props => [libraryTaskId];
+}
+
+/// Delete a library task
+/// If the task is in use, it becomes standalone (libraryTaskId set to null)
+class DeleteLibraryTask extends RoutineEvent {
+  const DeleteLibraryTask({required this.libraryTaskId});
+
+  final String libraryTaskId;
+
+  @override
+  List<Object?> get props => [libraryTaskId];
+}

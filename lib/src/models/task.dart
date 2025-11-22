@@ -9,6 +9,7 @@ class TaskModel {
     this.actualDuration,
     this.isCompleted = false,
     required this.order,
+    this.libraryTaskId,
   });
 
   /// Unique identifier for this task.
@@ -29,6 +30,10 @@ class TaskModel {
   /// Ordering index within the routine. Lower appears earlier.
   final int order;
 
+  /// Optional reference to the library task this was created from.
+  /// If null, this is a standalone task not linked to the library.
+  final String? libraryTaskId;
+
   TaskModel copyWith({
     String? id,
     String? name,
@@ -36,6 +41,7 @@ class TaskModel {
     int? actualDuration,
     bool? isCompleted,
     int? order,
+    String? libraryTaskId,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -44,6 +50,7 @@ class TaskModel {
       actualDuration: actualDuration ?? this.actualDuration,
       isCompleted: isCompleted ?? this.isCompleted,
       order: order ?? this.order,
+      libraryTaskId: libraryTaskId ?? this.libraryTaskId,
     );
   }
 
@@ -55,6 +62,7 @@ class TaskModel {
       'actualDuration': actualDuration,
       'isCompleted': isCompleted,
       'order': order,
+      'libraryTaskId': libraryTaskId,
     };
   }
 
@@ -66,6 +74,7 @@ class TaskModel {
       actualDuration: map['actualDuration'] as int?,
       isCompleted: map['isCompleted'] as bool? ?? false,
       order: map['order'] as int,
+      libraryTaskId: map['libraryTaskId'] as String?,
     );
   }
 
