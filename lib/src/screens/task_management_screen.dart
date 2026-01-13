@@ -6,6 +6,7 @@ import '../widgets/settings_panel.dart';
 import '../widgets/task_details_panel.dart';
 import '../widgets/task_list_column.dart';
 import '../widgets/task_management_bottom_bar.dart';
+import 'task_library_screen.dart';
 
 class TaskManagementScreen extends StatelessWidget {
   const TaskManagementScreen({super.key});
@@ -14,7 +15,22 @@ class TaskManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.surfaceContainerHighest;
     return Scaffold(
-      appBar: AppBar(title: const Text('Task Management')),
+      appBar: AppBar(
+        title: const Text('Task Management'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.library_books),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const TaskLibraryScreen(),
+                ),
+              );
+            },
+            tooltip: 'Task Library',
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
